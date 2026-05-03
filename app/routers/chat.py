@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.models.chat import ChatRequest, ChatResponse
@@ -5,6 +7,7 @@ from app.services.gpt import generate_chat_reply
 from app.services.supabase import enforce_daily_limit_and_store, release_reserved_chat
 
 router = APIRouter(tags=["chat"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -37,6 +40,7 @@ async def chat(payload: ChatRequest) -> ChatResponse:
     except Exception as exc:
         if user_context is not None:
             await release_reserved_chat(user_context.user)
+        logger.exception("Chat request failed for user_id=%s", payload.user_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to process chat request.",

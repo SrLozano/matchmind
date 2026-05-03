@@ -29,9 +29,13 @@ class ChatSessionContext:
             }
         )
 
-        updated_conversation = (
-            await get_supabase()
-        ).table("conversations").update({"messages": messages}).eq("id", self.conversation["id"]).execute()
+        client = await get_supabase()
+        updated_conversation = await (
+            client.table("conversations")
+            .update({"messages": messages})
+            .eq("id", self.conversation["id"])
+            .execute()
+        )
 
         daily_remaining = None
         if self.user["plan"] == "free":
@@ -58,13 +62,13 @@ async def close_supabase() -> None:
     _supabase_client = None
 
 
-async def supabase_healthcheck() -> bool:
+async def supabase_healthcheck() -> tuple[bool, str]:
     client = await get_supabase()
     try:
-        response = await client.table("users").select("id").limit(1).execute()
-        return response.data is not None
-    except Exception:
-        return False
+        await client.table("users").select("id").limit(1).execute()
+        return True, "Supabase connection is healthy."
+    except Exception as exc:
+        return False, str(exc)
 
 
 async def _get_user(user_id: UUID) -> dict[str, Any]:
