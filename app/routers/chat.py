@@ -23,6 +23,9 @@ async def chat(payload: ChatRequest) -> ChatResponse:
         return ChatResponse(
             response=saved_turn["response"],
             confidence_score=saved_turn["confidence_score"],
+            verdict=ai_result.verdict,
+            implied_probability=ai_result.implied_probability,
+            stake_posture=ai_result.stake_posture,
             daily_chats_remaining=saved_turn["daily_chats_remaining"],
         )
     except ValueError as exc:

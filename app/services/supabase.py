@@ -18,7 +18,7 @@ class ChatSessionContext:
     user: dict[str, Any]
     conversation: dict[str, Any]
 
-    async def save_assistant_turn(self, response: str, confidence_score: int) -> dict[str, Any]:
+    async def save_assistant_turn(self, response: str, confidence_score: float) -> dict[str, Any]:
         messages = list(self.conversation.get("messages", []))
         messages.append(
             {

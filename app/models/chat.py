@@ -10,10 +10,16 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    confidence_score: int = Field(..., ge=1, le=10)
+    confidence_score: float = Field(..., ge=1, le=10)
+    verdict: str | None = None
+    implied_probability: float | None = Field(default=None, ge=0, le=1)
+    stake_posture: str | None = None
     daily_chats_remaining: int | None
 
 
 class AIChatResult(BaseModel):
     response: str
-    confidence_score: int = Field(..., ge=1, le=10)
+    confidence_score: float = Field(..., ge=1, le=10)
+    verdict: str | None = None
+    implied_probability: float | None = Field(default=None, ge=0, le=1)
+    stake_posture: str | None = None

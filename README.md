@@ -45,7 +45,7 @@ uvicorn app.main:app --reload
 ```json
 {
   "user_id": "00000000-0000-0000-0000-000000000000",
-  "message": "What do you think about Spain at +650 to win the World Cup?"
+  "message": "Thinking of betting €20 on Spain to beat Germany at 2.10"
 }
 ```
 
@@ -53,8 +53,11 @@ Returns:
 
 ```json
 {
-  "response": "Spain look fairly priced...",
-  "confidence_score": 7,
+  "response": "Verdict: FAIR\n\nMy take:\n...",
+  "confidence_score": 6,
+  "verdict": "FAIR",
+  "implied_probability": 0.4762,
+  "stake_posture": "small",
   "daily_chats_remaining": 4
 }
 ```
@@ -99,3 +102,5 @@ create table if not exists public.bet_tracker (
 - Free users are limited to `5` chat requests per day by default.
 - Premium users bypass the daily message limit.
 - Matchmind never places bets; it only provides analysis and coaching.
+- The coach parses decimal odds, stake, teams, and obvious markets before calling the AI model so implied probability is stable even when live data is unavailable.
+- English and Spanish are supported in the coach flow. Parser output is canonicalized to English for API consistency, while the coach replies in the detected user language.

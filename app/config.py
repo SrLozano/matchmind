@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     supabase_key: str = Field(..., alias="SUPABASE_KEY")
     openai_api_key: str = Field(..., alias="OPENAI_API_KEY")
     stripe_secret_key: str = Field(..., alias="STRIPE_SECRET_KEY")
-    openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
+    openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     free_daily_chat_limit: int = Field(default=5, alias="FREE_DAILY_CHAT_LIMIT")
 
     model_config = SettingsConfigDict(
