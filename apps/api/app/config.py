@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     match_detection_fallback_enabled: bool = Field(default=True, alias="MATCH_DETECTION_FALLBACK_ENABLED")
     match_detection_model: str | None = Field(default=None, alias="MATCH_DETECTION_MODEL")
     internal_api_token: str | None = Field(default=None, alias="INTERNAL_API_TOKEN")
+    cors_allowed_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000",
+        alias="CORS_ALLOWED_ORIGINS",
+    )
 
     model_config = SettingsConfigDict(
         env_file=("../../.env", ".env"),

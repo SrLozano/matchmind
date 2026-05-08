@@ -62,8 +62,8 @@ Put the frontend project contents directly inside `apps/web`.
 Recommended frontend env naming:
 
 ```text
-VITE_API_URL=http://localhost:8000
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_DEV_USER_ID=a87d09e8-7e10-46b8-9927-c9500c9559cf
 ```
 
-Use whichever one matches your framework. Keep public browser-safe keys in frontend env files, and keep secret service keys in the backend `.env`.
+Keep public browser-safe keys in frontend env files, and keep secret service keys in the backend `.env`.

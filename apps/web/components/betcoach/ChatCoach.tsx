@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Send, Zap } from "lucide-react"
+import { sendChatMessage } from "@/lib/api"
 
 type Message = {
   id: number
@@ -30,27 +31,56 @@ const initialMessages: Message[] = [
 export default function ChatCoach() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
+  const [isSending, setIsSending] = useState(false)
+  const [dailyChatsRemaining, setDailyChatsRemaining] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = input.trim()
-    if (!trimmed) return
+    if (!trimmed || isSending) return
     const userMsg: Message = { id: Date.now(), role: "user", text: trimmed }
-    const coachReply: Message = {
+    const pendingCoachMsg: Message = {
       id: Date.now() + 1,
       role: "coach",
-      text: "Great question! Let me pull up the latest Polymarket data for that market... I'll have a full analysis ready in a moment. Upgrade to Premium for instant AI responses on all World Cup markets.",
+      text: "Checking the bet and building a straight answer...",
     }
-    setMessages((prev) => [...prev, userMsg, coachReply])
+    setMessages((prev) => [...prev, userMsg, pendingCoachMsg])
     setInput("")
+    setIsSending(true)
+
+    try {
+      const result = await sendChatMessage(trimmed)
+      setDailyChatsRemaining(result.daily_chats_remaining)
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === pendingCoachMsg.id
+            ? { ...message, text: result.response }
+            : message
+        )
+      )
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unable to reach the Matchmind coach."
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === pendingCoachMsg.id
+            ? {
+                ...message,
+                text: `I couldn't complete that request.\n\n${errorMessage}`,
+              }
+            : message
+        )
+      )
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleSend()
+    if (e.key === "Enter") void handleSend()
   }
 
   const renderText = (text: string) => {
@@ -87,7 +117,7 @@ export default function ChatCoach() {
           </div>
           <div className="ml-auto">
             <span className="text-[10px] font-semibold bg-[#FFD600]/10 border border-[#FFD600]/30 text-[#FFD600] rounded-full px-2.5 py-1 uppercase tracking-wider">
-              3/5 chats
+              {dailyChatsRemaining === null ? "5 chats/day" : `${dailyChatsRemaining} left`}
             </span>
           </div>
         </div>
@@ -128,11 +158,12 @@ export default function ChatCoach() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            disabled={isSending}
           />
           <button
-            onClick={handleSend}
+            onClick={() => void handleSend()}
             className="w-8 h-8 rounded-xl bg-[#00FF87] flex items-center justify-center flex-shrink-0 hover:bg-[#00e87a] active:scale-95 transition-all disabled:opacity-40"
-            disabled={!input.trim()}
+            disabled={!input.trim() || isSending}
             aria-label="Send message"
           >
             <Send className="w-4 h-4 text-[#070D1A]" />

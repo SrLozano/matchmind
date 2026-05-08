@@ -2,8 +2,10 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import get_settings
 from app.routers.chat import router as chat_router
 from app.routers.world_cup import router as world_cup_router
 from app.services.supabase import close_supabase, get_supabase, supabase_healthcheck
@@ -25,6 +27,21 @@ app = FastAPI(
     description="AI-powered betting coach backend for the 2026 FIFA World Cup.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+settings = get_settings()
+allowed_origins = [
+    origin.strip()
+    for origin in settings.cors_allowed_origins.split(",")
+    if origin.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(chat_router)

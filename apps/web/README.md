@@ -64,13 +64,14 @@ Web: http://localhost:3000
 
 ## Environment Variables
 
-This v1 frontend currently does not call the backend directly, so no frontend env file is required yet.
-
-When API calls are added, create `apps/web/.env.local` and expose only browser-safe values:
+Create `apps/web/.env.local` when you need to override the local defaults:
 
 ```text
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_DEV_USER_ID=a87d09e8-7e10-46b8-9927-c9500c9559cf
 ```
+
+The chat screen calls `POST /chat` on `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_DEV_USER_ID` should match a user that exists in Supabase while auth is still being wired.
 
 Do not put private backend secrets in the frontend. Keep `OPENAI_API_KEY`, Supabase service-role keys, Stripe secrets, and provider API keys in the root/backend `.env`.
 
