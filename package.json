@@ -1,0 +1,14 @@
+{
+  "name": "matchmind",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:dev": "make api-dev",
+    "api:test": "make api-test",
+    "web:dev": "npm run dev --workspace apps/web",
+    "web:build": "npm run build --workspace apps/web"
+  }
+}

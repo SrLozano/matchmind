@@ -214,6 +214,16 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
+# Node / frontend
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+apps/web/.next/
+apps/web/dist/
+apps/web/build/
+apps/web/coverage/
+
 # PyPI configuration file
 .pypirc
 
