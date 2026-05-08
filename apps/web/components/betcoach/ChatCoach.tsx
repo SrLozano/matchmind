@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Send, Zap } from "lucide-react"
 import { sendChatMessage } from "@/lib/api"
+import { useLanguage } from "@/lib/i18n"
 
 type Message = {
   id: number
@@ -10,30 +11,37 @@ type Message = {
   text: string
 }
 
-const initialMessages: Message[] = [
-  {
-    id: 1,
-    role: "coach",
-    text: "Hey! Tell me about the bet you're thinking of placing. I'll give you my honest take.",
-  },
-  {
-    id: 2,
-    role: "user",
-    text: "I'm thinking of betting €20 on Spain to win Group A at 1.8 odds",
-  },
-  {
-    id: 3,
-    role: "coach",
-    text: `Good question. Let me break this down for you:\n\n📊 **Bookmaker odds:** 1.80 (implied prob: 55.6%)\n📈 **Polymarket consensus:** ~64% (fair odds: ~1.56)\n\nThe book is offering you WORSE value than the prediction market suggests — meaning the crowd thinks Spain is MORE likely to win than the bookmaker's price implies. That's actually a divergence working in your favour.\n\n⚠️ However, Spain face Morocco & Japan in Group A. Morocco are dangerous at home-continent odds and Japan are historically solid. The 1.80 price is stingy for what's a real risk group.\n\n**My recommendation: Pass or reduce stake.** If you must play, €10 max at these odds. Wait for post-matchday 1 odds which may open up.\n\n**Confidence score: 6/10**`,
-  },
-]
-
 export default function ChatCoach() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const { language, t } = useLanguage()
+  const getInitialMessages = () => [
+    {
+      id: 1,
+      role: "coach" as const,
+      text: t.chat.initialCoach,
+    },
+    {
+      id: 2,
+      role: "user" as const,
+      text: t.chat.initialUser,
+    },
+    {
+      id: 3,
+      role: "coach" as const,
+      text: t.chat.initialAnalysis,
+    },
+  ]
+  const [messages, setMessages] = useState<Message[]>(getInitialMessages)
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [dailyChatsRemaining, setDailyChatsRemaining] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const hasUserSentMessage = useRef(false)
+
+  useEffect(() => {
+    if (!hasUserSentMessage.current) {
+      setMessages(getInitialMessages())
+    }
+  }, [language])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -42,18 +50,19 @@ export default function ChatCoach() {
   const handleSend = async () => {
     const trimmed = input.trim()
     if (!trimmed || isSending) return
+    hasUserSentMessage.current = true
     const userMsg: Message = { id: Date.now(), role: "user", text: trimmed }
     const pendingCoachMsg: Message = {
       id: Date.now() + 1,
       role: "coach",
-      text: "Checking the bet and building a straight answer...",
+      text: t.chat.pending,
     }
     setMessages((prev) => [...prev, userMsg, pendingCoachMsg])
     setInput("")
     setIsSending(true)
 
     try {
-      const result = await sendChatMessage(trimmed)
+      const result = await sendChatMessage(trimmed, language)
       setDailyChatsRemaining(result.daily_chats_remaining)
       setMessages((prev) =>
         prev.map((message) =>
@@ -63,13 +72,13 @@ export default function ChatCoach() {
         )
       )
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unable to reach the Matchmind coach."
+      const errorMessage = error instanceof Error ? error.message : t.chat.reachError
       setMessages((prev) =>
         prev.map((message) =>
           message.id === pendingCoachMsg.id
             ? {
                 ...message,
-                text: `I couldn't complete that request.\n\n${errorMessage}`,
+                text: `${t.chat.requestFailed}\n\n${errorMessage}`,
               }
             : message
         )
@@ -112,12 +121,12 @@ export default function ChatCoach() {
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#00FF87] border-2 border-[#070D1A]" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-foreground leading-tight">BetCoach AI</h2>
-            <p className="text-xs text-[#00FF87]">Online · World Cup 2026 expert</p>
+            <h2 className="text-base font-bold text-foreground leading-tight">{t.chat.title}</h2>
+            <p className="text-xs text-[#00FF87]">{t.chat.status}</p>
           </div>
           <div className="ml-auto">
             <span className="text-[10px] font-semibold bg-[#FFD600]/10 border border-[#FFD600]/30 text-[#FFD600] rounded-full px-2.5 py-1 uppercase tracking-wider">
-              {dailyChatsRemaining === null ? "5 chats/day" : `${dailyChatsRemaining} left`}
+              {dailyChatsRemaining === null ? t.chat.dailyLimit : `${dailyChatsRemaining} ${t.chat.left}`}
             </span>
           </div>
         </div>
@@ -154,7 +163,7 @@ export default function ChatCoach() {
         <div className="flex items-center gap-2 bg-[#0F1C35] border border-[#1A2845] rounded-2xl px-4 py-2.5 focus-within:border-[#00FF87]/50 transition-colors">
           <input
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-[#6A7A9B] outline-none"
-            placeholder="Ask about any World Cup bet..."
+            placeholder={t.chat.placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -164,13 +173,13 @@ export default function ChatCoach() {
             onClick={() => void handleSend()}
             className="w-8 h-8 rounded-xl bg-[#00FF87] flex items-center justify-center flex-shrink-0 hover:bg-[#00e87a] active:scale-95 transition-all disabled:opacity-40"
             disabled={!input.trim() || isSending}
-            aria-label="Send message"
+            aria-label={t.chat.send}
           >
             <Send className="w-4 h-4 text-[#070D1A]" />
           </button>
         </div>
         <p className="text-center text-[10px] text-[#6A7A9B] mt-2">
-          For entertainment purposes only. Always bet responsibly.
+          {t.chat.disclaimer}
         </p>
       </div>
     </div>

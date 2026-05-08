@@ -336,8 +336,14 @@ Confianza:
     )
 
 
-async def generate_chat_reply(message: str, match_context: dict[str, Any] | None = None) -> AIChatResult:
+async def generate_chat_reply(
+    message: str,
+    match_context: dict[str, Any] | None = None,
+    preferred_language: str | None = None,
+) -> AIChatResult:
     parsed_bet = parse_bet_message(message)
+    if preferred_language in {"en", "es"}:
+        parsed_bet = parsed_bet.model_copy(update={"detected_language": preferred_language})
     settings = get_settings()
     client = AsyncOpenAI(api_key=settings.openai_api_key)
     completion = await client.chat.completions.create(

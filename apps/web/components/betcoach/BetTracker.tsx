@@ -1,51 +1,52 @@
 "use client"
 
 import { CheckCircle2, XCircle, Clock3, TrendingUp, TrendingDown, Plus } from "lucide-react"
+import { useLanguage } from "@/lib/i18n"
 
 const bets = [
   {
     id: 1,
-    match: "Portugal vs. Czech Republic",
+    matchKey: "portugalCzechia" as const,
     flags: ["🇵🇹", "🇨🇿"],
-    market: "Portugal Win",
+    marketKey: "portugalWin" as const,
     amount: 25,
     odds: 1.65,
     outcome: "win" as const,
     pnl: +16.25,
-    date: "Jun 14",
+    dateKey: "jun14" as const,
   },
   {
     id: 2,
-    match: "USA vs. Mexico",
+    matchKey: "usaMexico" as const,
     flags: ["🇺🇸", "🇲🇽"],
-    market: "Both Teams Score",
+    marketKey: "bothTeamsScore" as const,
     amount: 15,
     odds: 1.90,
     outcome: "win" as const,
     pnl: +13.5,
-    date: "Jun 15",
+    dateKey: "jun15" as const,
   },
   {
     id: 3,
-    match: "England vs. Serbia",
+    matchKey: "englandSerbia" as const,
     flags: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿", "🇷🇸"],
-    market: "England -1 AH",
+    marketKey: "englandHandicap" as const,
     amount: 30,
     odds: 2.10,
     outcome: "loss" as const,
     pnl: -30,
-    date: "Jun 16",
+    dateKey: "jun16" as const,
   },
   {
     id: 4,
-    match: "Japan vs. Colombia",
+    matchKey: "japanColombia" as const,
     flags: ["🇯🇵", "🇨🇴"],
-    market: "Under 2.5 Goals",
+    marketKey: "underGoals" as const,
     amount: 20,
     odds: 1.75,
     outcome: "pending" as const,
     pnl: 0,
-    date: "Jun 17",
+    dateKey: "jun17" as const,
   },
 ]
 
@@ -60,34 +61,36 @@ const outcomeConfig = {
     icon: CheckCircle2,
     color: "text-[#00FF87]",
     bg: "bg-[#00FF87]/10 border border-[#00FF87]/20",
-    label: "Won",
+    labelKey: "won" as const,
   },
   loss: {
     icon: XCircle,
     color: "text-[#FF4D4D]",
     bg: "bg-[#FF4D4D]/10 border border-[#FF4D4D]/20",
-    label: "Lost",
+    labelKey: "lost" as const,
   },
   pending: {
     icon: Clock3,
     color: "text-[#FFD600]",
     bg: "bg-[#FFD600]/10 border border-[#FFD600]/20",
-    label: "Live",
+    labelKey: "live" as const,
   },
 }
 
 export default function BetTracker() {
+  const { t } = useLanguage()
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="px-5 pt-6 pb-4 flex-shrink-0 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Bet Tracker</h1>
-          <p className="text-xs text-[#6A7A9B] mt-0.5">World Cup 2026 · All bets</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t.tracker.title}</h1>
+          <p className="text-xs text-[#6A7A9B] mt-0.5">{t.tracker.subtitle}</p>
         </div>
         <button className="flex items-center gap-1.5 bg-[#00FF87]/10 border border-[#00FF87]/30 text-[#00FF87] text-xs font-semibold rounded-xl px-3 py-2 hover:bg-[#00FF87]/20 active:scale-95 transition-all">
           <Plus className="w-3.5 h-3.5" />
-          Log Bet
+          {t.tracker.logBet}
         </button>
       </div>
 
@@ -95,12 +98,12 @@ export default function BetTracker() {
       <div className="mx-5 mb-5 flex-shrink-0 rounded-2xl bg-[#0F1C35] border border-[#1A2845] p-4">
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
-            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-1">Total Bets</p>
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-1">{t.tracker.totalBets}</p>
             <p className="text-xl font-bold text-foreground">{totalBets}</p>
           </div>
           <div className="w-px h-10 bg-[#1A2845]" />
           <div className="text-center flex-1">
-            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-1">Win Rate</p>
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-1">{t.tracker.winRate}</p>
             <p className="text-xl font-bold text-[#00FF87]">{winRate}%</p>
           </div>
           <div className="w-px h-10 bg-[#1A2845]" />
@@ -134,39 +137,39 @@ export default function BetTracker() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-base">{bet.flags[0]}</span>
-                    <span className="text-xs text-[#6A7A9B]">vs</span>
+                    <span className="text-xs text-[#6A7A9B]">{t.tracker.vs}</span>
                     <span className="text-base">{bet.flags[1]}</span>
                   </div>
-                  <p className="text-xs font-semibold text-foreground truncate">{bet.match}</p>
-                  <p className="text-[11px] text-[#6A7A9B] mt-0.5">{bet.market}</p>
+                  <p className="text-xs font-semibold text-foreground truncate">{t.tracker.matches[bet.matchKey]}</p>
+                  <p className="text-[11px] text-[#6A7A9B] mt-0.5">{t.tracker.markets[bet.marketKey]}</p>
                 </div>
                 <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold flex-shrink-0 ${cfg.bg} ${cfg.color}`}>
                   <Icon className="w-3.5 h-3.5" />
-                  {cfg.label}
+                  {t.tracker[cfg.labelKey]}
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-2.5 border-t border-[#1A2845]">
                 <div className="flex items-center gap-3">
                   <div>
-                    <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">Stake</p>
+                    <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">{t.tracker.stake}</p>
                     <p className="text-sm font-semibold text-foreground">€{bet.amount}</p>
                   </div>
                   <div className="w-px h-6 bg-[#1A2845]" />
                   <div>
-                    <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">Odds</p>
+                    <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">{t.tracker.odds}</p>
                     <p className="text-sm font-semibold text-foreground">{bet.odds}</p>
                   </div>
                   <div className="w-px h-6 bg-[#1A2845]" />
                   <div>
-                    <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">Date</p>
-                    <p className="text-sm font-semibold text-foreground">{bet.date}</p>
+                    <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">{t.tracker.date}</p>
+                    <p className="text-sm font-semibold text-foreground">{t.tracker.dates[bet.dateKey]}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-[#6A7A9B] uppercase tracking-wider">P&amp;L</p>
                   {bet.outcome === "pending" ? (
-                    <p className="text-sm font-bold text-[#FFD600]">Pending</p>
+                    <p className="text-sm font-bold text-[#FFD600]">{t.tracker.pending}</p>
                   ) : (
                     <p className={`text-sm font-bold ${bet.pnl >= 0 ? "text-[#00FF87]" : "text-[#FF4D4D]"}`}>
                       {bet.pnl >= 0 ? "+" : ""}€{bet.pnl.toFixed(2)}

@@ -8,6 +8,7 @@ DEFAULT_DEV_USER_ID = UUID("a87d09e8-7e10-46b8-9927-c9500c9559cf")
 class ChatRequest(BaseModel):
     user_id: UUID = DEFAULT_DEV_USER_ID
     message: str = Field(..., min_length=1, max_length=4000)
+    preferred_language: str | None = Field(default=None, pattern="^(en|es)$")
 
 
 class ChatResponse(BaseModel):

@@ -44,7 +44,7 @@ function getApiUrl() {
   return process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL
 }
 
-export async function sendChatMessage(message: string): Promise<ChatResponse> {
+export async function sendChatMessage(message: string, preferredLanguage?: "en" | "es"): Promise<ChatResponse> {
   const apiUrl = getApiUrl()
   const userId = process.env.NEXT_PUBLIC_DEV_USER_ID ?? DEFAULT_DEV_USER_ID
 
@@ -56,6 +56,7 @@ export async function sendChatMessage(message: string): Promise<ChatResponse> {
     body: JSON.stringify({
       user_id: userId,
       message,
+      preferred_language: preferredLanguage,
     }),
   })
 

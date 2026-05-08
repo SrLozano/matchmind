@@ -1,6 +1,7 @@
 "use client"
 
 import { Home, MessageCircle, BarChart2, User } from "lucide-react"
+import { useLanguage } from "@/lib/i18n"
 
 type Tab = "feed" | "chat" | "tracker" | "profile"
 
@@ -9,22 +10,25 @@ interface BottomNavProps {
   onTabChange: (tab: Tab) => void
 }
 
-const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "feed", label: "Picks", icon: Home },
-  { id: "chat", label: "Coach", icon: MessageCircle },
-  { id: "tracker", label: "Tracker", icon: BarChart2 },
-  { id: "profile", label: "Profile", icon: User },
+const tabs: { id: Tab; labelKey: "picks" | "coach" | "tracker" | "profile"; icon: React.ElementType }[] = [
+  { id: "feed", labelKey: "picks", icon: Home },
+  { id: "chat", labelKey: "coach", icon: MessageCircle },
+  { id: "tracker", labelKey: "tracker", icon: BarChart2 },
+  { id: "profile", labelKey: "profile", icon: User },
 ]
 
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const { t } = useLanguage()
+
   return (
     <nav
       className="flex-shrink-0 flex items-center border-t border-[#1A2845] bg-[#080E1E]"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      aria-label="Main navigation"
+      aria-label={t.nav.aria}
     >
-      {tabs.map(({ id, label, icon: Icon }) => {
+      {tabs.map(({ id, labelKey, icon: Icon }) => {
         const isActive = activeTab === id
+        const label = t.nav[labelKey]
         return (
           <button
             key={id}
