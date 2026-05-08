@@ -3,42 +3,10 @@ from __future__ import annotations
 import re
 from pydantic import BaseModel, Field
 
+from app.services.world_cup_teams import team_aliases_by_canonical
 
-TEAM_ALIASES: dict[str, tuple[str, ...]] = {
-    "Argentina": ("Argentina",),
-    "Australia": ("Australia", "Australia"),
-    "Belgium": ("Belgium", "Bélgica", "Belgica"),
-    "Brazil": ("Brazil", "Brasil"),
-    "Canada": ("Canada", "Canadá", "Canada"),
-    "Chile": ("Chile",),
-    "Colombia": ("Colombia",),
-    "Croatia": ("Croatia", "Croacia"),
-    "Denmark": ("Denmark", "Dinamarca"),
-    "Ecuador": ("Ecuador",),
-    "England": ("England", "Inglaterra"),
-    "France": ("France", "Francia"),
-    "Germany": ("Germany", "Alemania"),
-    "Ghana": ("Ghana",),
-    "Iran": ("Iran", "Irán"),
-    "Italy": ("Italy", "Italia"),
-    "Japan": ("Japan", "Japón", "Japon"),
-    "Mexico": ("Mexico", "México", "Mejico", "Méjico"),
-    "Morocco": ("Morocco", "Marruecos"),
-    "Netherlands": ("Netherlands", "Holland", "Países Bajos", "Paises Bajos", "Holanda"),
-    "Poland": ("Poland", "Polonia"),
-    "Portugal": ("Portugal",),
-    "Qatar": ("Qatar", "Catar"),
-    "Saudi Arabia": ("Saudi Arabia", "Arabia Saudí", "Arabia Saudi", "Arabia Saudita"),
-    "Senegal": ("Senegal", "Senégal"),
-    "Serbia": ("Serbia",),
-    "South Korea": ("South Korea", "Korea Republic", "Corea del Sur", "Corea"),
-    "Spain": ("Spain", "España", "Espana"),
-    "Switzerland": ("Switzerland", "Suiza"),
-    "Tunisia": ("Tunisia", "Túnez", "Tunez"),
-    "Uruguay": ("Uruguay",),
-    "USA": ("USA", "United States", "United States of America", "US", "Estados Unidos", "EEUU", "EE.UU."),
-    "Wales": ("Wales", "Gales"),
-}
+
+TEAM_ALIASES: dict[str, tuple[str, ...]] = team_aliases_by_canonical()
 
 MARKET_PATTERNS: list[tuple[str, str]] = [
     (r"\b(?:over|más\s+de|mas\s+de)\s+\d+(?:[.,]\d+)?\s+(?:goals?|goles)\b", "Over goals"),

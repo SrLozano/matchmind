@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from app.services.api_football import (
     compact_match_context,
     find_match_in_matches,
+    find_match_from_candidate_teams,
     format_match_context_block,
 )
 
@@ -53,6 +54,19 @@ class APIFootballContextTest(unittest.TestCase):
                 "venue": None,
                 "last_fetched_at": NOW,
             },
+            {
+                "home_team": "South Africa",
+                "away_team": "Korea Republic",
+                "home_team_aliases": ["South Africa"],
+                "away_team_aliases": ["Korea Republic"],
+                "kickoff_time": "2026-06-18T19:00:00+00:00",
+                "stage": "Group Stage - 1",
+                "status": "Not Started",
+                "home_score": None,
+                "away_score": None,
+                "venue": "BMO Field",
+                "last_fetched_at": NOW,
+            },
         ]
 
     def test_spanish_message_maps_to_match(self) -> None:
@@ -82,6 +96,20 @@ class APIFootballContextTest(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(match["home_team"], "United States")
         self.assertEqual(match["away_team"], "Mexico")
+
+    def test_spanglish_south_africa_south_korea_message_maps_to_fixture(self) -> None:
+        match = find_match_in_matches("Quiero apostar al partido de sur africa contra sur korea, en qué estadio es?", self.matches)
+
+        self.assertIsNotNone(match)
+        self.assertEqual(match["home_team"], "South Africa")
+        self.assertEqual(match["away_team"], "Korea Republic")
+
+    def test_llm_candidate_teams_are_validated_against_fixture_names(self) -> None:
+        match = find_match_from_candidate_teams(["South Africa", "South Korea"], self.matches)
+
+        self.assertIsNotNone(match)
+        self.assertEqual(match["home_team"], "South Africa")
+        self.assertEqual(match["away_team"], "Korea Republic")
 
     def test_outright_message_with_one_team_does_not_force_match_context(self) -> None:
         match = find_match_in_matches("Argentina campeona del mundial a cuota 6.50", self.matches)

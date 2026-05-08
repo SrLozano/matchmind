@@ -146,8 +146,12 @@ WORLD_CUP_LEAGUE_ID=1
 WORLD_CUP_SEASON=2026
 WORLD_CUP_CACHE_TTL_SECONDS=600
 WORLD_CUP_FIXTURE_REFRESH_HOURS=12
+MATCH_DETECTION_FALLBACK_ENABLED=true
+MATCH_DETECTION_MODEL=
 INTERNAL_API_TOKEN=
 ```
+
+Match detection uses a local tournament team alias registry first. If no confident cached fixture is found and the message looks match-specific, Matchmind can call `MATCH_DETECTION_MODEL` as a fallback extractor, then validates the proposed teams against Supabase fixtures before using any match context.
 
 Manual refresh example:
 

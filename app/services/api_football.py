@@ -1,46 +1,24 @@
 from __future__ import annotations
 
 import logging
+import json
 import re
-import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from difflib import SequenceMatcher
 from typing import Any
 
 import httpx
+from openai import AsyncOpenAI
 
 from app.config import get_settings
 from app.services.supabase import get_supabase
+from app.services.world_cup_teams import aliases_for_team_name, canonical_team_name, normalize_text
 
 logger = logging.getLogger(__name__)
 
 WORLD_CUP_MATCHES_TABLE = "world_cup_matches"
-
-DEFAULT_TEAM_ALIASES: dict[str, tuple[str, ...]] = {
-    "Argentina": ("Argentina",),
-    "Australia": ("Australia",),
-    "Belgium": ("Belgium", "Bélgica", "Belgica"),
-    "Brazil": ("Brazil", "Brasil"),
-    "Canada": ("Canada", "Canadá"),
-    "Colombia": ("Colombia",),
-    "Croatia": ("Croatia", "Croacia"),
-    "Denmark": ("Denmark", "Dinamarca"),
-    "England": ("England", "Inglaterra"),
-    "France": ("France", "Francia"),
-    "Germany": ("Germany", "Alemania"),
-    "Italy": ("Italy", "Italia"),
-    "Japan": ("Japan", "Japón", "Japon"),
-    "Mexico": ("Mexico", "México", "Mejico", "Méjico"),
-    "Morocco": ("Morocco", "Marruecos"),
-    "Netherlands": ("Netherlands", "Países Bajos", "Paises Bajos", "Holanda", "Holland"),
-    "Portugal": ("Portugal",),
-    "Senegal": ("Senegal",),
-    "South Korea": ("South Korea", "Korea Republic", "Corea del Sur", "Corea"),
-    "Spain": ("Spain", "España", "Espana"),
-    "Switzerland": ("Switzerland", "Suiza"),
-    "Uruguay": ("Uruguay",),
-    "USA": ("USA", "US", "United States", "United States of America", "Estados Unidos", "EEUU", "EE.UU."),
-}
+FUZZY_MATCH_THRESHOLD = 0.86
 
 
 @dataclass
@@ -161,7 +139,21 @@ async def find_match_from_message(message: str) -> dict[str, Any] | None:
     except Exception as exc:
         logger.info("World Cup match cache unavailable for chat context: %s", exc)
         return None
-    return find_match_in_matches(message, matches)
+
+    match = find_match_in_matches(message, matches)
+    if match:
+        return match
+
+    settings = get_settings()
+    if not settings.match_detection_fallback_enabled or not _message_seems_match_specific(message):
+        return None
+
+    try:
+        candidates = await extract_match_candidates_with_llm(message, matches)
+    except Exception as exc:
+        logger.info("LLM match detection fallback failed: %s", exc)
+        return None
+    return find_match_from_candidate_teams(candidates, matches)
 
 
 async def build_match_context_for_chat(message: str) -> dict[str, Any] | None:
@@ -192,6 +184,62 @@ def find_match_in_matches(message: str, matches: list[dict[str, Any]]) -> dict[s
         return _best_match(team_matches)
 
     return None
+
+
+async def extract_match_candidates_with_llm(message: str, matches: list[dict[str, Any]]) -> list[str]:
+    settings = get_settings()
+    model = settings.match_detection_model or settings.openai_model
+    available_teams = sorted({canonical_team_name(team) for match in matches for team in (match.get("home_team"), match.get("away_team")) if team})
+    if not available_teams:
+        return []
+
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    completion = await client.chat.completions.create(
+        model=model,
+        response_format={"type": "json_object"},
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Extract World Cup football teams from the user message. "
+                    "Return JSON only with keys is_match_specific and teams. "
+                    "teams must be an array of 0 to 2 team names chosen from available_teams. "
+                    "If the message is vague or about a tournament outright, return is_match_specific=false."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "message": message,
+                        "available_teams": available_teams,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+        temperature=0,
+    )
+    payload = json.loads(completion.choices[0].message.content or "{}")
+    if not payload.get("is_match_specific"):
+        return []
+    teams = payload.get("teams") or []
+    if not isinstance(teams, list):
+        return []
+    valid_teams = set(available_teams)
+    return [team for team in (canonical_team_name(str(team)) for team in teams[:2]) if team in valid_teams]
+
+
+def find_match_from_candidate_teams(candidate_teams: list[str], matches: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if len(candidate_teams) < 2:
+        return None
+    pair = set(candidate_teams[:2])
+    pair_matches = [
+        match
+        for match in matches
+        if {canonical_team_name(match.get("home_team") or ""), canonical_team_name(match.get("away_team") or "")} == pair
+    ]
+    return _best_match(pair_matches)
 
 
 def compact_match_context(match: dict[str, Any]) -> dict[str, Any]:
@@ -258,24 +306,12 @@ def _fixture_to_row(fixture: dict[str, Any], fetched_at: str) -> dict[str, Any]:
 
 
 def _aliases_for_team(team_name: str) -> tuple[str, ...]:
-    configured = _default_aliases_for_team(team_name)
-    aliases = (team_name, *configured)
+    aliases = aliases_for_team_name(team_name)
     return tuple(dict.fromkeys(alias for alias in aliases if alias))
 
 
-def _default_aliases_for_team(team_name: str) -> tuple[str, ...]:
-    if team_name in DEFAULT_TEAM_ALIASES:
-        return DEFAULT_TEAM_ALIASES[team_name]
-
-    normalized_team = _normalize_text(team_name)
-    for canonical, aliases in DEFAULT_TEAM_ALIASES.items():
-        if normalized_team in {_normalize_text(canonical), *(_normalize_text(alias) for alias in aliases)}:
-            return (canonical, *aliases)
-    return ()
-
-
 def _mentioned_teams(message: str, matches: list[dict[str, Any]]) -> list[str]:
-    normalized_message = _normalize_text(message)
+    normalized_message = normalize_text(message)
     found: list[tuple[int, str]] = []
     seen: set[str] = set()
     aliases_by_team = _aliases_by_team(matches)
@@ -286,6 +322,12 @@ def _mentioned_teams(message: str, matches: list[dict[str, Any]]) -> list[str]:
         if positions and team not in seen:
             found.append((min(positions), team))
             seen.add(team)
+
+    if len(found) < 2:
+        for position, team in _fuzzy_team_matches(normalized_message, aliases_by_team):
+            if team not in seen:
+                found.append((position, team))
+                seen.add(team)
 
     return [team for _, team in sorted(found)]
 
@@ -298,30 +340,75 @@ def _aliases_by_team(matches: list[dict[str, Any]]) -> dict[str, tuple[str, ...]
             if not team:
                 continue
             raw_aliases = match.get(aliases_key) or []
-            aliases_by_team[team] = tuple(dict.fromkeys((team, *_default_aliases_for_team(team), *raw_aliases)))
+            aliases_by_team[team] = tuple(dict.fromkeys((team, *aliases_for_team_name(team), *raw_aliases)))
 
     return aliases_by_team
 
 
 def _alias_position(normalized_message: str, alias: str) -> int | None:
-    normalized_alias = _normalize_text(alias)
+    normalized_alias = normalize_text(alias)
     if not normalized_alias:
         return None
     match = re.search(rf"(?<![a-z0-9]){re.escape(normalized_alias)}(?![a-z0-9])", normalized_message)
     return match.start() if match else None
 
 
-def _normalize_text(value: str) -> str:
-    value = unicodedata.normalize("NFKD", value)
-    value = "".join(char for char in value if not unicodedata.combining(char))
-    value = value.lower().replace(".", " ")
-    return " ".join(re.sub(r"[^a-z0-9]+", " ", value).split())
+def _fuzzy_team_matches(normalized_message: str, aliases_by_team: dict[str, tuple[str, ...]]) -> list[tuple[int, str]]:
+    matches: list[tuple[int, str, float]] = []
+    for team, aliases in aliases_by_team.items():
+        best: tuple[int, float] | None = None
+        for alias in aliases:
+            normalized_alias = normalize_text(alias)
+            if len(normalized_alias) < 4:
+                continue
+            candidate = _best_fuzzy_span(normalized_message, normalized_alias)
+            if candidate is None:
+                continue
+            if best is None or candidate[1] > best[1]:
+                best = candidate
+        if best and best[1] >= FUZZY_MATCH_THRESHOLD:
+            matches.append((best[0], team, best[1]))
+    return [(position, team) for position, team, _ in sorted(matches, key=lambda item: (-item[2], item[0]))]
+
+
+def _best_fuzzy_span(normalized_message: str, normalized_alias: str) -> tuple[int, float] | None:
+    message_tokens = normalized_message.split()
+    alias_tokens = normalized_alias.split()
+    if not message_tokens or not alias_tokens:
+        return None
+
+    best: tuple[int, float] | None = None
+    min_len = max(len(alias_tokens) - 1, 1)
+    max_len = min(len(alias_tokens) + 1, len(message_tokens))
+    for start in range(len(message_tokens)):
+        for size in range(min_len, max_len + 1):
+            end = start + size
+            if end > len(message_tokens):
+                continue
+            span = " ".join(message_tokens[start:end])
+            ratio = SequenceMatcher(None, span, normalized_alias).ratio()
+            if best is None or ratio > best[1]:
+                char_position = len(" ".join(message_tokens[:start]))
+                best = (char_position, ratio)
+    return best
 
 
 def _looks_like_outright(message: str) -> bool:
     return bool(
         re.search(
             r"\b(?:world cup|mundial|campe[oó]n|campeona|campeon|winner|outright|ganar\s+(?:el\s+)?mundial)\b",
+            message,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _message_seems_match_specific(message: str) -> bool:
+    if _looks_like_outright(message):
+        return False
+    return bool(
+        re.search(
+            r"\b(?:vs|v|versus|against|contra|partido|match|beat|beats|ganar|gana|vence|vencer|derrota)\b",
             message,
             re.IGNORECASE,
         )

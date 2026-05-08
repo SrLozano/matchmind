@@ -79,6 +79,13 @@ class BetParserTest(unittest.TestCase):
         self.assertEqual(parsed.market_type, "Tournament outright")
         self.assertEqual(parsed.odds, 6.50)
 
+    def test_spanglish_world_cup_team_aliases(self) -> None:
+        parsed = parse_bet_message("Quiero apostar al partido de sur africa contra sur korea, en qué estadio es?")
+
+        self.assertEqual(parsed.detected_language, "es")
+        self.assertEqual(parsed.teams, ["South Africa", "South Korea"])
+        self.assertEqual(parsed.raw_match_text, "sur africa vs sur korea")
+
 
 if __name__ == "__main__":
     unittest.main()

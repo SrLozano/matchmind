@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     world_cup_season: int = Field(default=2026, alias="WORLD_CUP_SEASON")
     world_cup_cache_ttl_seconds: int = Field(default=600, alias="WORLD_CUP_CACHE_TTL_SECONDS")
     world_cup_fixture_refresh_hours: int = Field(default=12, alias="WORLD_CUP_FIXTURE_REFRESH_HOURS")
+    match_detection_fallback_enabled: bool = Field(default=True, alias="MATCH_DETECTION_FALLBACK_ENABLED")
+    match_detection_model: str | None = Field(default=None, alias="MATCH_DETECTION_MODEL")
     internal_api_token: str | None = Field(default=None, alias="INTERNAL_API_TOKEN")
 
     model_config = SettingsConfigDict(
