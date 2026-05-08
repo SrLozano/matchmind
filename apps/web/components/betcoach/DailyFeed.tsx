@@ -1,69 +1,25 @@
 "use client"
 
-import { Lock, TrendingUp, Clock } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { AlertCircle, CalendarDays, Clock, Lock, RefreshCw, Sparkles } from "lucide-react"
+import { getWorldCupFixtures, type WorldCupFixture } from "@/lib/api"
+import { flagForTeam } from "@/lib/country-flags"
 
-const matches = [
-  {
-    id: 1,
-    teamA: { name: "Spain", flag: "🇪🇸" },
-    teamB: { name: "Morocco", flag: "🇲🇦" },
-    time: "18:00 UTC · Group B",
-    divergence: "+14%",
-    divergenceLabel: "Polymarket",
-    valueSignal: "green" as const,
-    valueLabel: "Strong Value",
-    bookmakerOdds: "2.10",
-    polymarketOdds: "2.45",
-    premium: false,
-  },
-  {
-    id: 2,
-    teamA: { name: "Brazil", flag: "🇧🇷" },
-    teamB: { name: "Argentina", flag: "🇦🇷" },
-    time: "21:00 UTC · Group C",
-    divergence: "+6%",
-    divergenceLabel: "Polymarket",
-    valueSignal: "yellow" as const,
-    valueLabel: "Neutral",
-    bookmakerOdds: "1.95",
-    polymarketOdds: "2.07",
-    premium: false,
-  },
-  {
-    id: 3,
-    teamA: { name: "France", flag: "🇫🇷" },
-    teamB: { name: "Germany", flag: "🇩🇪" },
-    time: "15:00 UTC · Group D",
-    divergence: "-8%",
-    divergenceLabel: "Polymarket",
-    valueSignal: "red" as const,
-    valueLabel: "Avoid",
-    bookmakerOdds: "1.75",
-    polymarketOdds: "1.61",
-    premium: true,
-  },
-]
-
-const signalConfig = {
-  green: {
-    dot: "bg-[#00FF87]",
-    badge: "bg-[#00FF87]/15 text-[#00FF87] border border-[#00FF87]/30",
-    glow: "shadow-[0_0_12px_rgba(0,255,135,0.2)]",
-    bar: "bg-[#00FF87]",
-  },
-  yellow: {
-    dot: "bg-[#FFD600]",
-    badge: "bg-[#FFD600]/15 text-[#FFD600] border border-[#FFD600]/30",
-    glow: "shadow-[0_0_12px_rgba(255,214,0,0.1)]",
-    bar: "bg-[#FFD600]",
-  },
-  red: {
-    dot: "bg-[#FF4D4D]",
-    badge: "bg-[#FF4D4D]/15 text-[#FF4D4D] border border-[#FF4D4D]/30",
-    glow: "shadow-[0_0_12px_rgba(255,77,77,0.1)]",
-    bar: "bg-[#FF4D4D]",
-  },
+type FeedState = {
+  matches: WorldCupFixture[]
+  lastUpdated: Date | null
 }
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+})
+
+const timeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "2-digit",
+  minute: "2-digit",
+})
 
 const today = new Date().toLocaleDateString("en-US", {
   weekday: "long",
@@ -72,108 +28,322 @@ const today = new Date().toLocaleDateString("en-US", {
 })
 
 export default function DailyFeed() {
+  const [feed, setFeed] = useState<FeedState>({ matches: [], lastUpdated: null })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadFixtures = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await getWorldCupFixtures()
+      setFeed({
+        matches: result.matches,
+        lastUpdated: new Date(),
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load matches.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadFixtures()
+  }, [])
+
+  const sortedMatches = useMemo(() => {
+    const now = Date.now()
+    const byKickoff = [...feed.matches].sort((a, b) => {
+      return getKickoffTimestamp(a) - getKickoffTimestamp(b)
+    })
+    const upcoming = byKickoff.filter((match) => {
+      const kickoff = getKickoffTimestamp(match)
+      return !Number.isFinite(kickoff) || kickoff >= now
+    })
+
+    return upcoming.length > 0 ? upcoming : byKickoff
+  }, [feed.matches])
+
+  const freeInsightCount = Math.min(sortedMatches.length, 2)
+  const lockedInsightCount = Math.max(sortedMatches.length - freeInsightCount, 0)
+
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex-shrink-0">
-        <p className="text-xs font-medium tracking-widest uppercase text-[#6A7A9B] mb-1">
+    <div className="flex h-full flex-col overflow-y-auto">
+      <div className="flex-shrink-0 px-5 pb-4 pt-6">
+        <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[#6A7A9B]">
           {today}
         </p>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          Today&apos;s Picks
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Match Radar
         </h1>
-        <div className="flex items-center gap-2 mt-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#00FF87] animate-pulse" />
-          <span className="text-xs text-[#6A7A9B]">Live analysis · Updated 2 min ago</span>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-[#00FF87] animate-pulse" />
+          <span className="text-xs text-[#6A7A9B]">
+            {formatUpdatedAt(feed.lastUpdated)}
+          </span>
         </div>
       </div>
 
-      {/* Stat bar */}
-      <div className="mx-5 mb-5 flex-shrink-0 rounded-xl bg-[#0F1C35] border border-[#1A2845] p-3 flex items-center justify-between">
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-0.5">Picks Today</p>
-          <p className="text-lg font-bold text-foreground">3</p>
-        </div>
-        <div className="w-px h-8 bg-[#1A2845]" />
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-0.5">Avg Edge</p>
-          <p className="text-lg font-bold text-[#00FF87]">+9.3%</p>
-        </div>
-        <div className="w-px h-8 bg-[#1A2845]" />
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B] mb-0.5">Win Rate</p>
-          <p className="text-lg font-bold text-foreground">67%</p>
-        </div>
+      <div className="mx-5 mb-5 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35]">
+        <StatCell label="Upcoming" value={sortedMatches.length.toString()} />
+        <StatCell label="Free" value={freeInsightCount.toString()} accent="text-[#00FF87]" />
+        <StatCell label="Pro" value={lockedInsightCount.toString()} accent="text-[#FFD600]" />
       </div>
 
-      {/* Match cards */}
-      <div className="px-5 flex flex-col gap-4 pb-6">
-        {matches.map((match) => {
-          const cfg = signalConfig[match.valueSignal]
-          return (
-            <div
-              key={match.id}
-              className={`relative rounded-2xl bg-card border border-[#1A2845] overflow-hidden ${cfg.glow}`}
-            >
-              {/* Left accent bar */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 ${cfg.bar}`} />
-
-              {/* Premium overlay */}
-              {match.premium && (
-                <div className="absolute inset-0 bg-[#070D1A]/70 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-2 rounded-2xl">
-                  <div className="flex items-center gap-2 bg-[#FFD600]/10 border border-[#FFD600]/30 rounded-full px-4 py-2">
-                    <Lock className="w-4 h-4 text-[#FFD600]" />
-                    <span className="text-xs font-semibold text-[#FFD600] tracking-wider uppercase">Premium Pick</span>
-                  </div>
-                  <p className="text-xs text-[#6A7A9B]">Upgrade to unlock all picks</p>
-                </div>
-              )}
-
-              <div className="pl-5 pr-4 pt-4 pb-3">
-                {/* Teams row */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl">{match.teamA.flag}</span>
-                      <span className="text-sm font-semibold text-foreground">{match.teamA.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl">{match.teamB.flag}</span>
-                      <span className="text-sm font-semibold text-foreground">{match.teamB.name}</span>
-                    </div>
-                  </div>
-
-                  {/* Divergence badge */}
-                  <div className="flex flex-col items-end gap-2">
-                    <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cfg.badge}`}>
-                      <TrendingUp className="w-3 h-3" />
-                      {match.divergence}
-                    </div>
-                    <span className="text-[10px] text-[#6A7A9B]">{match.divergenceLabel} edge</span>
-                  </div>
-                </div>
-
-                {/* Footer row */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-[#1A2845]">
-                  <div className="flex items-center gap-1.5 text-[#6A7A9B]">
-                    <Clock className="w-3 h-3" />
-                    <span className="text-xs">{match.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-[#6A7A9B]">Book: {match.bookmakerOdds}</span>
-                    <span className="text-[10px] text-[#6A7A9B]">·</span>
-                    <span className="text-[10px] text-[#6A7A9B]">PM: {match.polymarketOdds}</span>
-                    <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.badge}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                      {match.valueLabel}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
+      <div className="flex flex-col gap-3 px-5 pb-6">
+        {isLoading ? (
+          <LoadingMatches />
+        ) : error ? (
+          <ErrorState message={error} onRetry={() => void loadFixtures()} />
+        ) : sortedMatches.length === 0 ? (
+          <EmptyState />
+        ) : (
+          sortedMatches.map((match, index) => (
+            <MatchRow
+              key={`${match.id ?? match.match}-${match.kickoff_time ?? index}`}
+              match={match}
+              isFreeInsight={isFreeMatch(match, index)}
+            />
+          ))
+        )}
       </div>
     </div>
   )
+}
+
+function MatchRow({
+  match,
+  isFreeInsight,
+}: {
+  match: WorldCupFixture
+  isFreeInsight: boolean
+}) {
+  const homeTeam = match.home_team ?? match.match.split(" vs ")[0] ?? "Home"
+  const awayTeam = match.away_team ?? match.match.split(" vs ")[1] ?? "Away"
+  const kickoff = parseKickoff(match.kickoff_time)
+  const hasPick = Boolean(match.pick || match.confidence_score || match.edge)
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-[#1A2845] bg-card">
+      <div className="flex items-start gap-3 px-4 py-4">
+        <div className="flex w-[54px] shrink-0 flex-col items-center rounded-lg border border-[#1A2845] bg-[#0A1325] px-2 py-2 text-center">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+            {kickoff ? dateFormatter.format(kickoff).split(" ")[0] : "TBD"}
+          </span>
+          <span className="mt-1 text-sm font-bold text-foreground">
+            {kickoff ? timeFormatter.format(kickoff) : "--:--"}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <TeamLine name={homeTeam} />
+              <TeamLine name={awayTeam} />
+            </div>
+            <InsightBadge isFreeInsight={isFreeInsight} />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6A7A9B]">
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays className="h-3 w-3" />
+              {kickoff ? dateFormatter.format(kickoff) : "Date pending"}
+            </span>
+            {match.stage && <span>{match.stage}</span>}
+            {match.venue && <span>{match.venue}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-4 py-3">
+        {isFreeInsight ? (
+          <UnlockedInsight match={match} hasPick={hasPick} />
+        ) : (
+          <LockedInsight teaser={match.teaser} />
+        )}
+      </div>
+    </article>
+  )
+}
+
+function TeamLine({ name }: { name: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 py-0.5">
+      <span className="w-5 shrink-0 text-lg leading-none">{flagForTeam(name)}</span>
+      <span className="truncate text-sm font-semibold text-foreground">{name}</span>
+    </div>
+  )
+}
+
+function InsightBadge({ isFreeInsight }: { isFreeInsight: boolean }) {
+  if (isFreeInsight) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#00FF87]/30 bg-[#00FF87]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#00FF87]">
+        <Sparkles className="h-3 w-3" />
+        Free
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#FFD600]">
+      <Lock className="h-3 w-3" />
+      Pro
+    </span>
+  )
+}
+
+function UnlockedInsight({
+  match,
+  hasPick,
+}: {
+  match: WorldCupFixture
+  hasPick: boolean
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold text-foreground">
+          {match.pick ?? "Free match insight"}
+        </p>
+        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
+          {match.coach_summary ??
+            (hasPick
+              ? "Coach analysis is available for this match."
+              : "Fixture unlocked. Confidence and edge will appear here when market data is attached.")}
+        </p>
+      </div>
+      <div className="flex min-w-[74px] flex-col items-end">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+          Confidence
+        </span>
+        <span className="text-sm font-bold text-[#00FF87]">
+          {match.confidence_score ? `${match.confidence_score}/10` : "Open"}
+        </span>
+        {typeof match.edge === "number" && (
+          <span className="text-[10px] font-semibold text-[#00FF87]">
+            {match.edge > 0 ? "+" : ""}
+            {match.edge.toFixed(1)}% edge
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function LockedInsight({ teaser }: { teaser?: string | null }) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold text-foreground">
+          {teaser ?? "Pro insight available"}
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-[#6A7A9B]">
+          Unlock the pick, confidence score, Polymarket edge, and coach take.
+        </p>
+      </div>
+      <div className="flex min-w-[74px] flex-col items-end">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+          Confidence
+        </span>
+        <span className="inline-flex items-center gap-1 text-sm font-bold text-[#FFD600]">
+          <Lock className="h-3.5 w-3.5" />
+          Locked
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function StatCell({
+  label,
+  value,
+  accent = "text-foreground",
+}: {
+  label: string
+  value: string
+  accent?: string
+}) {
+  return (
+    <div className="border-r border-[#1A2845] p-3 text-center last:border-r-0">
+      <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
+      <p className={`text-lg font-bold ${accent}`}>{value}</p>
+    </div>
+  )
+}
+
+function LoadingMatches() {
+  return (
+    <>
+      {[0, 1, 2, 3].map((item) => (
+        <div key={item} className="rounded-xl border border-[#1A2845] bg-card p-4">
+          <div className="flex gap-3">
+            <div className="h-14 w-[54px] animate-pulse rounded-lg bg-[#111E38]" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-2/3 animate-pulse rounded bg-[#111E38]" />
+              <div className="h-4 w-1/2 animate-pulse rounded bg-[#111E38]" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-[#111E38]" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-[#FF4D4D]/30 bg-[#FF4D4D]/10 p-4">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#FF4D4D]" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">Match radar is unavailable</p>
+          <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">{message}</p>
+          <button
+            onClick={onRetry}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#1A2845] bg-[#0F1C35] px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-[#00FF87]/50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div className="rounded-xl border border-[#1A2845] bg-card p-5 text-center">
+      <Clock className="mx-auto h-6 w-6 text-[#6A7A9B]" />
+      <p className="mt-3 text-sm font-semibold text-foreground">No matches loaded yet</p>
+      <p className="mt-1 text-xs leading-relaxed text-[#6A7A9B]">
+        The radar will fill in as soon as World Cup fixtures are available.
+      </p>
+    </div>
+  )
+}
+
+function isFreeMatch(match: WorldCupFixture, index: number) {
+  if (match.access === "free") return true
+  if (match.access === "locked") return false
+  return index < 2
+}
+
+function parseKickoff(value: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getKickoffTimestamp(match: WorldCupFixture) {
+  const date = parseKickoff(match.kickoff_time)
+  return date ? date.getTime() : Number.POSITIVE_INFINITY
+}
+
+function formatUpdatedAt(value: Date | null) {
+  if (!value) return "Live fixture list"
+  return `Updated ${timeFormatter.format(value)}`
 }

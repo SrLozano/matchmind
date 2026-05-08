@@ -245,6 +245,9 @@ def find_match_from_candidate_teams(candidate_teams: list[str], matches: list[di
 def compact_match_context(match: dict[str, Any]) -> dict[str, Any]:
     fetched_at = _parse_datetime(match.get("last_fetched_at"))
     return {
+        "id": match.get("api_football_fixture_id"),
+        "home_team": match.get("home_team"),
+        "away_team": match.get("away_team"),
         "match": f"{match.get('home_team')} vs {match.get('away_team')}",
         "kickoff_time": match.get("kickoff_time"),
         "stage": match.get("stage"),
