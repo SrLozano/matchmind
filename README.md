@@ -12,6 +12,7 @@ matchmind/
 │   ├── routers/
 │   │   └── chat.py
 │   ├── services/
+│   │   ├── api_football.py
 │   │   ├── gpt.py
 │   │   └── supabase.py
 │   └── models/
@@ -40,6 +41,8 @@ uvicorn app.main:app --reload
 ## Endpoints
 
 - `GET /health` checks API and Supabase connectivity.
+- `GET /world-cup/fixtures` returns cached 2026 World Cup fixture context from Supabase/memory.
+- `POST /world-cup/refresh` refreshes fixtures from API-Football. This is internal and requires `X-Internal-Token` matching `INTERNAL_API_TOKEN`.
 - `POST /chat` accepts:
 
 ```json
@@ -95,7 +98,76 @@ create table if not exists public.bet_tracker (
     profit_loss numeric(10, 2) not null default 0,
     created_at timestamptz not null default timezone('utc', now())
 );
+
+create table if not exists public.world_cup_matches (
+    id uuid primary key default gen_random_uuid(),
+    api_football_fixture_id bigint not null unique,
+    home_team text not null,
+    away_team text not null,
+    home_team_aliases jsonb not null default '[]'::jsonb,
+    away_team_aliases jsonb not null default '[]'::jsonb,
+    kickoff_time timestamptz,
+    venue text,
+    stage text,
+    status text,
+    home_score integer,
+    away_score integer,
+    raw_payload jsonb not null default '{}'::jsonb,
+    last_fetched_at timestamptz not null,
+    created_at timestamptz not null default timezone('utc', now()),
+    updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_world_cup_matches_kickoff_time
+    on public.world_cup_matches(kickoff_time);
+
+grant usage on schema public to service_role;
+grant select, insert, update on public.world_cup_matches to service_role;
 ```
+
+## API-Football Cache Flow
+
+Chat requests do not call API-Football. World Cup fixtures are refreshed manually or by a scheduled job through `POST /world-cup/refresh`, persisted in `world_cup_matches`, then served through a short in-memory TTL cache. This keeps the normal chat path cheap:
+
+```text
+API-Football / API-SPORTS
+-> scheduled or manual refresh
+-> Supabase world_cup_matches
+-> in-memory TTL cache
+-> /chat
+```
+
+Relevant environment variables:
+
+```text
+API_FOOTBALL_KEY=
+API_FOOTBALL_BASE_URL=https://v3.football.api-sports.io
+WORLD_CUP_LEAGUE_ID=1
+WORLD_CUP_SEASON=2026
+WORLD_CUP_CACHE_TTL_SECONDS=600
+WORLD_CUP_FIXTURE_REFRESH_HOURS=12
+INTERNAL_API_TOKEN=
+```
+
+Manual refresh example:
+
+```bash
+curl -X POST http://localhost:8000/world-cup/refresh \
+  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
+```
+
+Manual verification checklist:
+
+1. Refresh fixtures once with a valid `API_FOOTBALL_KEY`.
+2. Call `GET /world-cup/fixtures` and confirm `count`, fixture freshness, and `api_football_usage.fixture_requests`.
+3. Send `Estoy pensando en meter 20€ a España contra Alemania a cuota 2.10`.
+4. Send `Thinking of putting €20 on Spain to beat Germany at 2.10`.
+5. Send `Spain vs Alemania at 2.10, cómo lo ves?`.
+6. Send `Argentina campeona del mundial a cuota 6.50` and confirm no forced match fixture context.
+7. Send `¿Qué apuesta ves buena hoy?` and confirm normal clarification behavior.
+8. Remove or break `API_FOOTBALL_KEY`; chat should still work from cached Supabase data or without match context.
+9. Repeat chat calls and confirm `api_football_usage.fixture_requests` does not increase.
+10. Wait for `WORLD_CUP_CACHE_TTL_SECONDS`, then confirm chat can reload fixtures from Supabase without calling API-Football.
 
 ## Notes
 
@@ -104,3 +176,4 @@ create table if not exists public.bet_tracker (
 - Matchmind never places bets; it only provides analysis and coaching.
 - The coach parses decimal odds, stake, teams, and obvious markets before calling the AI model so implied probability is stable even when live data is unavailable.
 - English and Spanish are supported in the coach flow. Parser output is canonicalized to English for API consistency, while the coach replies in the detected user language.
+- API-Football fixture context is cached persistently in Supabase and only refreshed outside the normal per-message chat path.

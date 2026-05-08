@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from app.routers.chat import router as chat_router
+from app.routers.world_cup import router as world_cup_router
 from app.services.supabase import close_supabase, get_supabase, supabase_healthcheck
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ app = FastAPI(
 )
 
 app.include_router(chat_router)
+app.include_router(world_cup_router)
 
 
 @app.get("/")

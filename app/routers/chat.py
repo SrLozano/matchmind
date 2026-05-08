@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 
 from app.models.chat import ChatRequest, ChatResponse
+from app.services.api_football import build_match_context_for_chat
 from app.services.gpt import generate_chat_reply
 from app.services.supabase import enforce_daily_limit_and_store, release_reserved_chat
 
@@ -15,7 +16,8 @@ async def chat(payload: ChatRequest) -> ChatResponse:
     user_context = None
     try:
         user_context = await enforce_daily_limit_and_store(payload.user_id, payload.message)
-        ai_result = await generate_chat_reply(payload.message)
+        match_context = await build_match_context_for_chat(payload.message)
+        ai_result = await generate_chat_reply(payload.message, match_context)
         saved_turn = await user_context.save_assistant_turn(
             ai_result.response,
             ai_result.confidence_score,
