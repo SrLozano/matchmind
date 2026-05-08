@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* BetCoach dark-first theme — deep navy base */
+  --background: #070D1A;
+  --foreground: #F0F4FF;
+  --card: #0D1629;
+  --card-foreground: #F0F4FF;
+  --popover: #0D1629;
+  --popover-foreground: #F0F4FF;
+  --primary: #00FF87;
+  --primary-foreground: #070D1A;
+  --secondary: #111E38;
+  --secondary-foreground: #A8B4D0;
+  --muted: #111E38;
+  --muted-foreground: #6A7A9B;
+  --accent: #00FF87;
+  --accent-foreground: #070D1A;
+  --destructive: #FF4D4D;
+  --destructive-foreground: #FFFFFF;
+  --border: #1A2845;
+  --input: #111E38;
+  --ring: #00FF87;
+  --radius: 0.75rem;
+  /* Custom tokens */
+  --value-green: #00FF87;
+  --value-yellow: #FFD600;
+  --value-red: #FF4D4D;
+  --surface-elevated: #0F1C35;
+  --nav-bg: #080E1E;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-value-green: var(--value-green);
+  --color-value-yellow: var(--value-yellow);
+  --color-value-red: var(--value-red);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-nav-bg: var(--nav-bg);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -36,14 +36,14 @@ Run backend tests:
 make api-test
 ```
 
-Once your frontend is pasted into `apps/web`, install its dependencies from the repo root:
+Install the frontend dependencies from the repo root:
 
 ```bash
-npm install
-npm run dev --workspace apps/web
+pnpm install
+pnpm web:dev
 ```
 
-If your frontend uses a different package manager, keep its lockfile inside `apps/web` and use that tool from the frontend directory.
+The frontend README has the framework-specific commands: [apps/web/README.md](apps/web/README.md).
 
 ## Environment
 
