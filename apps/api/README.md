@@ -57,6 +57,10 @@ make api-test
 - `GET /health` checks API and Supabase connectivity.
 - `GET /world-cup/fixtures` returns cached 2026 World Cup fixture context from Supabase/memory.
 - `POST /world-cup/refresh` refreshes fixtures from API-Football. This is internal and requires `X-Internal-Token` matching `INTERNAL_API_TOKEN`.
+- `POST /bets` logs a manual bet in the tracker.
+- `GET /bets?user_id=...` returns bet history plus tracker summary metrics.
+- `PATCH /bets/{bet_id}` updates a tracked bet and recalculates P&L.
+- `DELETE /bets/{bet_id}?user_id=...` deletes a tracked bet.
 - `POST /chat` accepts:
 
 ```json
@@ -76,6 +80,43 @@ Returns:
   "implied_probability": 0.4762,
   "stake_posture": "small",
   "daily_chats_remaining": 4
+}
+```
+
+### Bet Tracker
+
+Create a bet. During local development, `user_id` defaults to `a87d09e8-7e10-46b8-9927-c9500c9559cf` when omitted:
+
+```json
+{
+  "match": "Spain vs Germany - Spain win",
+  "amount": 20,
+  "odds": 2.1,
+  "outcome": "pending"
+}
+```
+
+The API calculates `profit_loss` server-side:
+
+- `pending`: `0`
+- `win`: `amount * (odds - 1)`
+- `loss`: `-amount`
+
+List response:
+
+```json
+{
+  "bets": [],
+  "summary": {
+    "total_bets": 0,
+    "pending_bets": 0,
+    "wins": 0,
+    "losses": 0,
+    "win_rate": 0,
+    "total_staked": 0,
+    "profit_loss": 0,
+    "roi": 0
+  }
 }
 ```
 

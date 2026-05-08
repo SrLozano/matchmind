@@ -1,0 +1,4 @@
+from uuid import UUID
+
+
+DEFAULT_DEV_USER_ID = UUID("a87d09e8-7e10-46b8-9927-c9500c9559cf")

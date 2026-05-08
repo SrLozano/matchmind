@@ -40,13 +40,62 @@ export type WorldCupFixturesResponse = {
   }
 }
 
+export type BetOutcome = "win" | "loss" | "pending"
+
+export type TrackedBet = {
+  id: string
+  user_id: string
+  match: string
+  amount: number
+  odds: number
+  outcome: BetOutcome
+  profit_loss: number
+  created_at: string
+}
+
+export type BetSummary = {
+  total_bets: number
+  pending_bets: number
+  wins: number
+  losses: number
+  win_rate: number
+  total_staked: number
+  profit_loss: number
+  roi: number
+}
+
+export type BetListResponse = {
+  bets: TrackedBet[]
+  summary: BetSummary
+}
+
+export type CreateBetPayload = {
+  match: string
+  amount: number
+  odds: number
+  outcome?: BetOutcome
+}
+
 function getApiUrl() {
   return process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL
 }
 
+function getDevUserId() {
+  return process.env.NEXT_PUBLIC_DEV_USER_ID ?? DEFAULT_DEV_USER_ID
+}
+
+async function readApiError(response: Response, fallback: string) {
+  try {
+    const errorBody = (await response.json()) as { detail?: string }
+    return errorBody.detail ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
 export async function sendChatMessage(message: string, preferredLanguage?: "en" | "es"): Promise<ChatResponse> {
   const apiUrl = getApiUrl()
-  const userId = process.env.NEXT_PUBLIC_DEV_USER_ID ?? DEFAULT_DEV_USER_ID
+  const userId = getDevUserId()
 
   const response = await fetch(`${apiUrl}/chat`, {
     method: "POST",
@@ -61,16 +110,7 @@ export async function sendChatMessage(message: string, preferredLanguage?: "en" 
   })
 
   if (!response.ok) {
-    let detail = "Unable to reach the Matchmind coach. Try again in a moment."
-
-    try {
-      const errorBody = (await response.json()) as { detail?: string }
-      detail = errorBody.detail ?? detail
-    } catch {
-      // Keep the generic fallback when the API returns a non-JSON error.
-    }
-
-    throw new Error(detail)
+    throw new Error(await readApiError(response, "Unable to reach the Matchmind coach. Try again in a moment."))
   }
 
   return response.json()
@@ -80,17 +120,66 @@ export async function getWorldCupFixtures(): Promise<WorldCupFixturesResponse> {
   const response = await fetch(`${getApiUrl()}/world-cup/fixtures`)
 
   if (!response.ok) {
-    let detail = "Unable to load the World Cup match radar. Try again in a moment."
-
-    try {
-      const errorBody = (await response.json()) as { detail?: string }
-      detail = errorBody.detail ?? detail
-    } catch {
-      // Keep the generic fallback when the API returns a non-JSON error.
-    }
-
-    throw new Error(detail)
+    throw new Error(await readApiError(response, "Unable to load the World Cup match radar. Try again in a moment."))
   }
 
   return response.json()
+}
+
+export async function getTrackedBets(): Promise<BetListResponse> {
+  const response = await fetch(`${getApiUrl()}/bets?user_id=${getDevUserId()}`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load your bet tracker. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function createTrackedBet(payload: CreateBetPayload): Promise<TrackedBet> {
+  const response = await fetch(`${getApiUrl()}/bets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: getDevUserId(),
+      ...payload,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to log this bet. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome): Promise<TrackedBet> {
+  const response = await fetch(`${getApiUrl()}/bets/${betId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: getDevUserId(),
+      outcome,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to update this bet. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function deleteTrackedBet(betId: string): Promise<void> {
+  const response = await fetch(`${getApiUrl()}/bets/${betId}?user_id=${getDevUserId()}`, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to delete this bet. Try again in a moment."))
+  }
 }

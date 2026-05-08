@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-DEFAULT_DEV_USER_ID = UUID("a87d09e8-7e10-46b8-9927-c9500c9559cf")
+from app.models.users import DEFAULT_DEV_USER_ID
 
 
 class ChatRequest(BaseModel):
