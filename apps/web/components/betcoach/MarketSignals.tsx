@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { Activity, AlertCircle, Lock, RefreshCw } from "lucide-react"
 
 import { getMarketSignals, type MarketSignal } from "@/lib/api"
-import { flagForTeam } from "@/lib/country-flags"
+import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage, type Language } from "@/lib/i18n"
 
 const FREE_SIGNAL_COUNT = 3
@@ -140,12 +140,12 @@ function SignalRow({
   locked: boolean
 }) {
   const { t } = useLanguage()
-  const title = signal.question ?? signal.team ?? signal.teams[0] ?? t.feed.unknownTeam
   const teamLabel = signal.team ?? signal.teams[0]
   const quality = signal.signal_quality_score
-  const displayTitle = locked ? t.signals.lockedSignal : title
+  const displayTitle = locked ? t.signals.lockedSignal : formatSignalTitle(signal, language, t.feed.unknownTeam)
   const metricValue = locked ? t.feed.locked : undefined
   const signalEmoji = emojiForSignal(signal, { includeTeamFlag: !locked })
+  const shouldShowMarketDetails = !locked && Boolean(signal.question)
 
   return (
     <article className={`overflow-hidden rounded-xl border bg-card px-4 py-3 ${locked ? "border-[#FFD600]/25" : "border-[#1A2845]"}`}>
@@ -189,8 +189,34 @@ function SignalRow({
           />
           <SignalMetric label={t.feed.marketType} value={metricValue ?? formatMarketType(signal.market_type, language)} />
         </div>
+
+        {shouldShowMarketDetails && (
+          <details className="group mt-3 rounded-lg border border-[#1A2845] bg-[#0A1325]/70 px-3 py-2">
+            <summary className="cursor-pointer list-none text-[11px] font-semibold text-[#6A7A9B] transition-colors hover:text-[#A8B4D0]">
+              <span>{t.signals.originalMarket}</span>
+              <span className="ml-1 inline-block transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <p className="mt-2 break-words text-xs leading-relaxed text-[#A8B4D0]">{signal.question}</p>
+            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#1A2845] pt-3">
+              <DetailMetric label={t.signals.sourceProbability} value={formatPercent(signal.yes_price ?? signal.implied_probability, t.feed.noValue)} />
+              <DetailMetric label={t.signals.volume} value={formatCompactNumber(signal.volume, t.feed.noValue)} />
+              <DetailMetric label={t.signals.spread} value={formatSpread(signal.spread, t.feed.noValue)} />
+              <DetailMetric label={t.signals.lastUpdated} value={formatSignalDate(signal.last_fetched_at, language, t.feed.noValue)} />
+              <DetailMetric label={t.signals.marketCloses} value={formatSignalDate(signal.end_date, language, t.feed.noValue)} />
+            </div>
+          </details>
+        )}
       </div>
     </article>
+  )
+}
+
+function DetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[9px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
+      <p className="mt-0.5 truncate text-[11px] font-semibold text-[#A8B4D0]">{value}</p>
+    </div>
   )
 }
 
@@ -331,10 +357,131 @@ function stableIndex(value: string, modulo: number) {
   return hash % modulo
 }
 
+function formatSignalTitle(signal: MarketSignal, language: Language, fallback: string) {
+  const team = formatTeam(signal.team ?? signal.teams[0], language)
+  const group = signal.group
+  const player = extractPlayerName(signal.question)
+  const continent = extractContinentName(signal.question, language)
+  const stage = extractStageName(signal.question, language)
+
+  if (signal.market_type === "tournament_outright" && team) {
+    return language === "es" ? `¿${team} ganará el Mundial 2026?` : `Will ${team} win the 2026 World Cup?`
+  }
+
+  if (signal.market_type === "group_winner" && team) {
+    return group
+      ? language === "es"
+        ? `¿${team} ganará el Grupo ${group}?`
+        : `Will ${team} win Group ${group}?`
+      : language === "es"
+        ? `¿${team} ganará su grupo?`
+        : `Will ${team} win their group?`
+  }
+
+  if (signal.market_type === "advance_to_knockout" && team) {
+    return language === "es" ? `¿${team} llegará a eliminatorias?` : `Will ${team} reach the knockouts?`
+  }
+
+  if (signal.market_type === "reach_stage" && team) {
+    return language === "es" ? `¿${team} llegará a ${stage}?` : `Will ${team} reach the ${stage}?`
+  }
+
+  if (signal.market_type === "top_goalscorer") {
+    return player
+      ? language === "es"
+        ? `¿${player} será máximo goleador?`
+        : `Will ${player} be top goalscorer?`
+      : language === "es"
+        ? "¿Quién será máximo goleador?"
+        : "Who will be top goalscorer?"
+  }
+
+  if (signal.market_type === "continent_winner") {
+    return continent
+      ? language === "es"
+        ? `¿${continent} ganará el Mundial 2026?`
+        : `Will ${continent} win the 2026 World Cup?`
+      : language === "es"
+        ? "¿Qué continente ganará el Mundial 2026?"
+        : "Which continent will win the 2026 World Cup?"
+  }
+
+  if (signal.market_type === "squad_inclusion" && team) {
+    if (isPlayInWorldCupQuestion(signal.question)) {
+      return language === "es" ? `¿${team} jugará el Mundial 2026?` : `Will ${team} play in the 2026 World Cup?`
+    }
+    return language === "es" ? `Señal de convocatoria: ${team}` : `Squad signal: ${team}`
+  }
+
+  return language === "es" ? "Señal del mercado mundialista" : signal.question ?? fallback
+}
+
+function formatTeam(team: string | null | undefined, language: Language) {
+  if (!team) return null
+  return displayTeamName(team, language)
+}
+
+function extractPlayerName(question: string | null) {
+  if (!question) return null
+  const match = question.match(/^Will\s+(.+?)\s+be\s+(?:the\s+)?(?:top goalscorer|golden boot|most goals)/i)
+  return match?.[1]?.trim() ?? null
+}
+
+function isPlayInWorldCupQuestion(question: string | null) {
+  return /\bplay\b.+\b(?:2026\s+)?fifa world cup\b/i.test(question ?? "")
+}
+
+function extractStageName(question: string | null, language: Language) {
+  const normalized = (question ?? "").toLowerCase()
+  if (normalized.includes("quarter")) return language === "es" ? "cuartos" : "quarterfinals"
+  if (normalized.includes("semi")) return language === "es" ? "semifinales" : "semifinals"
+  if (normalized.includes("final")) return language === "es" ? "la final" : "final"
+  return language === "es" ? "esa ronda" : "that stage"
+}
+
+function extractContinentName(question: string | null, language: Language) {
+  if (!question) return null
+  const normalized = question.toLowerCase()
+  const continents: Record<string, { en: string; es: string }> = {
+    africa: { en: "Africa", es: "África" },
+    asia: { en: "Asia", es: "Asia" },
+    europe: { en: "Europe", es: "Europa" },
+    "north america": { en: "North America", es: "Norteamérica" },
+    oceania: { en: "Oceania", es: "Oceanía" },
+    "south america": { en: "South America", es: "Sudamérica" },
+  }
+
+  const key = Object.keys(continents).find((continent) => normalized.includes(continent))
+  return key ? continents[key][language] : null
+}
+
 function formatPercent(value: number | null, fallback: string) {
   if (typeof value !== "number") return fallback
   if (value < 0.01 && value > 0) return "<1%"
   return `${Math.round(value * 100)}%`
+}
+
+function formatCompactNumber(value: number | null, fallback: string) {
+  if (typeof value !== "number") return fallback
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
+function formatSpread(value: number | null, fallback: string) {
+  if (typeof value !== "number") return fallback
+  return value < 1 ? `${(value * 100).toFixed(1)} pts` : value.toFixed(2)
+}
+
+function formatSignalDate(value: string | null, language: Language, fallback: string) {
+  if (!value) return fallback
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return fallback
+  return new Intl.DateTimeFormat(language === "es" ? "es-ES" : "en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date)
 }
 
 function formatMarketType(value: string | null, language: Language) {
