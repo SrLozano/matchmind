@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/signals")
 async def polymarket_signals(
-    limit: int = Query(default=12, ge=1, le=50),
+    limit: int = Query(default=16, ge=1, le=50),
     market_type: str | None = Query(default=None),
 ) -> JSONResponse:
     if market_type is not None and market_type not in SUPPORTED_MARKET_TYPES:

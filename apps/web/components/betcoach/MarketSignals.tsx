@@ -9,6 +9,8 @@ import { flagForTeam } from "@/lib/country-flags"
 import { useLanguage, type Language } from "@/lib/i18n"
 
 const FREE_SIGNAL_COUNT = 3
+const FULL_SIGNAL_LIMIT = 50
+const FALLBACK_SIGNAL_EMOJIS = ["⚽", "🏆", "📈", "🎯", "🌎", "🔥"]
 
 export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
   const { language, t } = useLanguage()
@@ -19,8 +21,6 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
   const visibleSignals = useMemo(() => {
     return signals
       .filter((signal) => signal.matched && signal.active !== false && signal.closed !== true)
-      .sort(compareMarketSignals)
-      .slice(0, 12)
   }, [signals])
 
   const headlineSignals = visibleSignals.filter(isHeadlineSignal).slice(0, FREE_SIGNAL_COUNT)
@@ -32,7 +32,7 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
     setError(null)
 
     try {
-      const result = await getMarketSignals()
+      const result = await getMarketSignals({ limit: FULL_SIGNAL_LIMIT })
       setSignals(result.signals)
     } catch (err) {
       setError(err instanceof Error ? err.message : t.feed.marketSignalsLoadError)
@@ -145,6 +145,7 @@ function SignalRow({
   const quality = signal.signal_quality_score
   const displayTitle = locked ? t.signals.lockedSignal : title
   const metricValue = locked ? t.feed.locked : undefined
+  const signalEmoji = emojiForSignal(signal, { includeTeamFlag: !locked })
 
   return (
     <article className={`overflow-hidden rounded-xl border bg-card px-4 py-3 ${locked ? "border-[#FFD600]/25" : "border-[#1A2845]"}`}>
@@ -152,7 +153,7 @@ function SignalRow({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start gap-2">
-              {!locked && teamLabel && <span className="mt-0.5 shrink-0 text-base leading-none">{flagForTeam(teamLabel)}</span>}
+              <span className="mt-0.5 shrink-0 text-base leading-none">{signalEmoji}</span>
               <p className="min-w-0 break-words text-sm font-semibold leading-snug text-foreground">
                 {displayTitle}
               </p>
@@ -302,25 +303,32 @@ function StatCell({
   )
 }
 
-function compareMarketSignals(a: MarketSignal, b: MarketSignal) {
-  const probabilityDelta = (b.implied_probability ?? 0) - (a.implied_probability ?? 0)
-  if (Math.abs(probabilityDelta) > 0.005) return probabilityDelta
-
-  const typeDelta = getMarketTypePriority(b.market_type) - getMarketTypePriority(a.market_type)
-  if (typeDelta !== 0) return typeDelta
-
-  return (b.signal_quality_score ?? 0) - (a.signal_quality_score ?? 0)
-}
-
 function isHeadlineSignal(signal: MarketSignal) {
   return (signal.implied_probability ?? 0) >= 0.02
 }
 
-function getMarketTypePriority(value: string | null) {
-  if (value === "tournament_outright") return 4
-  if (value === "group_winner") return 3
-  if (value === "advance_to_knockout" || value === "reach_stage") return 2
-  return 1
+function emojiForSignal(signal: MarketSignal, { includeTeamFlag = true }: { includeTeamFlag?: boolean } = {}) {
+  const teamLabel = signal.team ?? signal.teams[0]
+  if (includeTeamFlag && teamLabel) return flagForTeam(teamLabel)
+
+  if (signal.market_type === "top_goalscorer") return "⚽"
+  if (signal.market_type === "continent_winner") return "🌍"
+  if (signal.market_type === "group_winner") return "🧩"
+  if (signal.market_type === "advance_to_knockout") return "🎯"
+  if (signal.market_type === "reach_stage") return "🏆"
+  if (signal.market_type === "tournament_outright") return "🏆"
+  if (signal.market_type === "squad_inclusion") return "📋"
+
+  const seed = signal.slug ?? signal.question ?? signal.market_type ?? "market-signal"
+  return FALLBACK_SIGNAL_EMOJIS[stableIndex(seed, FALLBACK_SIGNAL_EMOJIS.length)]
+}
+
+function stableIndex(value: string, modulo: number) {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+  return hash % modulo
 }
 
 function formatPercent(value: number | null, fallback: string) {
@@ -339,6 +347,7 @@ function formatMarketType(value: string | null, language: Language) {
     reach_stage: { en: "Reach stage", es: "Llegar a ronda" },
     squad_inclusion: { en: "Squad market", es: "Convocatoria" },
     top_goalscorer: { en: "Top goalscorer", es: "Máximo goleador" },
+    continent_winner: { en: "Continent winner", es: "Continente ganador" },
   }
 
   return labels[value]?.[language] ?? value.replaceAll("_", " ")

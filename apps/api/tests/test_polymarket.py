@@ -77,6 +77,67 @@ class PolymarketContextTest(unittest.TestCase):
         self.assertTrue(all(signal["matched"] for signal in signals))
         self.assertTrue(all(signal["market_type"] == "tournament_outright" for signal in signals))
 
+    def test_default_market_signals_are_diversified(self) -> None:
+        signals = asyncio.run(get_market_signals(limit=12))
+        market_types = [signal["market_type"] for signal in signals]
+
+        self.assertEqual(len(signals), 12)
+        self.assertLessEqual(market_types.count("tournament_outright"), 2)
+        self.assertIn("group_winner", market_types)
+        self.assertIn("advance_to_knockout", market_types)
+        self.assertIn("reach_stage", market_types)
+        self.assertIn("top_goalscorer", market_types)
+        self.assertIn("continent_winner", market_types)
+
+    def test_interesting_market_types_are_classified_from_questions(self) -> None:
+        top_goalscorer = normalize_polymarket_market(
+            {
+                "event_id": "event-2",
+                "event_title": "2026 FIFA World Cup Top Goalscorer",
+                "event_slug": "2026-fifa-world-cup-top-goalscorer",
+                "market_id": "market-2",
+                "market_question": "Will Kylian Mbappe be the top goalscorer at the 2026 FIFA World Cup?",
+                "market_slug": "will-kylian-mbappe-be-the-top-goalscorer-at-the-2026-fifa-world-cup",
+                "outcomes": ["Yes", "No"],
+                "outcome_prices": [0.17, 0.83],
+                "liquidity": 17_000,
+                "volume": 6_000,
+                "active": True,
+                "closed": False,
+                "market_type_guess": "tournament/other",
+                "matched_teams": [],
+                "likely_world_cup_2026": True,
+                "raw": {"spread": 0.02},
+            },
+            "2026-05-09T10:00:00+00:00",
+        )
+        continent = normalize_polymarket_market(
+            {
+                "event_id": "event-3",
+                "event_title": "2026 FIFA World Cup Continent Winner",
+                "event_slug": "2026-fifa-world-cup-continent-winner",
+                "market_id": "market-3",
+                "market_question": "Will Europe win the 2026 FIFA World Cup?",
+                "market_slug": "will-europe-win-the-2026-fifa-world-cup",
+                "outcomes": ["Yes", "No"],
+                "outcome_prices": [0.715, 0.285],
+                "liquidity": 14_000,
+                "volume": 120_000,
+                "active": True,
+                "closed": False,
+                "market_type_guess": "tournament/other",
+                "matched_teams": [],
+                "likely_world_cup_2026": True,
+                "raw": {"spread": 0.02},
+            },
+            "2026-05-09T10:00:00+00:00",
+        )
+
+        self.assertEqual(top_goalscorer["market_type"], "top_goalscorer")
+        self.assertTrue(top_goalscorer["is_usable"])
+        self.assertEqual(continent["market_type"], "continent_winner")
+        self.assertTrue(continent["is_usable"])
+
     def test_market_row_contains_database_cache_fields(self) -> None:
         market = normalize_polymarket_market(
             {

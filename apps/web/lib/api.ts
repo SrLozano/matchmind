@@ -211,8 +211,9 @@ export async function getWorldCupFixtures(): Promise<WorldCupFixturesResponse> {
   return response.json()
 }
 
-export async function getMarketSignals(): Promise<MarketSignalsResponse> {
-  const response = await fetch(`${getApiUrl()}/polymarket/signals`)
+export async function getMarketSignals({ limit = 16 }: { limit?: number } = {}): Promise<MarketSignalsResponse> {
+  const params = new URLSearchParams({ limit: limit.toString() })
+  const response = await fetch(`${getApiUrl()}/polymarket/signals?${params.toString()}`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load market signals. Try again in a moment."))

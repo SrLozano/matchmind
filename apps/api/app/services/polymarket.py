@@ -65,6 +65,35 @@ SUPPORTED_MARKET_TYPES = {
     "squad_inclusion",
 }
 
+SIGNAL_TYPE_PRIORITY = (
+    "group_winner",
+    "advance_to_knockout",
+    "reach_stage",
+    "top_goalscorer",
+    "continent_winner",
+    "tournament_outright",
+    "squad_inclusion",
+)
+
+DEFAULT_SIGNAL_TYPE_CAPS = {
+    "group_winner": 4,
+    "advance_to_knockout": 3,
+    "reach_stage": 3,
+    "top_goalscorer": 3,
+    "continent_winner": 2,
+    "tournament_outright": 2,
+    "squad_inclusion": 0,
+}
+
+CONTINENT_MARKET_HINTS = (
+    "africa",
+    "asia",
+    "europe",
+    "north america",
+    "oceania",
+    "south america",
+)
+
 UNSUPPORTED_CHAT_MARKET_TYPES = {
     "Match winner",
     "Over goals",
@@ -111,7 +140,7 @@ async def build_polymarket_context_for_chat(message: str) -> dict[str, Any] | No
     return compact_polymarket_context(match, intent)
 
 
-async def get_market_signals(limit: int = 12, market_type: str | None = None) -> list[dict[str, Any]]:
+async def get_market_signals(limit: int = 16, market_type: str | None = None) -> list[dict[str, Any]]:
     markets = await get_cached_polymarket_markets()
     usable = [
         market
@@ -119,16 +148,90 @@ async def get_market_signals(limit: int = 12, market_type: str | None = None) ->
         if market.get("is_usable")
         and (market_type is None or market.get("market_type") == market_type)
     ]
-    ranked = sorted(
-        usable,
-        key=lambda market: (
-            market.get("signal_quality_score") or 0,
-            market.get("liquidity") or 0,
-            market.get("volume") or 0,
-        ),
-        reverse=True,
-    )
+    ranked = rank_market_signals(usable, diversified=market_type is None)
     return [compact_polymarket_context(market, market.get("market_type")) for market in ranked[:limit]]
+
+
+def rank_market_signals(markets: list[dict[str, Any]], diversified: bool = True) -> list[dict[str, Any]]:
+    ranked = sorted(markets, key=market_signal_sort_key, reverse=True)
+    if not diversified:
+        return ranked
+
+    by_type: dict[str, list[dict[str, Any]]] = {market_type: [] for market_type in SIGNAL_TYPE_PRIORITY}
+    for market in ranked:
+        by_type.setdefault(str(market.get("market_type") or "unsupported"), []).append(market)
+
+    selected: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    caps = DEFAULT_SIGNAL_TYPE_CAPS.copy()
+
+    while True:
+        added = False
+        for market_type in SIGNAL_TYPE_PRIORITY:
+            if caps.get(market_type, 0) <= 0:
+                continue
+            bucket = by_type.get(market_type) or []
+            while bucket:
+                candidate = bucket.pop(0)
+                market_id = str(candidate.get("polymarket_market_id") or candidate.get("question") or "")
+                if market_id in seen_ids:
+                    continue
+                selected.append(candidate)
+                seen_ids.add(market_id)
+                caps[market_type] = caps.get(market_type, 0) - 1
+                added = True
+                break
+        if not added:
+            break
+
+    selected_ids = {str(market.get("polymarket_market_id") or market.get("question") or "") for market in selected}
+    selected.extend(
+        market
+        for market in ranked
+        if str(market.get("polymarket_market_id") or market.get("question") or "") not in selected_ids
+    )
+    return selected
+
+
+def market_signal_sort_key(market: dict[str, Any]) -> tuple[float, float, float, float]:
+    market_type = str(market.get("market_type") or "")
+    probability = as_float(market.get("yes_price")) or 0.0
+    quality = float(market.get("signal_quality_score") or 0)
+    type_bonus = {
+        "group_winner": 24,
+        "advance_to_knockout": 22,
+        "reach_stage": 20,
+        "top_goalscorer": 18,
+        "continent_winner": 16,
+        "squad_inclusion": 8,
+        "tournament_outright": 0,
+    }.get(market_type, 0)
+    probability_bonus = probability_signal_bonus(market_type, probability)
+    liquidity = min(float(market.get("liquidity") or 0), 100_000) / 10_000
+    volume = min(float(market.get("volume") or 0), 100_000) / 20_000
+    return (quality + type_bonus + probability_bonus, probability, liquidity, volume)
+
+
+def probability_signal_bonus(market_type: str, probability: float) -> float:
+    if probability <= 0:
+        return 0
+    if market_type == "tournament_outright":
+        if probability < 0.02:
+            return -45
+        if probability < 0.05:
+            return -15
+        return min(probability * 100, 18)
+    if market_type == "reach_stage":
+        if probability < 0.03:
+            return -25
+        if probability < 0.06:
+            return -8
+        return 18 - abs(probability - 0.5) * 20
+    if market_type in {"group_winner", "advance_to_knockout"}:
+        return 18 - abs(probability - 0.5) * 20
+    if market_type in {"top_goalscorer", "continent_winner"}:
+        return min(probability * 100, 20)
+    return min(probability * 50, 10)
 
 
 async def get_cached_polymarket_markets() -> list[dict[str, Any]]:
@@ -314,7 +417,13 @@ def find_best_polymarket_market(
 
 
 def normalize_polymarket_market(market: dict[str, Any], last_fetched_at: str | None) -> dict[str, Any]:
-    market_type = normalize_market_type(market.get("market_type_guess"))
+    market_type = infer_market_type_from_text(
+        normalize_market_type(market.get("market_type_guess")),
+        market.get("market_question"),
+        market.get("event_title"),
+        market.get("event_slug"),
+        market.get("market_slug"),
+    )
     yes_price = extract_yes_price(market)
     liquidity = as_float(market.get("liquidity"))
     volume = as_float(market.get("volume"))
@@ -437,6 +546,12 @@ def format_polymarket_context_block(context: dict[str, Any] | None) -> str | Non
 
 def normalize_market_type(value: Any) -> str:
     normalized = normalize_text(str(value or ""))
+    if normalized == "top goalscorer":
+        return "top_goalscorer"
+    if normalized == "continent winner":
+        return "continent_winner"
+    if normalized == "reach stage":
+        return "reach_stage"
     if normalized == "tournament outright":
         return "tournament_outright"
     if normalized == "group winner":
@@ -446,6 +561,24 @@ def normalize_market_type(value: Any) -> str:
     if normalized == "tournament other":
         return "squad_inclusion"
     return normalized.replace(" ", "_") or "unsupported"
+
+
+def infer_market_type_from_text(current_type: str, *text_parts: Any) -> str:
+    text = normalize_text(" ".join(str(part or "") for part in text_parts))
+    if not text:
+        return current_type
+    if any(hint in text for hint in ("top goalscorer", "golden boot", "most goals")):
+        return "top_goalscorer"
+    if "world cup" in text and any(continent in text for continent in CONTINENT_MARKET_HINTS):
+        if re.search(r"\b(?:win|winner|wins)\b", text):
+            return "continent_winner"
+    if re.search(r"\b(?:reach|make)\b.*\b(?:final|semi final|semifinal|quarter final|quarterfinal)\b", text):
+        return "reach_stage"
+    if "group" in text and any(hint in text for hint in ("winner", "win group", "top group")):
+        return "group_winner"
+    if any(hint in text for hint in ("qualify", "advance", "progress", "knockout stages", "knockout stage")):
+        return "advance_to_knockout"
+    return current_type
 
 
 def extract_yes_price(market: dict[str, Any]) -> float | None:
@@ -462,7 +595,7 @@ def calculate_match_confidence(market: dict[str, Any], market_type: str) -> floa
         return 0.0
     if not market.get("matched_teams") and market_type not in {"continent_winner", "top_goalscorer"}:
         return 0.4
-    if market_type in {"tournament_outright", "group_winner", "advance_to_knockout"}:
+    if market_type in {"tournament_outright", "group_winner", "advance_to_knockout", "reach_stage"}:
         return 1.0
     return 0.7
 
@@ -534,11 +667,36 @@ def as_float(value: Any) -> float | None:
 
 def normalize_polymarket_row(row: dict[str, Any]) -> dict[str, Any]:
     yes_price = as_float(row.get("yes_price"))
+    market_type = infer_market_type_from_text(
+        normalize_market_type(row.get("market_type")),
+        row.get("question"),
+        row.get("event_title"),
+        row.get("event_slug"),
+        row.get("slug"),
+    )
+    active = bool(row.get("active"))
+    closed = bool(row.get("closed"))
+    match_confidence = normalized_row_match_confidence(row, market_type)
+    quality_score = calculate_signal_quality_score(
+        market_type=market_type,
+        active=active,
+        closed=closed,
+        likely_world_cup=is_likely_world_cup(
+            " ".join(str(row.get(key) or "") for key in ("question", "event_title", "event_slug", "slug"))
+        ),
+        yes_price=yes_price,
+        liquidity=as_float(row.get("liquidity")),
+        volume=as_float(row.get("volume")),
+        spread=as_float(row.get("spread")),
+        match_confidence=match_confidence,
+    )
+    if quality_score == 0:
+        quality_score = int(row.get("signal_quality_score") or 0)
     return {
         "polymarket_event_id": row.get("polymarket_event_id"),
         "polymarket_market_id": row.get("polymarket_market_id"),
         "condition_id": row.get("condition_id"),
-        "market_type": row.get("market_type"),
+        "market_type": market_type,
         "matched_teams": row.get("matched_teams") or [],
         "matched_team": row.get("matched_team"),
         "matched_group": row.get("matched_group"),
@@ -552,8 +710,8 @@ def normalize_polymarket_row(row: dict[str, Any]) -> dict[str, Any]:
         "implied_probability": yes_price,
         "liquidity": as_float(row.get("liquidity")),
         "volume": as_float(row.get("volume")),
-        "active": bool(row.get("active")),
-        "closed": bool(row.get("closed")),
+        "active": active,
+        "closed": closed,
         "archived": bool(row.get("archived")),
         "end_date": row.get("end_date"),
         "clob_token_ids": row.get("clob_token_ids") or [],
@@ -561,12 +719,42 @@ def normalize_polymarket_row(row: dict[str, Any]) -> dict[str, Any]:
         "best_ask": as_float(row.get("best_ask")),
         "midpoint": as_float(row.get("midpoint")) or yes_price,
         "spread": as_float(row.get("spread")),
-        "match_confidence": as_float(row.get("match_confidence")) or 0.0,
-        "signal_quality_score": int(row.get("signal_quality_score") or 0),
-        "is_usable": bool(row.get("is_usable")),
+        "match_confidence": match_confidence,
+        "signal_quality_score": quality_score,
+        "is_usable": normalized_row_is_usable(row, market_type, yes_price, match_confidence, quality_score),
         "last_fetched_at": row.get("last_fetched_at"),
         "raw_payload": row.get("raw_payload") or {},
     }
+
+
+def normalized_row_match_confidence(row: dict[str, Any], market_type: str) -> float:
+    stored = as_float(row.get("match_confidence")) or 0.0
+    if market_type in {"continent_winner", "top_goalscorer"}:
+        return max(stored, 0.7)
+    if market_type == "reach_stage" and row.get("matched_teams"):
+        return max(stored, 1.0)
+    return stored
+
+
+def normalized_row_is_usable(
+    row: dict[str, Any],
+    market_type: str,
+    yes_price: float | None,
+    match_confidence: float,
+    quality_score: int,
+) -> bool:
+    if bool(row.get("is_usable")) and market_type in SUPPORTED_MARKET_TYPES:
+        return True
+    text = " ".join(str(row.get(key) or "") for key in ("question", "event_title", "event_slug", "slug"))
+    return (
+        market_type in SUPPORTED_MARKET_TYPES
+        and is_likely_world_cup(text)
+        and bool(row.get("active"))
+        and not bool(row.get("closed"))
+        and yes_price is not None
+        and match_confidence >= get_settings().polymarket_min_match_confidence
+        and quality_score >= get_settings().polymarket_min_signal_quality
+    )
 
 
 def polymarket_market_to_row(market: dict[str, Any]) -> dict[str, Any]:
@@ -874,7 +1062,12 @@ def classify_market(text: str) -> str:
     if any(hint in normalized for hint in ("club world cup", "women s world cup")):
         return "unrelated/noise"
     if any(hint in normalized for hint in ("top goalscorer", "golden boot", "most goals")):
-        return "tournament/other"
+        return "top goalscorer"
+    if "world cup" in normalized and any(continent in normalized for continent in CONTINENT_MARKET_HINTS):
+        if re.search(r"\b(?:win|winner|wins)\b", normalized):
+            return "continent winner"
+    if re.search(r"\b(?:reach|make)\b.*\b(?:final|semi final|semifinal|quarter final|quarterfinal)\b", normalized):
+        return "reach stage"
     if "group" in normalized and any(hint in normalized for hint in ("winner", "win group", "top group")):
         return "group winner"
     if any(hint in normalized for hint in ("winner", "champion", "win the world cup", "lift the world cup")):
