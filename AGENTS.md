@@ -35,8 +35,8 @@ The AI acts as a knowledgeable friend: opinionated, direct, and always gives a c
 ### 1. Chat with the Coach
 Conversational UI where the user describes a bet and the coach gives an honest, data-backed take with a confidence score out of 10.
 
-### 2. Daily Feed
-Every morning, a feed of the top matches of the day showing the divergence between bookmaker odds and Polymarket probabilities. Color coded: green = good value, yellow = neutral, red = avoid.
+### 2. Daily Feed / Market Signals
+Every morning, a feed of the top matches of the day plus tournament-level market signals. Because Polymarket currently has stronger World Cup 2026 coverage for long-term markets than match-level markets, Polymarket should power a "Market Signals" layer first rather than being forced into every match card.
 
 ### 3. Odds Analyzer
 The user inputs a specific odds from any bookmaker and the app tells them if it represents good or bad value compared to the estimated real probability.
@@ -111,10 +111,39 @@ Chosen over Firebase and self-hosted PostgreSQL for speed of setup. Provides dat
 Initial plan included Claude API. Switched to OpenAI GPT during early backend setup.
 
 ### Data Caching
-API responses from the three data sources are cached in memory for 10 minutes to avoid hitting free tier rate limits.
+Provider data should not be fetched directly in the normal chat request path. The preferred pattern is:
+
+```text
+external provider
+-> internal refresh/seed endpoint
+-> Supabase cache table
+-> short in-memory TTL cache
+-> chat/feed/UI endpoint
+```
+
+API-Football fixtures use this pattern through `world_cup_matches`. Polymarket uses `polymarket_markets` and `polymarket_market_snapshots`.
 
 ### Fallback Strategy for Live Data
 If team names are not detected in a user message, or if any external API call fails, the chat endpoint falls back gracefully and the coach continues without live data. The chat never crashes due to a data source failure.
+
+### Polymarket Scope
+Polymarket should be used in v1 for:
+
+- World Cup winner markets
+- Group winner markets
+- Team advancement/progression markets
+- Tournament-level market signals
+- Chat context for supported long-term bets
+
+Avoid using Polymarket in v1 for:
+
+- Daily match winner predictions
+- Over/under goals
+- Handicaps
+- Cards/corners
+- Any market requiring active fixture-level Polymarket coverage
+
+Polymarket market type classification is deterministic rule-based text matching, not LLM classification. Detailed decisions live in `docs/polymarket-integration.md`.
 
 ---
 
@@ -150,27 +179,39 @@ If team names are not detected in a user message, or if any external API call fa
 | profit_loss | numeric |
 | created_at | timestamp |
 
+### world_cup_matches
+Caches API-Football World Cup fixture context for chat and UI reads.
+
+### polymarket_markets
+Stores the latest normalized state of each usable or discovered Polymarket World Cup market.
+
+### polymarket_market_snapshots
+Stores historical Polymarket price/liquidity observations for movement and rising-signal features.
+
 ---
 
 ## Backend Project Structure
 
-```
+```text
 matchmind/
-├── app/
-│   ├── main.py
-│   ├── config.py
-│   ├── routers/
-│   │   └── chat.py
-│   ├── services/
-│   │   ├── openai.py
-│   │   ├── supabase.py
-│   │   ├── api_football.py
-│   │   ├── odds.py
-│   │   └── polymarket.py
-│   └── models/
-│       └── chat.py
+├── apps/
+│   ├── api/
+│   │   ├── app/
+│   │   │   ├── main.py
+│   │   │   ├── config.py
+│   │   │   ├── routers/
+│   │   │   ├── services/
+│   │   │   └── models/
+│   │   ├── tests/
+│   │   ├── requirements.txt
+│   │   └── README.md
+│   └── web/
+├── docs/
+├── packages/
+├── scripts/
+├── tmp/
 ├── .env.example
-├── requirements.txt
+├── Makefile
 └── README.md
 ```
 
@@ -183,6 +224,13 @@ OPENAI_API_KEY=
 API_FOOTBALL_KEY=
 ODDS_API_KEY=
 STRIPE_SECRET_KEY=
+POLYMARKET_DISCOVERY_PATH=
+POLYMARKET_GAMMA_BASE_URL=
+POLYMARKET_CLOB_BASE_URL=
+POLYMARKET_CACHE_TTL_SECONDS=
+POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=
+POLYMARKET_MIN_MATCH_CONFIDENCE=
+POLYMARKET_MIN_SIGNAL_QUALITY=
 ```
 
 ---
@@ -193,16 +241,29 @@ STRIPE_SECRET_KEY=
 |---|---|---|
 | GET | /health | Health check, confirms DB connection |
 | POST | /chat | Main coach chat endpoint |
-| GET | /feed | Daily feed with top matches and divergence scores |
+| GET | /world-cup/fixtures | Cached World Cup fixture context |
+| POST | /world-cup/refresh | Internal API-Football fixture refresh |
+| GET | /polymarket/signals | Cached Polymarket market signals |
+| POST | /polymarket/seed-from-discovery | Internal Polymarket seed from local exploration JSON |
+| POST | /polymarket/refresh | Internal Polymarket live refresh |
+| POST / GET / PATCH / DELETE | /bets | Bet tracker operations |
 
 ### POST /chat
 - **Input:** `{ user_id, message }`
-- **Logic:** checks daily limit for free users, extracts team names, fetches live data in parallel, injects context into system prompt, calls OpenAI
+- **Logic:** checks daily limit for free users, extracts bet facts, reads cached API-Football/Polymarket context when relevant, injects compact context into the prompt, calls OpenAI
 - **Output:** `{ response, confidence_score, daily_chats_remaining }`
 
-### GET /feed
-- Returns top 3 matches of the day with bookmaker odds, Polymarket probabilities, and divergence score
-- Powers the home screen of the frontend
+### GET /polymarket/signals
+- Returns active usable World Cup 2026 market signals from Supabase/memory.
+- Powers Market Signals and future divergence surfaces.
+
+### POST /polymarket/seed-from-discovery
+- Seeds Supabase from `tmp/polymarket_world_cup_discovery.json`.
+- Useful when local Polymarket API access is blocked.
+
+### POST /polymarket/refresh
+- Refreshes Polymarket data from Gamma/CLOB APIs.
+- Intended for scheduled jobs in an environment that can reach Polymarket.
 
 ---
 
@@ -215,10 +276,10 @@ STRIPE_SECRET_KEY=
 - /chat endpoint working with fake user
 
 ### Phase 2 - Live Data (current)
-- Integrate API-Football, The Odds API, Polymarket
-- Inject live data context into chat system prompt
-- Build /feed endpoint with divergence scores
-- In-memory caching for API responses
+- API-Football fixture cache integrated
+- Polymarket cache, seed, refresh, signals, and chat context integrated
+- Next: The Odds API cache and bookmaker-vs-crowd divergence
+- Next: Feed/Pronósticos UI surfaces on top of cached data
 
 ### Phase 3 - UX and Polish (~May 31)
 - Final frontend build in Lovable/V0
