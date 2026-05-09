@@ -260,7 +260,7 @@ def detect_polymarket_intent(message: str, parsed_bet: ParsedBet | None = None) 
     if "group" in normalized and re.search(r"\b(?:winner|win|top|ganar|gana|grupo)\b", normalized):
         return "group_winner"
     if parsed_bet.market_type == "Tournament outright" or re.search(
-        r"\b(?:world cup|mundial)\b.*\b(?:winner|champion|campeon|campeona|ganar|win)\b|\b(?:winner|champion|campeon|campeona|ganar|win)\b.*\b(?:world cup|mundial)\b",
+        r"\b(?:world cup|mundial|copa)\b.*\b(?:winner|champion|campeon|campeona|ganar|gana|win)\b|\b(?:winner|champion|campeon|campeona|ganar|gana|win)\b.*\b(?:world cup|mundial|copa)\b",
         normalized,
     ):
         return "tournament_outright"

@@ -13,7 +13,7 @@ MARKET_PATTERNS: list[tuple[str, str]] = [
     (r"\b(?:under|menos\s+de)\s+\d+(?:[.,]\d+)?\s+(?:goals?|goles)\b", "Under goals"),
     (r"\b[-+]?\d+(?:[.,]\d+)?\s+h[áa]ndicap\b|\bh[áa]ndicap\b|\bhandicap\b", "Handicap"),
     (
-        r"\b(?:to\s+win\s+the\s+world\s+cup|win\s+the\s+world\s+cup|ganar\s+(?:el\s+)?mundial|campe[oó]n[ao]?\s+del\s+mundial|gana\s+(?:el\s+)?mundial)\b",
+        r"\b(?:to\s+win\s+the\s+world\s+cup|win\s+the\s+world\s+cup|ganar\s+(?:el\s+)?mundial|campe[oó]n[ao]?\s+del\s+mundial|gana\s+(?:el\s+)?mundial|ganar\s+(?:la\s+)?copa|gana\s+(?:la\s+)?copa)\b",
         "Tournament outright",
     ),
     (r"\b(?:to\s+beat|beats?|to\s+win|gana|ganar|vence|vencer|derrota|ganador)\b", "Match winner"),

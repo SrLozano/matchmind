@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Send, Zap } from "lucide-react"
-import { sendChatMessage } from "@/lib/api"
+import { Activity, Send, Zap } from "lucide-react"
+import { sendChatMessage, type ChatMarketSignal } from "@/lib/api"
 import { useLanguage } from "@/lib/i18n"
 
 type Message = {
   id: number
   role: "coach" | "user"
   text: string
+  marketSignal?: ChatMarketSignal | null
 }
 
 export default function ChatCoach() {
@@ -67,7 +68,7 @@ export default function ChatCoach() {
       setMessages((prev) =>
         prev.map((message) =>
           message.id === pendingCoachMsg.id
-            ? { ...message, text: result.response }
+            ? { ...message, text: result.response, marketSignal: result.market_signal }
             : message
         )
       )
@@ -111,6 +112,93 @@ export default function ChatCoach() {
     })
   }
 
+  const formatPercent = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "—"
+    return `${(value * 100).toFixed(1)}%`
+  }
+
+  const formatMarketType = (value: string | null | undefined) => {
+    if (!value) return language === "es" ? "Mercado" : "Market"
+    const labels: Record<string, { en: string; es: string }> = {
+      tournament_outright: { en: "World Cup winner", es: "Ganador del Mundial" },
+      group_winner: { en: "Group winner", es: "Ganador de grupo" },
+      advance_to_knockout: { en: "Advance to knockouts", es: "Clasifica a eliminatorias" },
+      reach_stage: { en: "Reach stage", es: "Llegar a ronda" },
+      squad_inclusion: { en: "Squad market", es: "Convocatoria" },
+      top_goalscorer: { en: "Top goalscorer", es: "Máximo goleador" },
+    }
+    return labels[value]?.[language] ?? value.replaceAll("_", " ")
+  }
+
+  const renderMarketSignal = (signal: ChatMarketSignal | null | undefined) => {
+    if (!signal) return null
+    if (!signal.matched) {
+      return (
+        <div className="mt-3 rounded-lg border border-[#FFD600]/25 bg-[#FFD600]/5 px-3 py-2.5">
+          <div className="flex items-center gap-2 text-[#FFD600]">
+            <Activity className="h-3.5 w-3.5 flex-shrink-0" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">
+              {t.chat.marketSignal}
+            </span>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#A8B4D0]">
+            {signal.note ?? t.chat.noMarketSignal}
+          </p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="mt-3 rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/5 px-3 py-2.5">
+        <div className="flex items-center gap-2 text-[#00FF87]">
+          <Activity className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider">
+            {t.chat.marketSignal}
+          </span>
+        </div>
+        {signal.question && (
+          <p className="mt-1.5 text-xs leading-relaxed text-[#F0F4FF]">
+            {signal.question}
+          </p>
+        )}
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              {t.chat.crowdProbability}
+            </p>
+            <p className="text-sm font-semibold text-[#00FF87]">
+              {formatPercent(signal.implied_probability)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              {t.chat.liquidity}
+            </p>
+            <p className="truncate text-sm font-semibold text-foreground">
+              {signal.liquidity_label ?? "—"}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              {t.chat.market}
+            </p>
+            <p className="truncate text-xs font-medium text-[#A8B4D0]">
+              {formatMarketType(signal.market_type)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              {t.chat.quality}
+            </p>
+            <p className="text-xs font-medium text-[#A8B4D0]">
+              {signal.signal_quality_score ?? "—"}/100
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -152,6 +240,7 @@ export default function ChatCoach() {
               }`}
             >
               {renderText(msg.text)}
+              {msg.role === "coach" && renderMarketSignal(msg.marketSignal)}
             </div>
           </div>
         ))}

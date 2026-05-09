@@ -3,7 +3,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.models.chat import ChatRequest, ChatResponse
+from app.models.chat import ChatMarketSignal, ChatRequest, ChatResponse
 from app.services.api_football import build_match_context_for_chat
 from app.services.gpt import generate_chat_reply
 from app.services.polymarket import build_polymarket_context_for_chat
@@ -38,6 +38,7 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             verdict=ai_result.verdict,
             implied_probability=ai_result.implied_probability,
             stake_posture=ai_result.stake_posture,
+            market_signal=_build_chat_market_signal(polymarket_context),
             daily_chats_remaining=saved_turn["daily_chats_remaining"],
         )
     except ValueError as exc:
@@ -60,3 +61,32 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to process chat request.",
         ) from exc
+
+
+def _build_chat_market_signal(polymarket_context: dict | None) -> ChatMarketSignal | None:
+    if not polymarket_context:
+        return None
+    if not polymarket_context.get("matched"):
+        return ChatMarketSignal(
+            matched=False,
+            market_type=polymarket_context.get("supported_intent"),
+            teams=polymarket_context.get("teams") or [],
+            note=polymarket_context.get("note"),
+            last_fetched_at=polymarket_context.get("last_fetched_at"),
+        )
+    return ChatMarketSignal(
+        matched=True,
+        market_type=polymarket_context.get("market_type"),
+        team=polymarket_context.get("team"),
+        teams=polymarket_context.get("teams") or [],
+        group=polymarket_context.get("group"),
+        question=polymarket_context.get("question"),
+        implied_probability=polymarket_context.get("implied_probability"),
+        liquidity=polymarket_context.get("liquidity"),
+        liquidity_label=polymarket_context.get("liquidity_label"),
+        volume=polymarket_context.get("volume"),
+        spread=polymarket_context.get("spread"),
+        signal_quality_score=polymarket_context.get("signal_quality_score"),
+        match_confidence=polymarket_context.get("match_confidence"),
+        last_fetched_at=polymarket_context.get("last_fetched_at"),
+    )

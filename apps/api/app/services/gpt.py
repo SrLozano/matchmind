@@ -24,6 +24,7 @@ Use the provided parsed_bet facts as deterministic context. Do not contradict th
 If live_data_available is false, clearly say live market/team data is missing when relevant. Do not claim real-time odds, injuries, lineups, API-Football data, bookmaker data, or Polymarket data unless it is explicitly provided.
 If match_context is present, use it only when relevant to the user's bet. It contains cached World Cup fixture context from API-Football, not odds or prediction-market data.
 If polymarket_context is present, use it only as prediction-market crowd probability for supported long-term World Cup markets. Never call it truth, a sure bet, or an instruction to bet. If it says matched=false, mention that no useful Polymarket signal was found only when relevant.
+If polymarket_context is present but match_context is absent, do not say all live market data is missing. Say only that team/form/fixture data, injuries, lineups, or bookmaker comparison are missing when relevant.
 Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-Football predictions, Polymarket probabilities, or broader team form unless those fields are explicitly present.
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
@@ -112,13 +113,35 @@ def _extract_json(content: str) -> AIChatResult:
             stake_posture=_extract_stake_posture(content),
         )
 
+    response = _normalize_response_text(payload.get("response", ""))
     return AIChatResult(
-        response=str(payload.get("response", "")).strip(),
+        response=response,
         confidence_score=_clamp_score(payload.get("confidence_score", 5)),
         verdict=_normalize_verdict(payload.get("verdict")),
         implied_probability=_normalize_probability(payload.get("implied_probability")),
         stake_posture=_normalize_stake_posture(payload.get("stake_posture")),
     )
+
+
+def _normalize_response_text(value: Any) -> str:
+    if isinstance(value, dict):
+        nested_response = value.get("response")
+        if nested_response is not None:
+            return _normalize_response_text(nested_response)
+        return json.dumps(value, ensure_ascii=False)
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    try:
+        nested = json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+    if isinstance(nested, dict) and "response" in nested:
+        return _normalize_response_text(nested.get("response"))
+    return text
 
 
 def _clamp_score(value: Any) -> float:

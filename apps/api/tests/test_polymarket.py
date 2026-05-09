@@ -20,6 +20,11 @@ class PolymarketContextTest(unittest.TestCase):
 
         self.assertEqual(detect_polymarket_intent(parsed.original_message, parsed), "tournament_outright")
 
+    def test_detects_spanish_copa_outright_intent(self) -> None:
+        parsed = parse_bet_message("Debería apostar a que España gana la copa a 9.00?")
+
+        self.assertEqual(detect_polymarket_intent(parsed.original_message, parsed), "tournament_outright")
+
     def test_does_not_use_polymarket_for_match_winner(self) -> None:
         parsed = parse_bet_message("Should I bet Spain to beat Germany at 2.10?")
 

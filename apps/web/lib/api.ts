@@ -7,7 +7,26 @@ export type ChatResponse = {
   verdict: string | null
   implied_probability: number | null
   stake_posture: string | null
+  market_signal: ChatMarketSignal | null
   daily_chats_remaining: number | null
+}
+
+export type ChatMarketSignal = {
+  matched: boolean
+  market_type: string | null
+  team: string | null
+  teams: string[]
+  group: string | null
+  question: string | null
+  implied_probability: number | null
+  liquidity: number | null
+  liquidity_label: string | null
+  volume: number | null
+  spread: number | null
+  signal_quality_score: number | null
+  match_confidence: number | null
+  last_fetched_at: string | null
+  note: string | null
 }
 
 export type WorldCupFixture = {
@@ -113,7 +132,30 @@ export async function sendChatMessage(message: string, preferredLanguage?: "en" 
     throw new Error(await readApiError(response, "Unable to reach the Matchmind coach. Try again in a moment."))
   }
 
-  return response.json()
+  return normalizeChatResponse((await response.json()) as ChatResponse)
+}
+
+function normalizeChatResponse(payload: ChatResponse): ChatResponse {
+  return {
+    ...payload,
+    response: unwrapNestedResponse(payload.response),
+  }
+}
+
+function unwrapNestedResponse(value: string): string {
+  const text = value.trim()
+  if (!text.startsWith("{")) return value
+
+  try {
+    const parsed = JSON.parse(text) as { response?: unknown }
+    if (typeof parsed.response === "string") {
+      return unwrapNestedResponse(parsed.response)
+    }
+  } catch {
+    return value
+  }
+
+  return value
 }
 
 export async function getWorldCupFixtures(): Promise<WorldCupFixturesResponse> {

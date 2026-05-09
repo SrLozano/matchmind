@@ -23,6 +23,21 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertEqual(result.implied_probability, 0.4762)
         self.assertEqual(result.stake_posture, "very small")
 
+    def test_nested_json_response_text_is_unwrapped(self) -> None:
+        result = _extract_json(
+            """
+            {
+              "response": "{\\"response\\":\\"Verdict: FAIR\\\\n\\\\nMy take:\\\\nNested text is unwrapped.\\",\\"confidence_score\\":6}",
+              "confidence_score": 6,
+              "verdict": "fair",
+              "stake_posture": "small"
+            }
+            """
+        )
+
+        self.assertEqual(result.response, "Verdict: FAIR\n\nMy take:\nNested text is unwrapped.")
+        self.assertEqual(result.confidence_score, 6)
+
     def test_plain_text_fallback_extracts_score_and_verdict(self) -> None:
         result = _extract_json("Verdict: AVOID\n\nStake posture:\navoid\n\nConfidence:\n4/10")
 

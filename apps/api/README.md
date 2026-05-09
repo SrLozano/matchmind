@@ -82,6 +82,7 @@ Returns:
   "verdict": "FAIR",
   "implied_probability": 0.4762,
   "stake_posture": "small",
+  "market_signal": null,
   "daily_chats_remaining": 4
 }
 ```
