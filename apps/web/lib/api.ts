@@ -29,6 +29,36 @@ export type ChatMarketSignal = {
   note: string | null
 }
 
+export type MarketSignal = {
+  matched: boolean
+  market_type: string | null
+  team: string | null
+  teams: string[]
+  group: string | null
+  question: string | null
+  slug: string | null
+  yes_price: number | null
+  implied_probability: number | null
+  liquidity: number | null
+  volume: number | null
+  best_bid: number | null
+  best_ask: number | null
+  midpoint: number | null
+  spread: number | null
+  match_confidence: number | null
+  signal_quality_score: number | null
+  liquidity_label: string | null
+  active: boolean | null
+  closed: boolean | null
+  end_date: string | null
+  last_fetched_at: string | null
+}
+
+export type MarketSignalsResponse = {
+  signals: MarketSignal[]
+  count: number
+}
+
 export type WorldCupFixture = {
   id: number | string | null
   home_team: string | null
@@ -163,6 +193,16 @@ export async function getWorldCupFixtures(): Promise<WorldCupFixturesResponse> {
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load the World Cup match radar. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function getMarketSignals(): Promise<MarketSignalsResponse> {
+  const response = await fetch(`${getApiUrl()}/polymarket/signals`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load market signals. Try again in a moment."))
   }
 
   return response.json()

@@ -6,12 +6,13 @@ import ChatCoach from "@/components/betcoach/ChatCoach"
 import BetTracker from "@/components/betcoach/BetTracker"
 import Profile from "@/components/betcoach/Profile"
 import BottomNav from "@/components/betcoach/BottomNav"
+import MarketSignals from "@/components/betcoach/MarketSignals"
 import { LanguageProvider } from "@/lib/i18n"
 
-type Tab = "feed" | "chat" | "tracker" | "profile"
+export type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
 
 export default function BetCoachApp() {
-  const [activeTab, setActiveTab] = useState<Tab>("feed")
+  const [activeTab, setActiveTab] = useState<Tab>("chat")
 
   return (
     <LanguageProvider>
@@ -26,6 +27,9 @@ export default function BetCoachApp() {
             <div className="relative h-full overflow-hidden">
               <div className={activeTab === "feed" ? "h-full" : "hidden"}>
                 <DailyFeed />
+              </div>
+              <div className={activeTab === "signals" ? "h-full" : "hidden"}>
+                <MarketSignals />
               </div>
               <div className={activeTab === "chat" ? "h-full" : "hidden"}>
                 <ChatCoach />
