@@ -59,6 +59,19 @@ export type MarketSignalsResponse = {
   count: number
 }
 
+export type UserPlan = "free" | "premium"
+
+export type CurrentUser = {
+  id: string
+  email: string | null
+  plan: UserPlan
+  daily_chat_count: number
+  daily_chat_count_limit: number
+  daily_chats_remaining: number | null
+  last_reset_date: string | null
+  created_at: string | null
+}
+
 export type WorldCupFixture = {
   id: number | string | null
   home_team: string | null
@@ -203,6 +216,16 @@ export async function getMarketSignals(): Promise<MarketSignalsResponse> {
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load market signals. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  const response = await fetch(`${getApiUrl()}/users/me?user_id=${getDevUserId()}`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load your profile. Try again in a moment."))
   }
 
   return response.json()

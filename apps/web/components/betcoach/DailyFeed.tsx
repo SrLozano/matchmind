@@ -11,7 +11,7 @@ type FeedState = {
   lastUpdated: Date | null
 }
 
-export default function DailyFeed() {
+export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
   const { language, t } = useLanguage()
   const [feed, setFeed] = useState<FeedState>({ matches: [], lastUpdated: null })
   const [isLoading, setIsLoading] = useState(true)
@@ -79,7 +79,7 @@ export default function DailyFeed() {
   }, [feed.matches])
 
   const freeInsightCount = Math.min(sortedMatches.length, 2)
-  const lockedInsightCount = Math.max(sortedMatches.length - freeInsightCount, 0)
+  const proInsightCount = Math.max(sortedMatches.length - freeInsightCount, 0)
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -101,7 +101,7 @@ export default function DailyFeed() {
       <div className="mx-5 mb-5 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35]">
         <StatCell label={t.feed.upcoming} value={sortedMatches.length.toString()} />
         <StatCell label={t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
-        <StatCell label={t.feed.pro} value={lockedInsightCount.toString()} accent="text-[#FFD600]" />
+        <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#FFD600]" />
       </div>
 
       <div className="flex flex-col gap-3 px-5 pb-6">
@@ -116,7 +116,7 @@ export default function DailyFeed() {
             <MatchRow
               key={`${match.id ?? match.match}-${match.kickoff_time ?? index}`}
               match={match}
-              isFreeInsight={isFreeMatch(match, index)}
+              access={getMatchAccess(match, index, isPremium)}
               dateFormatter={dateFormatter}
               timeFormatter={timeFormatter}
             />
@@ -129,12 +129,12 @@ export default function DailyFeed() {
 
 function MatchRow({
   match,
-  isFreeInsight,
+  access,
   dateFormatter,
   timeFormatter,
 }: {
   match: WorldCupFixture
-  isFreeInsight: boolean
+  access: MatchAccess
   dateFormatter: Intl.DateTimeFormat
   timeFormatter: Intl.DateTimeFormat
 }) {
@@ -162,7 +162,7 @@ function MatchRow({
               <TeamLine name={homeTeam} />
               <TeamLine name={awayTeam} />
             </div>
-            <InsightBadge isFreeInsight={isFreeInsight} />
+            <InsightBadge access={access} />
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6A7A9B]">
@@ -177,10 +177,10 @@ function MatchRow({
       </div>
 
       <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-4 py-3">
-        {isFreeInsight ? (
-          <UnlockedInsight match={match} hasPick={hasPick} />
-        ) : (
+        {access === "locked" ? (
           <LockedInsight teaser={match.teaser} />
+        ) : (
+          <UnlockedInsight match={match} hasPick={hasPick} access={access} />
         )}
       </div>
     </article>
@@ -199,14 +199,25 @@ function TeamLine({ name }: { name: string }) {
   )
 }
 
-function InsightBadge({ isFreeInsight }: { isFreeInsight: boolean }) {
+type MatchAccess = "free" | "premium" | "locked"
+
+function InsightBadge({ access }: { access: MatchAccess }) {
   const { t } = useLanguage()
 
-  if (isFreeInsight) {
+  if (access === "free") {
     return (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#00FF87]/30 bg-[#00FF87]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#00FF87]">
         <Sparkles className="h-3 w-3" />
         {t.feed.free}
+      </span>
+    )
+  }
+
+  if (access === "premium") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#FFD600]">
+        <Sparkles className="h-3 w-3" />
+        {t.feed.proUnlocked}
       </span>
     )
   }
@@ -222,30 +233,35 @@ function InsightBadge({ isFreeInsight }: { isFreeInsight: boolean }) {
 function UnlockedInsight({
   match,
   hasPick,
+  access,
 }: {
   match: WorldCupFixture
   hasPick: boolean
+  access: MatchAccess
 }) {
   const { t } = useLanguage()
+  const isPremiumAccess = access === "premium"
 
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-3">
       <div className="min-w-0">
         <p className="truncate text-xs font-semibold text-foreground">
-          {match.pick ?? t.feed.freeInsight}
+          {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
         </p>
         <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
           {match.coach_summary ??
             (hasPick
               ? t.feed.coachAvailable
-              : t.feed.unlockedFixture)}
+              : isPremiumAccess
+                ? t.feed.premiumFixture
+                : t.feed.unlockedFixture)}
         </p>
       </div>
       <div className="flex min-w-[74px] flex-col items-end">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
           {t.feed.confidence}
         </span>
-        <span className="text-sm font-bold text-[#00FF87]">
+        <span className={`text-sm font-bold ${isPremiumAccess ? "text-[#FFD600]" : "text-[#00FF87]"}`}>
           {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
         </span>
         {typeof match.edge === "number" && (
@@ -356,6 +372,11 @@ function EmptyState() {
       </p>
     </div>
   )
+}
+
+function getMatchAccess(match: WorldCupFixture, index: number, isPremium: boolean): MatchAccess {
+  if (isFreeMatch(match, index)) return "free"
+  return isPremium ? "premium" : "locked"
 }
 
 function isFreeMatch(match: WorldCupFixture, index: number) {

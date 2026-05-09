@@ -10,7 +10,7 @@ import { useLanguage, type Language } from "@/lib/i18n"
 
 const FREE_SIGNAL_COUNT = 3
 
-export default function MarketSignals() {
+export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
   const { language, t } = useLanguage()
   const [signals, setSignals] = useState<MarketSignal[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -98,7 +98,7 @@ export default function MarketSignals() {
                     key={signal.slug ?? `${signal.question ?? signal.team}-locked-${index}`}
                     signal={signal}
                     language={language}
-                    locked
+                    locked={!isPremium}
                   />
                 ))}
               </SignalGroup>

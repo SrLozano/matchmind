@@ -79,6 +79,25 @@ async def _get_user(user_id: UUID) -> dict[str, Any]:
     return response.data[0]
 
 
+async def get_user_profile(user_id: UUID) -> dict[str, Any]:
+    settings = get_settings()
+    user = await _reset_daily_count_if_needed(await _get_user(user_id))
+    daily_chats_remaining = None
+    if user.get("plan") == "free":
+        daily_chats_remaining = max(settings.free_daily_chat_limit - int(user.get("daily_chat_count", 0)), 0)
+
+    return {
+        "id": user["id"],
+        "email": user.get("email"),
+        "plan": user.get("plan", "free"),
+        "daily_chat_count": int(user.get("daily_chat_count", 0)),
+        "daily_chat_count_limit": settings.free_daily_chat_limit,
+        "daily_chats_remaining": daily_chats_remaining,
+        "last_reset_date": user.get("last_reset_date"),
+        "created_at": user.get("created_at"),
+    }
+
+
 async def _reset_daily_count_if_needed(user: dict[str, Any]) -> dict[str, Any]:
     today = date.today()
     last_reset_raw = user.get("last_reset_date")
