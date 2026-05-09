@@ -55,6 +55,11 @@ cp .env.example .env
 
 The API env variables are documented in [apps/api/README.md](apps/api/README.md).
 
+## Documentation
+
+- [Architecture](docs/architecture.md) explains repo boundaries and provider cache flows.
+- [Polymarket Integration](docs/polymarket-integration.md) records the current Polymarket data model, endpoints, classification rules, and operational caveats.
+
 ## Pasting Your Frontend
 
 Put the frontend project contents directly inside `apps/web`.
