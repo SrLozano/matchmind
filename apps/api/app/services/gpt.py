@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.models.chat import AIChatResult
 from app.services.bet_parser import ParsedBet, parse_bet_message
 from app.services.api_football import format_match_context_block
+from app.services.polymarket import format_polymarket_context_block
 
 SYSTEM_PROMPT = """
 You are Matchmind, an AI-powered football betting coach focused on the 2026 FIFA World Cup.
@@ -22,6 +23,7 @@ Voice:
 Use the provided parsed_bet facts as deterministic context. Do not contradict the supplied odds or implied probability.
 If live_data_available is false, clearly say live market/team data is missing when relevant. Do not claim real-time odds, injuries, lineups, API-Football data, bookmaker data, or Polymarket data unless it is explicitly provided.
 If match_context is present, use it only when relevant to the user's bet. It contains cached World Cup fixture context from API-Football, not odds or prediction-market data.
+If polymarket_context is present, use it only as prediction-market crowd probability for supported long-term World Cup markets. Never call it truth, a sure bet, or an instruction to bet. If it says matched=false, mention that no useful Polymarket signal was found only when relevant.
 Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-Football predictions, Polymarket probabilities, or broader team form unless those fields are explicitly present.
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
@@ -171,13 +173,21 @@ def _extract_stake_posture(content: str) -> str | None:
     return _normalize_stake_posture(match.group(1)) if match else None
 
 
-def _build_user_context(message: str, parsed_bet: ParsedBet, match_context: dict[str, Any] | None = None) -> str:
+def _build_user_context(
+    message: str,
+    parsed_bet: ParsedBet,
+    match_context: dict[str, Any] | None = None,
+    polymarket_context: dict[str, Any] | None = None,
+) -> str:
     context = {
         "user_message": message,
         "parsed_bet": parsed_bet.model_dump(),
-        "live_data_available": match_context is not None,
+        "live_data_available": match_context is not None or polymarket_context is not None,
         "match_context": format_match_context_block(match_context),
-        "live_data_note": "No bookmaker odds, API-Football stats, injuries, lineups, or Polymarket probabilities were provided for this request.",
+        "polymarket_context": format_polymarket_context_block(polymarket_context),
+        "live_data_note": "No bookmaker odds, API-Football stats, injuries, lineups, or Polymarket probabilities were provided for this request."
+        if match_context is None and polymarket_context is None
+        else None,
     }
     return json.dumps(context, ensure_ascii=False)
 
@@ -339,6 +349,7 @@ Confianza:
 async def generate_chat_reply(
     message: str,
     match_context: dict[str, Any] | None = None,
+    polymarket_context: dict[str, Any] | None = None,
     preferred_language: str | None = None,
 ) -> AIChatResult:
     parsed_bet = parse_bet_message(message)
@@ -351,7 +362,7 @@ async def generate_chat_reply(
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_context(message, parsed_bet, match_context)},
+            {"role": "user", "content": _build_user_context(message, parsed_bet, match_context, polymarket_context)},
         ],
         temperature=0.4,
     )

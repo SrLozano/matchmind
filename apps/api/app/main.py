@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.routers.bets import router as bets_router
 from app.routers.chat import router as chat_router
+from app.routers.polymarket import router as polymarket_router
 from app.routers.world_cup import router as world_cup_router
 from app.services.supabase import close_supabase, get_supabase, supabase_healthcheck
 
@@ -47,6 +48,7 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(world_cup_router)
+app.include_router(polymarket_router)
 app.include_router(bets_router)
 
 

@@ -57,6 +57,9 @@ make api-test
 - `GET /health` checks API and Supabase connectivity.
 - `GET /world-cup/fixtures` returns cached 2026 World Cup fixture context from Supabase/memory.
 - `POST /world-cup/refresh` refreshes fixtures from API-Football. This is internal and requires `X-Internal-Token` matching `INTERNAL_API_TOKEN`.
+- `GET /polymarket/signals` returns compact active World Cup 2026 prediction-market signals from Supabase/memory.
+- `POST /polymarket/seed-from-discovery` seeds Polymarket markets from `POLYMARKET_DISCOVERY_PATH`. This is internal and requires `X-Internal-Token`.
+- `POST /polymarket/refresh` refreshes Polymarket markets from Gamma/CLOB APIs. This is internal and requires `X-Internal-Token`.
 - `POST /bets` logs a manual bet in the tracker.
 - `GET /bets?user_id=...` returns bet history plus tracker summary metrics.
 - `PATCH /bets/{bet_id}` updates a tracked bet and recalculates P&L.
@@ -176,8 +179,72 @@ create table if not exists public.world_cup_matches (
 create index if not exists idx_world_cup_matches_kickoff_time
     on public.world_cup_matches(kickoff_time);
 
+create table if not exists public.polymarket_markets (
+    id uuid primary key default gen_random_uuid(),
+    polymarket_event_id text,
+    polymarket_market_id text not null unique,
+    condition_id text,
+    market_type text not null,
+    matched_team text,
+    matched_teams jsonb not null default '[]'::jsonb,
+    matched_group text,
+    matched_player text,
+    question text not null,
+    slug text,
+    event_title text,
+    event_slug text,
+    outcomes jsonb not null default '[]'::jsonb,
+    outcome_prices jsonb not null default '[]'::jsonb,
+    yes_price numeric,
+    no_price numeric,
+    liquidity numeric,
+    volume numeric,
+    active boolean not null default false,
+    closed boolean not null default false,
+    archived boolean not null default false,
+    end_date timestamptz,
+    clob_token_ids jsonb not null default '[]'::jsonb,
+    best_bid numeric,
+    best_ask numeric,
+    midpoint numeric,
+    spread numeric,
+    raw_payload jsonb not null default '{}'::jsonb,
+    match_confidence numeric not null default 0,
+    signal_quality_score integer not null default 0,
+    is_usable boolean not null default false,
+    last_fetched_at timestamptz not null,
+    created_at timestamptz not null default timezone('utc', now()),
+    updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_polymarket_markets_type_quality
+    on public.polymarket_markets(market_type, is_usable, signal_quality_score desc);
+
+create index if not exists idx_polymarket_markets_matched_team
+    on public.polymarket_markets(matched_team);
+
+create table if not exists public.polymarket_market_snapshots (
+    id uuid primary key default gen_random_uuid(),
+    polymarket_market_id text not null references public.polymarket_markets(polymarket_market_id) on delete cascade,
+    yes_price numeric,
+    no_price numeric,
+    liquidity numeric,
+    volume numeric,
+    best_bid numeric,
+    best_ask numeric,
+    midpoint numeric,
+    spread numeric,
+    signal_quality_score integer not null default 0,
+    fetched_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_polymarket_snapshots_market_time
+    on public.polymarket_market_snapshots(polymarket_market_id, fetched_at desc);
+
 grant usage on schema public to service_role;
 grant select, insert, update on public.world_cup_matches to service_role;
+grant select, insert, update on public.polymarket_markets to service_role;
+grant select, insert on public.polymarket_market_snapshots to service_role;
 ```
 
 ## API-Football Cache Flow
@@ -203,10 +270,45 @@ WORLD_CUP_CACHE_TTL_SECONDS=600
 WORLD_CUP_FIXTURE_REFRESH_HOURS=12
 MATCH_DETECTION_FALLBACK_ENABLED=true
 MATCH_DETECTION_MODEL=
+POLYMARKET_DISCOVERY_PATH=tmp/polymarket_world_cup_discovery.json
+POLYMARKET_GAMMA_BASE_URL=https://gamma-api.polymarket.com
+POLYMARKET_CLOB_BASE_URL=https://clob.polymarket.com
+POLYMARKET_CACHE_TTL_SECONDS=600
+POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=40
+POLYMARKET_MIN_MATCH_CONFIDENCE=0.7
+POLYMARKET_MIN_SIGNAL_QUALITY=40
 INTERNAL_API_TOKEN=
 ```
 
 Match detection uses a local tournament team alias registry first. If no confident cached fixture is found and the message looks match-specific, Matchmind can call `MATCH_DETECTION_MODEL` as a fallback extractor, then validates the proposed teams against Supabase fixtures before using any match context.
+
+Polymarket context reads from Supabase first, then falls back to the normalized exploration output at `POLYMARKET_DISCOVERY_PATH` if the table is empty or unavailable. Chat only injects it for supported long-term markets such as World Cup winner, group winner, and team advancement. Match-level bets, totals, cards, corners, and handicaps intentionally do not receive a Polymarket context block until active fixture-level World Cup markets exist.
+
+## Polymarket Cache Flow
+
+Chat requests do not call Polymarket. Market data is refreshed manually or by a scheduled job, persisted in `polymarket_markets`, then served through memory cache:
+
+```text
+Polymarket Gamma/CLOB APIs
+-> scheduled or manual refresh
+-> Supabase polymarket_markets + polymarket_market_snapshots
+-> in-memory TTL cache
+-> /chat and /polymarket/signals
+```
+
+On a machine where Polymarket is blocked, seed the first cache from the exploration JSON:
+
+```bash
+curl -X POST http://localhost:8000/polymarket/seed-from-discovery \
+  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
+```
+
+In an environment that can reach Polymarket, refresh live data:
+
+```bash
+curl -X POST http://localhost:8000/polymarket/refresh \
+  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
+```
 
 Manual refresh example:
 
