@@ -19,13 +19,15 @@ Voice:
 - Sound like a sharp, honest betting friend, not a generic chatbot.
 - Be willing to say "do not take this bet" when the edge is weak.
 - Reply in the user's detected language. Use Spanish when detected_language is "es"; use English otherwise.
+- If detected_language is "es", every user-facing sentence and every visible section label in response must be Spanish. Do not write visible labels like "Verdict", "My take", "Odds check", "Risk notes", "Stake posture", or "Confidence"; use Spanish labels instead.
+- Keep only JSON metadata enum values in English. The visible response text must still be Spanish for Spanish users.
 
 Use the provided parsed_bet facts as deterministic context. Do not contradict the supplied odds or implied probability.
-If live_data_available is false, clearly say live market/team data is missing when relevant. Do not claim real-time odds, injuries, lineups, API-Football data, bookmaker data, or Polymarket data unless it is explicitly provided.
+If live_data_available is false, clearly say live market/team data is missing when relevant. Do not claim real-time odds, injuries, lineups, API-Football data, bookmaker data, or prediction-market data unless it is explicitly provided.
 If match_context is present, use it only when relevant to the user's bet. It contains cached World Cup fixture context from API-Football, not odds or prediction-market data.
-If polymarket_context is present, use it only as prediction-market crowd probability for supported long-term World Cup markets. Never call it truth, a sure bet, or an instruction to bet. If it says matched=false, mention that no useful Polymarket signal was found only when relevant.
+If polymarket_context is present, use it only as crowd probability or market signal for supported long-term World Cup markets. Never mention "Polymarket" in the user-facing response. Never call it truth, a sure bet, or an instruction to bet. If it says matched=false, mention that no useful market signal was found only when relevant.
 If polymarket_context is present but match_context is absent, do not say all live market data is missing. Say only that team/form/fixture data, injuries, lineups, or bookmaker comparison are missing when relevant.
-Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-Football predictions, Polymarket probabilities, or broader team form unless those fields are explicitly present.
+Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-Football predictions, prediction-market probabilities, or broader team form unless those fields are explicitly present.
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
 Every response text must follow this structure. Translate section labels naturally for Spanish users, but keep the same order:
@@ -50,6 +52,17 @@ Stake posture:
 
 Confidence:
 [x]/10
+
+Spanish visible-label equivalents:
+- Verdict -> Veredicto
+- My take -> Mi lectura
+- Odds check -> Chequeo de cuota
+- Your odds -> Tu cuota
+- Implied probability -> Probabilidad implícita
+- Value judgment -> Juicio de valor
+- Risk notes -> Notas de riesgo
+- Stake posture -> Postura de stake
+- Confidence -> Confianza
 
 Behavior rules:
 - If no odds are provided, ask for the odds but still give a preliminary football opinion if teams or market are clear.
@@ -93,6 +106,19 @@ SPANISH_STAKE_POSTURE_MAP = {
     "pequeña": "small",
     "medio": "medium",
     "media": "medium",
+}
+SPANISH_VISIBLE_VERDICT_MAP = {
+    "GOOD VALUE": "BUEN VALOR",
+    "FAIR": "JUSTA / NEUTRAL",
+    "RISKY": "ARRIESGADA",
+    "AVOID": "EVITAR",
+    "NOT ENOUGH INFO": "NO HAY INFO SUFICIENTE",
+}
+SPANISH_VISIBLE_STAKE_POSTURE_MAP = {
+    "avoid": "evitar",
+    "very small": "muy pequeño",
+    "small": "pequeño",
+    "medium": "medio",
 }
 
 
@@ -196,6 +222,48 @@ def _extract_stake_posture(content: str) -> str | None:
     return _normalize_stake_posture(match.group(1)) if match else None
 
 
+def _localize_visible_response_es(content: str) -> str:
+    text = content
+    label_replacements = {
+        "Verdict:": "Veredicto:",
+        "My take:": "Mi lectura:",
+        "Odds check:": "Chequeo de cuota:",
+        "Your odds:": "Tu cuota:",
+        "Implied probability:": "Probabilidad implícita:",
+        "Value judgment:": "Juicio de valor:",
+        "Risk notes:": "Notas de riesgo:",
+        "Stake posture:": "Postura de stake:",
+        "Confidence:": "Confianza:",
+    }
+    for english, spanish in label_replacements.items():
+        text = re.sub(rf"(?im)^({re.escape(english)})", spanish, text)
+        text = re.sub(rf"(?im)^(-\s*)({re.escape(english)})", rf"\1{spanish}", text)
+
+    for english, spanish in SPANISH_VISIBLE_VERDICT_MAP.items():
+        text = re.sub(rf"(?im)^(Veredicto:\s*){re.escape(english)}\b", rf"\1{spanish}", text)
+
+    for english, spanish in SPANISH_VISIBLE_STAKE_POSTURE_MAP.items():
+        text = re.sub(
+            rf"(?im)^(Postura de stake:\s*\n?){re.escape(english)}\b",
+            rf"\1{spanish}",
+            text,
+        )
+
+    cleanup_replacements = {
+        "crowd probability": "probabilidad de mercado",
+        "crowd signal": "señal de mercado",
+        "mercado de crowd": "señal de mercado",
+        "market signal": "señal de mercado",
+    }
+    for english, spanish in cleanup_replacements.items():
+        text = re.sub(re.escape(english), spanish, text, flags=re.IGNORECASE)
+
+    text = re.sub(r"\bel señal de mercado\b", "la señal de mercado", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bel probabilidad de mercado\b", "la probabilidad de mercado", text, flags=re.IGNORECASE)
+
+    return text
+
+
 def _build_user_context(
     message: str,
     parsed_bet: ParsedBet,
@@ -205,10 +273,17 @@ def _build_user_context(
     context = {
         "user_message": message,
         "parsed_bet": parsed_bet.model_dump(),
+        "response_language": parsed_bet.detected_language,
+        "language_instruction": (
+            "Write all user-facing response text and section labels in Spanish. "
+            "Only JSON metadata enum values may remain in English."
+            if parsed_bet.detected_language == "es"
+            else "Write all user-facing response text and section labels in English."
+        ),
         "live_data_available": match_context is not None or polymarket_context is not None,
         "match_context": format_match_context_block(match_context),
         "polymarket_context": format_polymarket_context_block(polymarket_context),
-        "live_data_note": "No bookmaker odds, API-Football stats, injuries, lineups, or Polymarket probabilities were provided for this request."
+        "live_data_note": "No bookmaker odds, API-Football stats, injuries, lineups, or market-signal probabilities were provided for this request."
         if match_context is None and polymarket_context is None
         else None,
     }
@@ -272,7 +347,7 @@ Odds check:
 - Value judgment: {value_judgment}
 
 Risk notes:
-- Live bookmaker, lineup, injury, and Polymarket data are not available in this analysis.
+- Live bookmaker, lineup, injury, and market-signal data are not available in this analysis.
 - Do not increase the stake because of loyalty, emotion, or chasing a previous result.
 
 Stake posture:
@@ -351,7 +426,7 @@ Chequeo de cuota:
 - Juicio de valor: {value_judgment}
 
 Notas de riesgo:
-- No tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni Polymarket en este análisis.
+- No tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni señales de mercado en este análisis.
 - No subas el stake por lealtad, emoción o por intentar recuperar una apuesta anterior.
 
 Postura de stake:
@@ -394,6 +469,8 @@ async def generate_chat_reply(
     fallback = _fallback_result(parsed_bet)
     if not result.response:
         return fallback
+    if parsed_bet.detected_language == "es":
+        result.response = _localize_visible_response_es(result.response)
     if result.implied_probability is None:
         result.implied_probability = parsed_bet.implied_probability
     if result.verdict is None:

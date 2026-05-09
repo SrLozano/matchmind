@@ -8,7 +8,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'BetCoach — FIFA World Cup 2026 Betting Assistant',
-  description: 'Your AI-powered betting coach for the 2026 FIFA World Cup. Smart picks, odds analysis, and Polymarket divergence data.',
+  description: 'Your AI-powered betting coach for the 2026 FIFA World Cup. Smart picks, odds analysis, and market divergence data.',
   generator: 'v0.app',
   icons: {
     icon: [

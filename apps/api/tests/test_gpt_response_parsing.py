@@ -1,7 +1,7 @@
 import unittest
 
 from app.services.bet_parser import parse_bet_message
-from app.services.gpt import _extract_json, _fallback_result
+from app.services.gpt import _extract_json, _fallback_result, _localize_visible_response_es
 
 
 class GPTResponseParsingTest(unittest.TestCase):
@@ -71,6 +71,17 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertEqual(result.confidence_score, 5.5)
         self.assertEqual(result.verdict, "RISKY")
         self.assertEqual(result.stake_posture, "very small")
+
+    def test_spanish_visible_response_cleanup_translates_labels_and_enums(self) -> None:
+        response = _localize_visible_response_es(
+            "Verdict: FAIR\n\nMy take:\nThe crowd signal is useful.\n\nStake posture:\nsmall — keep it controlled.\n\nConfidence:\n6/10"
+        )
+
+        self.assertIn("Veredicto: JUSTA / NEUTRAL", response)
+        self.assertIn("Mi lectura:", response)
+        self.assertIn("señal de mercado", response)
+        self.assertIn("Postura de stake:\npequeño", response)
+        self.assertIn("Confianza:", response)
 
 
 if __name__ == "__main__":
