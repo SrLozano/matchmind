@@ -12,9 +12,9 @@ matchmind/
 │   │   ├── tests/
 │   │   ├── requirements.txt
 │   │   └── README.md
-│   └── web/              # Paste or scaffold the frontend here
+│   └── web/              # Next.js mobile-first frontend
 ├── packages/
-│   └── shared/           # Future shared schemas, constants, generated clients
+│   └── shared/           # Reserved for future shared contracts
 ├── docs/                 # Product and architecture notes
 ├── .env.example          # Root local environment template
 ├── Makefile              # Common local commands
@@ -36,7 +36,7 @@ Run backend tests:
 make api-test
 ```
 
-Install the frontend dependencies from the repo root:
+Install and run the frontend dependencies from the repo root:
 
 ```bash
 pnpm install
@@ -44,6 +44,13 @@ pnpm web:dev
 ```
 
 The frontend README has the framework-specific commands: [apps/web/README.md](apps/web/README.md).
+
+Current local URLs:
+
+```text
+API: http://localhost:8000
+Web: http://localhost:3000
+```
 
 ## Environment
 
@@ -59,10 +66,12 @@ The API env variables are documented in [apps/api/README.md](apps/api/README.md)
 
 - [Architecture](docs/architecture.md) explains repo boundaries and provider cache flows.
 - [Polymarket Integration](docs/polymarket-integration.md) records the current Polymarket data model, endpoints, classification rules, and operational caveats.
+- [Backend README](apps/api/README.md) documents endpoints, environment variables, and SQL schema.
+- [Web README](apps/web/README.md) documents the Next.js app, public env vars, and frontend commands.
 
-## Pasting Your Frontend
+## Frontend Status
 
-Put the frontend project contents directly inside `apps/web`.
+`apps/web` now contains the imported v1 Next.js app. It includes the mobile shell, bottom navigation, chat coach, daily fixture feed, Polymarket market signals, bet tracker, profile, language toggle, and API client wiring.
 
 Recommended frontend env naming:
 

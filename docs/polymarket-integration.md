@@ -11,6 +11,9 @@ Best v1 use:
 - World Cup winner markets
 - Group winner markets
 - Team advancement/progression markets
+- Reach-stage markets
+- Continent winner markets
+- Top goalscorer markets
 - Tournament-level market signals
 - Chat context for long-term bets
 
@@ -41,6 +44,11 @@ This mirrors the API-Football cache design and keeps chat resilient when provide
 `GET /polymarket/signals`
 
 Returns compact active World Cup 2026 signals from Supabase/memory. This is for UI surfaces such as Market Signals or future Pronósticos cards.
+
+Query parameters:
+
+- `limit`: 1-50, default `16`.
+- `market_type`: optional filter. Must be one of the supported market types.
 
 `POST /polymarket/seed-from-discovery`
 
@@ -95,6 +103,18 @@ market_slug
 
 Then it normalizes the text and applies string/regex rules.
 
+Current supported market types:
+
+```text
+tournament_outright
+group_winner
+advance_to_knockout
+reach_stage
+continent_winner
+top_goalscorer
+squad_inclusion
+```
+
 Current mapping:
 
 ```text
@@ -107,6 +127,18 @@ winner/champion/win the world cup/lift the world cup
 qualify/advance/progress/make the round/reach
 -> advance_to_knockout
 
+reach/make + final/semi-final/quarter-final
+-> reach_stage
+
+world cup + continent + win/winner
+-> continent_winner
+
+top goalscorer/golden boot/most goals
+-> top_goalscorer
+
+squad/roster/convocatoria/lista
+-> squad_inclusion
+
 vs/v/versus/draw
 -> match winner, currently not user-facing for Polymarket
 
@@ -114,7 +146,7 @@ club world cup / women's world cup / cricket / rugby / etc.
 -> unrelated/noise
 ```
 
-Known caveat: `tournament/other` is currently normalized broadly. Before exposing more non-team markets, split it into clearer buckets such as `squad_inclusion`, `top_goalscorer`, `continent_winner`, `tournament_other`, and `unsupported`.
+Known caveat: `squad_inclusion` is supported by the parser but currently capped out of the default diversified signal feed, because these markets are less central to the v1 betting coach experience.
 
 ## Chat Behavior
 
@@ -125,6 +157,8 @@ Examples that should use Polymarket:
 - "Should I bet Spain to win the World Cup at 9.00?"
 - "Is France good value to win its group?"
 - "Will Mexico advance from the group?"
+- "Can Brazil reach the semifinals?"
+- "Is Mbappé top goalscorer worth it?"
 
 Examples that should not use Polymarket yet:
 
@@ -162,7 +196,7 @@ curl -X POST http://localhost:8000/polymarket/refresh \
   -H "X-Internal-Token: $INTERNAL_API_TOKEN"
 ```
 
-The live refresh endpoint should be run from an environment that can access Polymarket. If a local/company network blocks Polymarket, use the seed endpoint for development.
+The live refresh endpoint should be run from an environment that can access Polymarket. If a local/company network blocks Polymarket, use the seed endpoint for development. Runtime reads prefer Supabase, then fall back to the local discovery JSON if the table is empty or unavailable.
 
 ## Code Pointers
 
@@ -176,7 +210,7 @@ The live refresh endpoint should be run from an environment that can access Poly
 
 ## Next Improvements
 
-- Split `tournament/other` into more precise market types.
 - Add a scheduled refresh job for `POST /polymarket/refresh`.
 - Add divergence logic against bookmaker odds once The Odds API data is cached.
 - Use snapshots to build Rising Signals and movement summaries.
+- Review whether `squad_inclusion` should become user-facing or remain hidden from default signals.

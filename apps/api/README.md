@@ -10,13 +10,23 @@ apps/api/
 │   ├── main.py
 │   ├── config.py
 │   ├── routers/
-│   │   └── chat.py
+│   │   ├── bets.py
+│   │   ├── chat.py
+│   │   ├── polymarket.py
+│   │   ├── users.py
+│   │   └── world_cup.py
 │   ├── services/
 │   │   ├── api_football.py
+│   │   ├── bet_parser.py
+│   │   ├── bets.py
 │   │   ├── gpt.py
-│   │   └── supabase.py
+│   │   ├── polymarket.py
+│   │   ├── supabase.py
+│   │   └── world_cup_teams.py
 │   └── models/
-│       └── chat.py
+│       ├── bets.py
+│       ├── chat.py
+│       └── users.py
 ├── tests/
 ├── .env.example
 ├── requirements.txt
@@ -55,6 +65,7 @@ make api-test
 ## Endpoints
 
 - `GET /health` checks API and Supabase connectivity.
+- `GET /users/me?user_id=...` returns the current dev user's plan and chat usage.
 - `GET /world-cup/fixtures` returns cached 2026 World Cup fixture context from Supabase/memory.
 - `POST /world-cup/refresh` refreshes fixtures from API-Football. This is internal and requires `X-Internal-Token` matching `INTERNAL_API_TOKEN`.
 - `GET /polymarket/signals` returns compact active World Cup 2026 prediction-market signals from Supabase/memory.
@@ -86,6 +97,8 @@ Returns:
   "daily_chats_remaining": 4
 }
 ```
+
+`preferred_language` can be `"en"` or `"es"`. If omitted, the backend detects language from the message and asks the coach to answer in that language.
 
 ### Bet Tracker
 
@@ -133,7 +146,7 @@ create extension if not exists "pgcrypto";
 
 create table if not exists public.users (
     id uuid primary key default gen_random_uuid(),
-    email text not null unique,
+    email text unique,
     plan text not null default 'free' check (plan in ('free', 'premium')),
     daily_chat_count integer not null default 0,
     last_reset_date date not null default current_date,
@@ -243,9 +256,20 @@ create index if not exists idx_polymarket_snapshots_market_time
     on public.polymarket_market_snapshots(polymarket_market_id, fetched_at desc);
 
 grant usage on schema public to service_role;
+grant select, insert, update on public.users to service_role;
+grant select, insert, update on public.conversations to service_role;
+grant select, insert, update, delete on public.bet_tracker to service_role;
 grant select, insert, update on public.world_cup_matches to service_role;
 grant select, insert, update on public.polymarket_markets to service_role;
 grant select, insert on public.polymarket_market_snapshots to service_role;
+```
+
+Seed a local dev user if you are using the default frontend env:
+
+```sql
+insert into public.users (id, email, plan)
+values ('a87d09e8-7e10-46b8-9927-c9500c9559cf', 'dev@matchmind.local', 'free')
+on conflict (id) do nothing;
 ```
 
 ## API-Football Cache Flow
@@ -279,11 +303,18 @@ POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=40
 POLYMARKET_MIN_MATCH_CONFIDENCE=0.7
 POLYMARKET_MIN_SIGNAL_QUALITY=40
 INTERNAL_API_TOKEN=
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 Match detection uses a local tournament team alias registry first. If no confident cached fixture is found and the message looks match-specific, Matchmind can call `MATCH_DETECTION_MODEL` as a fallback extractor, then validates the proposed teams against Supabase fixtures before using any match context.
 
 Polymarket context reads from Supabase first, then falls back to the normalized exploration output at `POLYMARKET_DISCOVERY_PATH` if the table is empty or unavailable. Chat only injects it for supported long-term markets such as World Cup winner, group winner, and team advancement. Match-level bets, totals, cards, corners, and handicaps intentionally do not receive a Polymarket context block until active fixture-level World Cup markets exist.
+
+## Current Not-Yet-Wired Areas
+
+- The Odds API is not integrated yet. Do not document or depend on bookmaker divergence until an odds cache table and refresh endpoint exist.
+- Stripe is not integrated yet. `STRIPE_SECRET_KEY` is present as a future payment placeholder.
+- Frontend auth is not integrated yet. Local development uses the dev user ID documented above.
 
 ## Polymarket Cache Flow
 

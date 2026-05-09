@@ -11,6 +11,14 @@ Next.js frontend for Matchmind. This app was imported from the v1 frontend and l
 - shadcn/Radix UI components
 - pnpm
 
+## Current Screens
+
+- Chat coach: sends `POST /chat` and shows verdict metadata, confidence, and market signal context when available.
+- Daily feed: reads `GET /world-cup/fixtures` and shows cached World Cup fixtures with free/premium insight slots.
+- Market signals: reads `GET /polymarket/signals` and shows usable long-term crowd probability signals with premium locking.
+- Bet tracker: uses `POST /bets`, `GET /bets`, `PATCH /bets/{bet_id}`, and `DELETE /bets/{bet_id}`.
+- Profile: reads `GET /users/me`, shows plan/chat usage, language toggle, and the tournament pass CTA.
+
 ## Setup
 
 From the repo root:
@@ -71,7 +79,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_DEV_USER_ID=a87d09e8-7e10-46b8-9927-c9500c9559cf
 ```
 
-The chat screen calls `POST /chat` on `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_DEV_USER_ID` should match a user that exists in Supabase while auth is still being wired.
+The frontend calls the FastAPI backend on `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_DEV_USER_ID` should match a user that exists in Supabase while auth is still being wired.
 
 Do not put private backend secrets in the frontend. Keep `OPENAI_API_KEY`, Supabase service-role keys, Stripe secrets, and provider API keys in the root/backend `.env`.
 
@@ -100,3 +108,5 @@ pnpm lint
 - The app name is `@matchmind/web` so pnpm can target it from the monorepo root.
 - Shared frontend/backend contracts can go in `packages/shared` later.
 - Static assets belong in `apps/web/public`.
+- Payments are not wired yet. The profile upgrade button is a UI placeholder until Stripe checkout exists.
+- Real auth is not wired yet. The app uses the dev user ID for all user-specific calls.

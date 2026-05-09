@@ -62,11 +62,11 @@ The tournament pass is the key pricing insight: users perceive it as a bounded, 
 
 ## Data Sources
 
-| Source | Purpose |
-|---|---|
-| API-Football | Team stats, standings, recent form, head-to-head history |
-| The Odds API | Real-time bookmaker odds across multiple markets |
-| Polymarket | Crowd wisdom implied probabilities from prediction markets |
+| Source | Purpose | Current status |
+|---|---|---|
+| API-Football | Team stats, standings, recent form, head-to-head history | Fixture cache integrated through `world_cup_matches` |
+| The Odds API | Real-time bookmaker odds across multiple markets | Planned next; not integrated yet |
+| Polymarket | Crowd wisdom implied probabilities from prediction markets | Cache, seed, refresh, signals, and chat context integrated |
 
 ### Why Polymarket matters
 Polymarket prices reflect aggregated probability from people betting real money. Combined with bookmaker odds and stats, divergences between sources reveal actionable insights the coach can explain.
@@ -77,7 +77,7 @@ Polymarket prices reflect aggregated probability from people betting real money.
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Frontend | Lovable or V0 | Built separately |
+| Frontend | Next.js App Router | Imported v1 frontend in `apps/web` |
 | Backend | Python + FastAPI | Async throughout |
 | Database + Auth | Supabase | RLS enabled |
 | AI Model | OpenAI GPT-5.4 mini | See model decision below |
@@ -104,11 +104,14 @@ Chosen over Firebase and self-hosted PostgreSQL for speed of setup. Provides dat
 - Automatic RLS: enabled (critical — ensures users can only access their own data)
 
 ### Supabase API Keys Usage
-- **Publishable key:** frontend (Lovable/V0)
+- **Publishable key:** future frontend auth/client usage
 - **Secret key:** backend FastAPI (.env)
 
 ### AI Provider: OpenAI (not Anthropic Claude)
 Initial plan included Claude API. Switched to OpenAI GPT during early backend setup.
+
+### Frontend: Next.js v1 imported
+The frontend is no longer only a Lovable/V0 placeholder. `apps/web` now contains a Next.js App Router mobile-first app with the main product tabs: Chat, Feed, Market Signals, Tracker, and Profile. Lovable/V0 can still be used for design iteration, but the repo currently owns a working frontend.
 
 ### Data Caching
 Provider data should not be fetched directly in the normal chat request path. The preferred pattern is:
@@ -122,6 +125,8 @@ external provider
 ```
 
 API-Football fixtures use this pattern through `world_cup_matches`. Polymarket uses `polymarket_markets` and `polymarket_market_snapshots`.
+
+The Odds API should follow this same cache-first pattern next. It is not wired yet in the current backend.
 
 ### Fallback Strategy for Live Data
 If team names are not detected in a user message, or if any external API call fails, the chat endpoint falls back gracefully and the coach continues without live data. The chat never crashes due to a data source failure.
@@ -221,9 +226,15 @@ matchmind/
 SUPABASE_URL=
 SUPABASE_KEY=
 OPENAI_API_KEY=
+OPENAI_MODEL=
+FREE_DAILY_CHAT_LIMIT=
 API_FOOTBALL_KEY=
-ODDS_API_KEY=
+API_FOOTBALL_BASE_URL=
 STRIPE_SECRET_KEY=
+WORLD_CUP_LEAGUE_ID=
+WORLD_CUP_SEASON=
+WORLD_CUP_CACHE_TTL_SECONDS=
+WORLD_CUP_FIXTURE_REFRESH_HOURS=
 POLYMARKET_DISCOVERY_PATH=
 POLYMARKET_GAMMA_BASE_URL=
 POLYMARKET_CLOB_BASE_URL=
@@ -231,6 +242,19 @@ POLYMARKET_CACHE_TTL_SECONDS=
 POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=
 POLYMARKET_MIN_MATCH_CONFIDENCE=
 POLYMARKET_MIN_SIGNAL_QUALITY=
+MATCH_DETECTION_FALLBACK_ENABLED=
+MATCH_DETECTION_MODEL=
+INTERNAL_API_TOKEN=
+CORS_ALLOWED_ORIGINS=
+```
+
+`ODDS_API_KEY` should be added when The Odds API cache is implemented. It is not read by the current backend.
+
+Current frontend public variables live in `apps/web/.env.local`:
+
+```text
+NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_DEV_USER_ID=
 ```
 
 ---
@@ -239,7 +263,9 @@ POLYMARKET_MIN_SIGNAL_QUALITY=
 
 | Method | Endpoint | Description |
 |---|---|---|
+| GET | / | API metadata |
 | GET | /health | Health check, confirms DB connection |
+| GET | /users/me | Current dev user profile and chat usage |
 | POST | /chat | Main coach chat endpoint |
 | GET | /world-cup/fixtures | Cached World Cup fixture context |
 | POST | /world-cup/refresh | Internal API-Football fixture refresh |
@@ -278,11 +304,12 @@ POLYMARKET_MIN_SIGNAL_QUALITY=
 ### Phase 2 - Live Data (current)
 - API-Football fixture cache integrated
 - Polymarket cache, seed, refresh, signals, and chat context integrated
+- Next.js v1 frontend imported and wired to chat, fixtures, signals, bets, and profile endpoints
 - Next: The Odds API cache and bookmaker-vs-crowd divergence
-- Next: Feed/Pronósticos UI surfaces on top of cached data
+- Next: turn the current feed/signals UI into richer Pronósticos and divergence surfaces once odds data exists
 
 ### Phase 3 - UX and Polish (~May 31)
-- Final frontend build in Lovable/V0
+- Polish current Next.js frontend and optionally use Lovable/V0 for design iteration
 - Mobile-first design
 - 30-second onboarding flow
 - Loading states, errors, empty states
