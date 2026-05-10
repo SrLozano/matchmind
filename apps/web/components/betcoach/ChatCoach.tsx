@@ -97,6 +97,8 @@ export default function ChatCoach() {
     if (e.key === "Enter") void handleSend()
   }
 
+  const sendDisabled = !input.trim() || isSending
+
   const handleExamplePrompt = (prompt: string) => {
     if (isSending) return
     setInput(prompt)
@@ -435,8 +437,10 @@ export default function ChatCoach() {
           />
           <button
             onClick={() => void handleSend()}
-            className="w-8 h-8 rounded-xl bg-[#00FF87] flex items-center justify-center flex-shrink-0 hover:bg-[#00e87a] active:scale-95 transition-all disabled:opacity-40"
-            disabled={!input.trim() || isSending}
+            className={`w-8 h-8 rounded-xl bg-[#00FF87] flex items-center justify-center flex-shrink-0 transition-all ${
+              sendDisabled ? "opacity-40" : "hover:bg-[#00e87a] active:scale-95"
+            }`}
+            aria-disabled={sendDisabled}
             aria-label={t.chat.send}
           >
             <Send className="w-4 h-4 text-[#070D1A]" />
