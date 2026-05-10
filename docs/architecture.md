@@ -40,24 +40,36 @@ Current examples:
 - API-Football fixtures: `POST /world-cup/refresh` writes `world_cup_matches`.
 - Polymarket markets: `POST /polymarket/refresh` writes `polymarket_markets` and `polymarket_market_snapshots`.
 - Polymarket bootstrap: `POST /polymarket/seed-from-discovery` writes the same tables from the local exploration JSON when live Polymarket access is blocked.
-
-Planned next provider:
-
-- The Odds API should follow the same cache-first pattern before any bookmaker-vs-crowd divergence appears in chat or the UI.
+- The Odds API bookmaker odds: `POST /odds/refresh` writes `bookmaker_events`, `bookmaker_odds`, `bookmaker_odds_snapshots`, and `bookmaker_market_consensus`.
+- The Odds API bootstrap: `POST /odds/seed-from-discovery` writes the same bookmaker tables from `tmp/odds_api_world_cup_discovery.json`.
 
 ## Current Product Surfaces
 
-- Chat: `POST /chat`, backed by OpenAI plus cached API-Football and supported long-term Polymarket context.
-- Daily Feed: `GET /world-cup/fixtures`, showing cached World Cup fixtures and free/premium insight slots.
+- Chat: `POST /chat`, backed by OpenAI plus cached API-Football context, supported long-term Polymarket context, and cached bookmaker consensus when the user asks about a supported match/tournament market.
+- Match Radar / Daily Feed: `GET /world-cup/fixtures` plus `GET /odds/matches`, showing cached fixtures, 1X2 bookmaker prices, the market favorite, no-vig/fair probability, bookmaker count, freshness, and expandable goals over/under and goal handicap markets.
 - Market Signals: `GET /polymarket/signals`, showing usable tournament-level crowd signals with premium locking.
 - Bet Tracker: `POST /bets`, `GET /bets`, `PATCH /bets/{bet_id}`, and `DELETE /bets/{bet_id}`.
 - Profile: `GET /users/me`, currently using a dev user ID until real auth is wired.
+
+## Bookmaker Odds Layer
+
+The Odds API integration is currently scoped to featured World Cup match markets and tournament outrights:
+
+- `h2h`: match winner / 1X2.
+- `spreads`: goal handicap.
+- `totals`: goals over/under.
+- `outrights`: World Cup winner futures.
+
+The backend stores individual bookmaker prices in `bookmaker_odds`, keeps refresh history in `bookmaker_odds_snapshots`, and precomputes product-facing rows in `bookmaker_market_consensus`. Most product surfaces should read from `bookmaker_market_consensus` because it contains best price, median price, no-vig probability, and bookmaker count.
+
+The frontend currently uses this data in Match Radar. The expandable label is intentionally user-friendly: "More markets" opens sections named "Goals over/under" and "Goal handicap" instead of bookmaker-native terms like "totals" alone.
 
 ## Current Gaps
 
 - Auth is not wired in the frontend yet. The web app uses `NEXT_PUBLIC_DEV_USER_ID`.
 - Stripe checkout is represented in pricing/profile UI and env placeholders, but no payment endpoints are implemented yet.
-- The Odds API is still planned. There is no odds cache table or bookmaker divergence endpoint in the backend yet.
+- Additional The Odds API event-specific markets such as BTTS, cards, corners, and player props are not wired into product surfaces yet.
+- Bookmaker-vs-Polymarket divergence is not implemented yet. The clean first overlap would be bookmaker `outrights` vs Polymarket `tournament_outright`.
 - `packages/shared` is intentionally empty until shared generated clients, schemas, or constants are needed.
 
 ## Documentation Map

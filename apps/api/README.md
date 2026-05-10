@@ -444,6 +444,15 @@ curl -X POST http://localhost:8000/odds/refresh \
   -H "X-Internal-Token: $INTERNAL_API_TOKEN"
 ```
 
+The current product-facing market keys are:
+
+- `h2h`: match winner / 1X2.
+- `spreads`: goal handicap.
+- `totals`: goals over/under.
+- `outrights`: World Cup winner futures.
+
+Match Radar reads `GET /odds/matches`. It shows 1X2 best prices by default and exposes `totals` and `spreads` inside the expandable "More markets" area, labelled for users as "Goals over/under" and "Goal handicap."
+
 ## Current Not-Yet-Wired Areas
 
 - The Odds API is integrated as a cache-first bookmaker layer for featured match odds and tournament outrights. Additional event-specific markets such as BTTS, cards, corners, and player props are still not wired into product surfaces.
@@ -487,14 +496,18 @@ Manual verification checklist:
 
 1. Refresh fixtures once with a valid `API_FOOTBALL_KEY`.
 2. Call `GET /world-cup/fixtures` and confirm `count`, fixture freshness, and `api_football_usage.fixture_requests`.
-3. Send `Estoy pensando en meter 20€ a España contra Alemania a cuota 2.10`.
-4. Send `Thinking of putting €20 on Spain to beat Germany at 2.10`.
-5. Send `Spain vs Alemania at 2.10, cómo lo ves?`.
-6. Send `Argentina campeona del mundial a cuota 6.50` and confirm no forced match fixture context.
-7. Send `¿Qué apuesta ves buena hoy?` and confirm normal clarification behavior.
-8. Remove or break `API_FOOTBALL_KEY`; chat should still work from cached Supabase data or without match context.
-9. Repeat chat calls and confirm `api_football_usage.fixture_requests` does not increase.
-10. Wait for `WORLD_CUP_CACHE_TTL_SECONDS`, then confirm chat can reload fixtures from Supabase without calling API-Football.
+3. Seed or refresh bookmaker odds with `POST /odds/seed-from-discovery` or `POST /odds/refresh`.
+4. Call `GET /odds/matches` and confirm match cards have `h2h` rows plus `featured_markets.totals` and/or `featured_markets.spreads` when covered.
+5. Open Match Radar in the web app and confirm bookmaker odds appear under each covered fixture.
+6. Expand "More markets" and confirm "Goals over/under" and "Goal handicap" rows appear with best price, fair probability, and bookmaker count.
+7. Send `Estoy pensando en meter 20€ a España contra Alemania a cuota 2.10`.
+8. Send `Thinking of putting €20 on Spain to beat Germany at 2.10`.
+9. Send `Spain vs Alemania at 2.10, cómo lo ves?`.
+10. Send `Argentina campeona del mundial a cuota 6.50` and confirm no forced match fixture context.
+11. Send `¿Qué apuesta ves buena hoy?` and confirm normal clarification behavior.
+12. Remove or break `API_FOOTBALL_KEY`; chat should still work from cached Supabase data or without match context.
+13. Repeat chat calls and confirm `api_football_usage.fixture_requests` does not increase.
+14. Wait for `WORLD_CUP_CACHE_TTL_SECONDS`, then confirm chat can reload fixtures from Supabase without calling API-Football.
 
 ## Notes
 
@@ -504,3 +517,4 @@ Manual verification checklist:
 - The coach parses decimal odds, stake, teams, and obvious markets before calling the AI model so implied probability is stable even when live data is unavailable.
 - English and Spanish are supported in the coach flow. Parser output is canonicalized to English for API consistency, while the coach replies in the detected user language.
 - API-Football fixture context is cached persistently in Supabase and only refreshed outside the normal per-message chat path.
+- The Odds API bookmaker context is cached persistently in Supabase and only refreshed or seeded outside the normal per-message chat path.

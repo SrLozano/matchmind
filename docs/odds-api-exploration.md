@@ -320,25 +320,25 @@ Avoid comparing Polymarket to match-level h2h unless Polymarket has active fixtu
 
 ## Proposed Data Flow
 
-Keep the existing provider pattern:
+Implemented data flow keeps the existing provider pattern:
 
 ```text
 The Odds API
 -> internal refresh/discovery endpoint
 -> Supabase odds tables
 -> in-memory TTL cache
--> /chat, /feed, /odds-analyzer
+-> /chat, /odds/matches, /odds/analyze, Match Radar
 ```
 
 Chat should never call The Odds API directly.
 
-## Proposed Tables
+## Implemented Tables
 
 ### `bookmaker_events`
 
-Current provider mapping for events.
+Current provider mapping for events. This table must include both match events and the separate outright event from `soccer_fifa_world_cup_winner`.
 
-Suggested fields:
+Main fields:
 
 - `id uuid primary key`
 - `odds_api_event_id text unique not null`
@@ -357,13 +357,14 @@ Suggested fields:
 
 Latest normalized odds by event/bookmaker/market/outcome/point.
 
-Suggested fields:
+Main fields:
 
 - `id uuid primary key`
 - `odds_api_event_id text not null`
 - `bookmaker_key text not null`
 - `bookmaker_title text not null`
 - `market_key text not null`
+- `line_key text not null`
 - `outcome_name text not null`
 - `outcome_team text null`
 - `price numeric(10, 4) not null`
@@ -372,13 +373,15 @@ Suggested fields:
 - `bookmaker_last_update timestamptz`
 - `fetched_at timestamptz not null`
 - `raw_payload jsonb`
-- unique constraint on `odds_api_event_id, bookmaker_key, market_key, outcome_name, point`
+- unique constraint on `odds_api_event_id, bookmaker_key, market_key, outcome_name, line_key`
+
+`line_key` exists because Postgres unique constraints do not treat `null` values as equal. Without it, `h2h` and `outrights` rows with `point = null` can duplicate across refreshes. For regular no-line markets, `line_key` is the market key, for example `h2h`. For line markets, it includes the point, for example `totals:2.5` or `spreads:1.5`.
 
 ### `bookmaker_odds_snapshots`
 
 Historical observations for line movement and closing line value.
 
-Suggested fields:
+Main fields:
 
 - `id uuid primary key`
 - same identifying fields as `bookmaker_odds`
@@ -392,15 +395,17 @@ Suggested fields:
 
 Precomputed consensus rows for fast chat/UI reads.
 
-Suggested fields:
+Main fields:
 
 - `id uuid primary key`
 - `odds_api_event_id text not null`
 - `market_key text not null`
+- `line_key text not null`
 - `outcome_name text not null`
 - `point numeric(10, 3) null`
 - `best_price numeric(10, 4)`
 - `best_bookmaker_key text`
+- `best_bookmaker_title text`
 - `median_price numeric(10, 4)`
 - `mean_price numeric(10, 4)`
 - `min_price numeric(10, 4)`
@@ -410,24 +415,31 @@ Suggested fields:
 - `stale_bookmaker_count integer`
 - `fetched_at timestamptz not null`
 
-## Proposed Backend Endpoints
+## Implemented Backend Endpoints
 
 Internal:
 
 - `POST /odds/refresh/events`: refresh World Cup event ids and map them to fixtures.
 - `POST /odds/refresh`: refresh featured markets for configured regions/books.
+- `POST /odds/seed-from-discovery`: seed match and outright bookmaker data from `ODDS_API_DISCOVERY_PATH`.
+
+Planned later:
+
 - `POST /odds/refresh-event/{event_id}`: refresh additional markets for one event near kickoff.
 
 Public/product:
 
 - `GET /odds/matches`: compact odds context for feed cards.
-- `GET /odds/matches/{event_id}`: full current odds by market/bookmaker.
 - `POST /odds/analyze`: compare user odds against cache and return value summary.
+
+Planned later:
+
+- `GET /odds/matches/{event_id}`: full current odds by market/bookmaker.
 
 Chat integration:
 
-- Add `build_bookmaker_context_for_chat(message, parsed_bet, match_context)` that reads `bookmaker_market_consensus`.
-- Inject only compact fields into GPT context: event, market, user odds, implied probability, consensus probability, best price, best bookmaker title, freshness, and caveats.
+- `build_bookmaker_context_for_chat(message, parsed_bet, match_context)` reads cached bookmaker consensus.
+- Chat injects only compact fields into GPT context: event, market, user odds, implied probability, consensus probability, best price, best bookmaker title, freshness, and caveats.
 
 ## V1 Rollout
 
@@ -439,8 +451,10 @@ ODDS_API_BASE_URL=https://api.the-odds-api.com
 ODDS_API_REGIONS=eu
 ODDS_API_BOOKMAKERS=
 ODDS_API_MARKETS=h2h,spreads,totals
+ODDS_API_OUTRIGHT_MARKETS=outrights
 ODDS_API_ODDS_FORMAT=decimal
 ODDS_API_CACHE_TTL_SECONDS=600
+ODDS_API_DISCOVERY_PATH=tmp/odds_api_world_cup_discovery.json
 ODDS_API_REFRESH_MINUTES=30
 ```
 
@@ -452,17 +466,17 @@ scripts/explore_odds_api_world_cup.py
 
 The script should call sports, events, featured odds, and event markets for a small sample. It should write `tmp/odds_api_world_cup_discovery.json`, including provider usage headers.
 
-3. Implement cache tables and refresh endpoint for featured markets only.
+3. Implement cache tables and refresh endpoint for featured markets only. Done.
 
-4. Compute consensus rows during refresh.
+4. Compute consensus rows during refresh. Done.
 
-5. Wire Daily Feed to show 1X2 consensus and best prices.
+5. Wire Match Radar / Daily Feed to show 1X2 consensus and best prices. Done.
 
-6. Wire chat to use cached odds for match-specific bets.
+6. Wire chat to use cached odds for match-specific bets. Done.
 
-7. Add Odds Analyzer using cached consensus.
+7. Add Odds Analyzer using cached consensus. Backend endpoint exists through `POST /odds/analyze`; dedicated frontend flow is not built yet.
 
-8. Add tournament outright comparison with Polymarket once `soccer_fifa_world_cup_winner` is verified live.
+8. Add tournament outright comparison with Polymarket once `soccer_fifa_world_cup_winner` is verified live. Not implemented yet.
 
 ## Open Questions
 
@@ -593,3 +607,35 @@ Discovery verdict:
 ```text
 integrate featured match odds
 ```
+
+## Implementation Update - 2026-05-10
+
+The first Matchmind integration is now implemented:
+
+- Service: `apps/api/app/services/odds_api.py`
+- Router: `apps/api/app/routers/odds.py`
+- Chat wiring: `apps/api/app/routers/chat.py` and `apps/api/app/services/gpt.py`
+- Tests: `apps/api/tests/test_odds_api.py`
+- Frontend API client: `apps/web/lib/api.ts`
+- Frontend surface: `apps/web/components/betcoach/DailyFeed.tsx`
+
+Implemented surfaces:
+
+- `GET /odds/matches` powers Match Radar bookmaker panels.
+- `POST /odds/analyze` returns deterministic comparison of user-entered odds against cached consensus.
+- `POST /odds/seed-from-discovery` seeds Supabase from the local discovery JSON.
+- `POST /odds/refresh/events` refreshes World Cup event ids.
+- `POST /odds/refresh` refreshes featured match odds and tournament outrights.
+
+Match Radar now shows:
+
+- 1X2 best prices for home, draw, and away.
+- The bookmaker-consensus favorite, highlighted visually. This highlight means "most likely by no-vig consensus," not "recommended bet."
+- Best price, no-vig/fair probability, bookmaker count, and odds freshness.
+- Expandable "More markets" section with "Goals over/under" and "Goal handicap."
+
+Known caveats:
+
+- Additional event-specific markets such as BTTS, cards, corners, and player props are not yet wired into the product.
+- The dedicated Odds Analyzer UI is not built yet; only the backend endpoint exists.
+- Bookmaker-vs-Polymarket divergence is not implemented yet.
