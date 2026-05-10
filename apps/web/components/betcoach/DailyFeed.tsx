@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertCircle, CalendarDays, Clock, Lock, RefreshCw, Sparkles } from "lucide-react"
+import { AlertCircle, CalendarDays, ChevronDown, Clock, Lock, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage } from "@/lib/i18n"
@@ -188,11 +188,14 @@ function MatchRow({
       </div>
 
       <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-4 py-3">
-        {access === "locked" ? (
-          <LockedInsight teaser={match.teaser} />
-        ) : (
-          <UnlockedInsight match={match} hasPick={hasPick} access={access} odds={odds} />
-        )}
+        <div className="space-y-3">
+          {access === "locked" ? (
+            <LockedInsight teaser={match.teaser} />
+          ) : (
+            <UnlockedInsight match={match} hasPick={hasPick} access={access} />
+          )}
+          <BookmakerPanel odds={odds} homeTeam={homeTeam} awayTeam={awayTeam} />
+        </div>
       </div>
     </article>
   )
@@ -245,61 +248,174 @@ function UnlockedInsight({
   match,
   hasPick,
   access,
-  odds,
 }: {
   match: WorldCupFixture
   hasPick: boolean
   access: MatchAccess
-  odds: OddsMatch | null
 }) {
   const { t } = useLanguage()
   const isPremiumAccess = access === "premium"
-  const favorite = odds?.h2h?.[0] ?? null
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-foreground">
-            {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
-          </p>
-          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
-            {match.coach_summary ??
-              (hasPick
-                ? t.feed.coachAvailable
-                : isPremiumAccess
-                  ? t.feed.premiumFixture
-                  : t.feed.unlockedFixture)}
-          </p>
-        </div>
-        <div className="flex min-w-[74px] flex-col items-end">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
-            {t.feed.confidence}
-          </span>
-          <span className={`text-sm font-bold ${isPremiumAccess ? "text-[#FFD600]" : "text-[#00FF87]"}`}>
-            {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
-          </span>
-          {typeof match.edge === "number" && (
-            <span className="text-[10px] font-semibold text-[#00FF87]">
-              {match.edge > 0 ? "+" : ""}
-              {match.edge.toFixed(1)}% {t.feed.edge}
-            </span>
-          )}
-        </div>
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold text-foreground">
+          {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
+        </p>
+        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
+          {match.coach_summary ??
+            (hasPick
+              ? t.feed.coachAvailable
+              : isPremiumAccess
+                ? t.feed.premiumFixture
+                : t.feed.unlockedFixture)}
+        </p>
       </div>
-      {favorite && <BookmakerStrip favorite={favorite} />}
+      <div className="flex min-w-[74px] flex-col items-end">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+          {t.feed.confidence}
+        </span>
+        <span className={`text-sm font-bold ${isPremiumAccess ? "text-[#FFD600]" : "text-[#00FF87]"}`}>
+          {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
+        </span>
+        {typeof match.edge === "number" && (
+          <span className="text-[10px] font-semibold text-[#00FF87]">
+            {match.edge > 0 ? "+" : ""}
+            {match.edge.toFixed(1)}% {t.feed.edge}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
 
-function BookmakerStrip({ favorite }: { favorite: OddsConsensusRow }) {
+function BookmakerPanel({
+  odds,
+  homeTeam,
+  awayTeam,
+}: {
+  odds: OddsMatch | null
+  homeTeam: string
+  awayTeam: string
+}) {
+  const { language, t } = useLanguage()
+  const home = findOutcome(odds?.h2h ?? [], homeTeam)
+  const away = findOutcome(odds?.h2h ?? [], awayTeam)
+  const draw = odds?.h2h.find((row) => row.outcome_name === "Draw") ?? null
+  const favorite = getFavorite([home, draw, away])
+  const hasExpandedMarkets = Boolean((odds?.featured_markets.totals?.length ?? 0) + (odds?.featured_markets.spreads?.length ?? 0))
+
+  if (!odds || odds.h2h.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-[#1A2845] px-3 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{t.feed.bookmakerOdds}</p>
+        <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">{t.feed.noBookmakerOdds}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border border-[#1A2845] bg-[#071022]">
+      <div className="flex items-center justify-between gap-3 border-b border-[#1A2845] px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5 shrink-0 text-[#00FF87]" />
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#A8B4D0]">{t.feed.bookmakerOdds}</p>
+            <p className="truncate text-[10px] text-[#6A7A9B]">
+              {favorite?.outcome_name ? `${t.feed.marketFavorite}: ${formatOutcomeName(favorite.outcome_name, language)}` : t.feed.marketSnapshot}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{t.feed.updated}</p>
+          <p className="text-[10px] font-semibold text-[#A8B4D0]">{formatShortDate(odds.last_fetched_at, language, t.feed.noValue)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 divide-x divide-[#1A2845]">
+        <PriceCell label={displayTeamName(homeTeam, language)} row={home} highlighted={favorite === home} />
+        <PriceCell label={t.feed.draw} row={draw} highlighted={favorite === draw} />
+        <PriceCell label={displayTeamName(awayTeam, language)} row={away} highlighted={favorite === away} />
+      </div>
+
+      {favorite && (
+        <div className="grid grid-cols-3 gap-2 border-t border-[#1A2845] px-3 py-2.5">
+          <MiniMetric label={t.feed.bestPrice} value={formatPrice(favorite.best_price, t.feed.noValue)} accent="text-[#00FF87]" />
+          <MiniMetric label={t.feed.fairProbability} value={formatPercent(favorite.no_vig_probability, t.feed.noValue)} />
+          <MiniMetric label={t.feed.bookmakers} value={formatBookmakerCount(favorite.bookmaker_count, t.feed.noValue)} />
+        </div>
+      )}
+
+      {hasExpandedMarkets && (
+        <details className="group border-t border-[#1A2845]">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[11px] font-semibold text-[#A8B4D0] transition-colors hover:text-foreground">
+            <span>{t.feed.moreMarkets}</span>
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="space-y-3 px-3 pb-3">
+            <MarketRows title={t.feed.totals} rows={odds.featured_markets.totals ?? []} language={language} emptyLabel={t.feed.noValue} />
+            <MarketRows title={t.feed.handicap} rows={odds.featured_markets.spreads ?? []} language={language} emptyLabel={t.feed.noValue} />
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
+
+function PriceCell({
+  label,
+  row,
+  highlighted,
+}: {
+  label: string
+  row: OddsConsensusRow | null
+  highlighted: boolean
+}) {
   const { t } = useLanguage()
 
   return (
-    <div className="grid grid-cols-3 gap-2 border-t border-[#1A2845] pt-3">
-      <MiniMetric label={t.feed.marketFavorite} value={favorite.outcome_name ?? t.feed.noValue} />
-      <MiniMetric label={t.feed.bestPrice} value={formatPrice(favorite.best_price, t.feed.noValue)} accent="text-[#00FF87]" />
-      <MiniMetric label={t.feed.fairProbability} value={formatPercent(favorite.no_vig_probability, t.feed.noValue)} />
+    <div className={`min-w-0 px-2 py-2.5 text-center ${highlighted ? "bg-[#00FF87]/8" : ""}`}>
+      <p className="truncate text-[10px] font-semibold text-[#6A7A9B]">{label}</p>
+      <p className={`mt-1 text-sm font-bold ${highlighted ? "text-[#00FF87]" : "text-foreground"}`}>
+        {formatPrice(row?.best_price ?? null, t.feed.noValue)}
+      </p>
+      <p className="mt-0.5 truncate text-[9px] text-[#6A7A9B]">{row?.best_bookmaker_title ?? t.feed.noValue}</p>
+    </div>
+  )
+}
+
+function MarketRows({
+  title,
+  rows,
+  language,
+  emptyLabel,
+}: {
+  title: string
+  rows: OddsConsensusRow[]
+  language: "en" | "es"
+  emptyLabel: string
+}) {
+  if (rows.length === 0) return null
+
+  return (
+    <div>
+      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#6A7A9B]">{title}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {rows.slice(0, 6).map((row, index) => (
+          <div key={`${row.market_key}-${row.outcome_name}-${row.point}-${index}`} className="min-w-0 rounded-md border border-[#1A2845] bg-[#0A1325] px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-[11px] font-semibold text-foreground">
+                {formatOutcomeName(row.outcome_name, language)}
+                {row.point !== null ? ` ${formatPoint(row.point)}` : ""}
+              </p>
+              <p className="shrink-0 text-xs font-bold text-[#00FF87]">{formatPrice(row.best_price, emptyLabel)}</p>
+            </div>
+            <p className="mt-1 truncate text-[9px] text-[#6A7A9B]">
+              {formatPercent(row.no_vig_probability, emptyLabel)} · {formatBookmakerCount(row.bookmaker_count, emptyLabel)}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -459,6 +575,45 @@ function formatPrice(value: number | null, fallback: string) {
 
 function formatPercent(value: number | null, fallback: string) {
   return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : fallback
+}
+
+function findOutcome(rows: OddsConsensusRow[], team: string) {
+  const normalized = normalizeTeam(team)
+  return rows.find((row) => normalizeTeam(row.outcome_name) === normalized) ?? null
+}
+
+function getFavorite(rows: Array<OddsConsensusRow | null>) {
+  return rows
+    .filter((row): row is OddsConsensusRow => Boolean(row))
+    .sort((a, b) => (b.no_vig_probability ?? 0) - (a.no_vig_probability ?? 0))[0] ?? null
+}
+
+function formatOutcomeName(value: string | null, language: "en" | "es") {
+  if (!value) return ""
+  if (value === "Draw") return language === "es" ? "Empate" : "Draw"
+  if (value === "Over") return language === "es" ? "Más de" : "Over"
+  if (value === "Under") return language === "es" ? "Menos de" : "Under"
+  return displayTeamName(value, language)
+}
+
+function formatPoint(value: number) {
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2).replace(/0$/, "")
+}
+
+function formatBookmakerCount(value: number, fallback: string) {
+  return value > 0 ? value.toString() : fallback
+}
+
+function formatShortDate(value: string | null, language: "en" | "es", fallback: string) {
+  if (!value) return fallback
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return fallback
+  return new Intl.DateTimeFormat(language === "es" ? "es-ES" : "en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }
 
 function formatUpdatedAt(
