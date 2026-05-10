@@ -15,6 +15,10 @@ type Message = {
   id: number
   role: "coach" | "user"
   text: string
+  confidenceScore?: number | null
+  verdict?: string | null
+  impliedProbability?: number | null
+  stakePosture?: string | null
   marketSignal?: ChatMarketSignal | null
 }
 
@@ -72,7 +76,15 @@ export default function ChatCoach() {
       setMessages((prev) =>
         prev.map((message) =>
           message.id === pendingCoachMsg.id
-            ? { ...message, text: result.response, marketSignal: result.market_signal }
+            ? {
+                ...message,
+                text: result.response,
+                confidenceScore: result.confidence_score,
+                verdict: result.verdict,
+                impliedProbability: result.implied_probability,
+                stakePosture: result.stake_posture,
+                marketSignal: result.market_signal,
+              }
             : message
         )
       )
@@ -143,6 +155,7 @@ export default function ChatCoach() {
           id: index + 1,
           role: message.role === "assistant" ? "coach" : "user",
           text: message.content,
+          confidenceScore: message.confidence_score,
         }))
       )
       setHistoryOpen(false)
@@ -173,6 +186,80 @@ export default function ChatCoach() {
   const formatPercent = (value: number | null | undefined) => {
     if (value === null || value === undefined) return "—"
     return `${(value * 100).toFixed(1)}%`
+  }
+
+  const formatScore = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return null
+    return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)
+  }
+
+  const formatVerdict = (value: string | null | undefined) => {
+    if (!value) return null
+    const labels: Record<string, { en: string; es: string }> = {
+      "GOOD VALUE": { en: "Good value", es: "Buen valor" },
+      FAIR: { en: "Fair", es: "Justa" },
+      RISKY: { en: "Risky", es: "Arriesgada" },
+      AVOID: { en: "Avoid", es: "Evitar" },
+      "NOT ENOUGH INFO": { en: "Need info", es: "Falta info" },
+    }
+    return labels[value]?.[language] ?? value
+  }
+
+  const verdictTone = (value: string | null | undefined) => {
+    if (value === "GOOD VALUE") return "border-[#00FF87]/35 bg-[#00FF87]/10 text-[#00FF87]"
+    if (value === "FAIR") return "border-[#6A7A9B]/35 bg-[#6A7A9B]/10 text-[#D7DEEF]"
+    if (value === "RISKY") return "border-[#FFD600]/35 bg-[#FFD600]/10 text-[#FFD600]"
+    if (value === "AVOID") return "border-[#FF5A7A]/35 bg-[#FF5A7A]/10 text-[#FF8AA1]"
+    return "border-[#6A7A9B]/35 bg-[#6A7A9B]/10 text-[#D7DEEF]"
+  }
+
+  const formatStakePosture = (value: string | null | undefined) => {
+    if (!value) return null
+    const labels: Record<string, { en: string; es: string }> = {
+      avoid: { en: "Avoid", es: "Evitar" },
+      "very small": { en: "Very small", es: "Muy pequeño" },
+      small: { en: "Small", es: "Pequeño" },
+      medium: { en: "Medium", es: "Medio" },
+    }
+    return labels[value]?.[language] ?? value
+  }
+
+  const renderMetadataChips = (message: Message) => {
+    if (message.role !== "coach") return null
+    const verdict = formatVerdict(message.verdict)
+    const confidence = formatScore(message.confidenceScore)
+    const stakePosture = formatStakePosture(message.stakePosture)
+    const impliedProbability =
+      message.impliedProbability !== null && message.impliedProbability !== undefined
+        ? formatPercent(message.impliedProbability)
+        : null
+
+    if (!verdict && !confidence && !stakePosture && !impliedProbability) return null
+
+    return (
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {verdict && (
+          <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${verdictTone(message.verdict)}`}>
+            {t.chat.verdict}: {verdict}
+          </span>
+        )}
+        {confidence && (
+          <span className="rounded-md border border-[#00FF87]/25 bg-[#00FF87]/5 px-2 py-1 text-[10px] font-semibold text-[#00FF87]">
+            {t.chat.confidence}: {confidence}/10
+          </span>
+        )}
+        {stakePosture && (
+          <span className="rounded-md border border-[#FFD600]/25 bg-[#FFD600]/5 px-2 py-1 text-[10px] font-semibold text-[#FFD600]">
+            {t.chat.stake}: {stakePosture}
+          </span>
+        )}
+        {impliedProbability && (
+          <span className="rounded-md border border-[#6A7A9B]/30 bg-[#6A7A9B]/10 px-2 py-1 text-[10px] font-semibold text-[#D7DEEF]">
+            {t.chat.impliedProbability}: {impliedProbability}
+          </span>
+        )}
+      </div>
+    )
   }
 
   const formatMarketType = (value: string | null | undefined) => {
@@ -397,6 +484,7 @@ export default function ChatCoach() {
                   : "bg-[#0F1C35] border border-[#1A2845] text-[#A8B4D0] rounded-bl-md"
               }`}
             >
+              {renderMetadataChips(msg)}
               {renderText(msg.text)}
               {msg.role === "coach" && renderMarketSignal(msg.marketSignal)}
             </div>
