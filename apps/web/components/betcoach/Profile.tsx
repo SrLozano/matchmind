@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, Check, ChevronDown, ChevronRight, Lock, RefreshCw } from "lucide-react"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, RefreshCw, ShieldCheck } from "lucide-react"
 import type { CurrentUser } from "@/lib/api"
 import { useLanguage } from "@/lib/i18n"
 
@@ -17,35 +17,36 @@ export default function Profile({
   onRetryUser: () => void
 }) {
   const { language, setLanguage, t } = useLanguage()
-  const [notificationsOpen, setNotificationsOpen] = useState(true)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const isPremium = currentUser?.plan === "premium"
   const chatLimit = currentUser?.daily_chat_count_limit ?? 5
   const chatsUsed = currentUser?.daily_chat_count ?? 0
   const chatsRemaining = currentUser?.daily_chats_remaining
   const usagePercent = isPremium ? 100 : Math.min((chatsUsed / chatLimit) * 100, 100)
+  const accountLabel = currentUser?.email ?? t.profile.matchmindUser
   const menuItems = [
-    { label: t.profile.responsibleGambling, icon: ChevronRight },
-    { label: t.profile.help, icon: ChevronRight },
-    { label: t.profile.privacy, icon: ChevronRight },
+    { label: t.profile.responsibleGambling, description: t.profile.responsibleCopy, icon: ShieldCheck },
+    { label: t.profile.help, description: t.profile.helpCopy, icon: ChevronRight },
+    { label: t.profile.privacy, description: t.profile.privacyCopy, icon: ChevronRight },
   ]
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto pb-6">
+    <div className="flex flex-col h-full overflow-y-auto pb-8">
       {/* Header */}
-      <div className="px-5 pt-6 pb-5 flex-shrink-0">
+      <div className="px-5 pt-6 pb-4 flex-shrink-0">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">{t.profile.title}</h1>
       </div>
 
       {/* User card */}
-      <div className="mx-5 mb-5 rounded-2xl bg-[#0F1C35] border border-[#1A2845] p-4 flex items-center gap-4">
+      <div className="mx-5 mb-3 rounded-2xl bg-[#0F1C35] border border-[#1A2845] p-4 flex items-center gap-4">
         <div className="relative">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00FF87]/30 to-[#0F1C35] border-2 border-[#00FF87]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-2xl">👤</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-foreground">Alex Rivera</p>
-          <p className="text-xs text-[#6A7A9B]">{currentUser?.email ?? t.profile.devUser}</p>
+          <p className="truncate text-base font-bold text-foreground">{accountLabel}</p>
+          <p className="text-xs text-[#6A7A9B]">{t.profile.account}</p>
           <div className="flex items-center gap-1.5 mt-1.5">
             <div className={`rounded-full px-2.5 py-0.5 ${isPremium ? "border border-[#00FF87]/25 bg-[#00FF87]/10" : "bg-[#1A2845]"}`}>
               <span className={`text-[10px] font-semibold uppercase tracking-wider ${isPremium ? "text-[#00FF87]" : "text-[#6A7A9B]"}`}>
@@ -65,7 +66,7 @@ export default function Profile({
       </div>
 
       {userError && (
-        <div className="mx-5 mb-5 rounded-xl border border-[#FF4D4D]/30 bg-[#FF4D4D]/10 p-4">
+        <div className="mx-5 mb-3 rounded-xl border border-[#FF4D4D]/30 bg-[#FF4D4D]/10 p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#FF4D4D]" />
             <div className="min-w-0 flex-1">
@@ -84,127 +85,178 @@ export default function Profile({
         </div>
       )}
 
-      {/* Usage */}
-      <div className="mx-5 mb-5 rounded-2xl bg-card border border-[#1A2845] p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-foreground">{t.profile.dailyChats}</p>
-          <span className="text-xs text-[#6A7A9B]">{t.profile.resets}</span>
+      {isPremium ? (
+        <div className="mx-5 mb-3 divide-y divide-[#1A2845] overflow-hidden rounded-2xl border border-[#1A2845] bg-card">
+          <StatusRow
+            title={t.profile.dailyChats}
+            description={t.profile.noDailyCap}
+            value={t.profile.unlimited}
+            tone="green"
+          />
+          <StatusRow
+            title={t.profile.pass}
+            description={t.profile.premiumSummary}
+            value={t.profile.paidBadge}
+            tone="gold"
+          />
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2 rounded-full bg-[#1A2845] overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[#00FF87] transition-all"
-              style={{ width: `${usagePercent}%` }}
-            />
+      ) : (
+        <>
+          {/* Usage */}
+          <div className="mx-5 mb-3 rounded-2xl bg-card border border-[#1A2845] p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-foreground">{t.profile.dailyChats}</p>
+              <span className="text-xs text-[#6A7A9B]">{t.profile.resets}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 rounded-full bg-[#1A2845] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#00FF87] transition-all"
+                  style={{ width: `${usagePercent}%` }}
+                />
+              </div>
+              <span className="text-sm font-bold text-foreground flex-shrink-0">
+                {chatsUsed}/{chatLimit}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#6A7A9B] mt-2">
+              {chatsRemaining === null ? t.profile.remaining : `${chatsRemaining} ${t.chat.left}`}
+            </p>
           </div>
-          <span className="text-sm font-bold text-foreground flex-shrink-0">
-            {isPremium ? t.profile.unlimited : `${chatsUsed}/${chatLimit}`}
-          </span>
-        </div>
-        <p className="text-[11px] text-[#6A7A9B] mt-2">
-          {isPremium
-            ? t.profile.unlimitedChats
-            : chatsRemaining === null
-              ? t.profile.remaining
-              : `${chatsRemaining} ${t.chat.left}`}
-        </p>
-      </div>
 
-      {/* Upgrade card */}
-      <div className="mx-5 mb-5 rounded-2xl overflow-hidden border border-[#00FF87]/30 relative">
-        {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#00FF87]/5 to-transparent pointer-events-none" />
-
-        <div className="relative p-5">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[#00FF87]" />
-              <span className="text-[10px] font-bold tracking-widest uppercase text-[#00FF87]">{t.profile.pass}</span>
-            </div>
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-2xl font-black text-foreground">€9.99</span>
-              <span className="text-xs text-[#6A7A9B]">{t.profile.oneTime}</span>
-            </div>
-          </div>
-          <p className="text-lg font-bold text-foreground mb-4">
-            {isPremium ? t.profile.premiumActive : t.profile.unlock}
-          </p>
-
-          <ul className="flex flex-col gap-2.5 mb-5">
-            {t.profile.features.map((text) => (
-              <li key={text} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#00FF87]/15 border border-[#00FF87]/30 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-[#00FF87]" />
+          {/* Upgrade card */}
+          <div className="mx-5 mb-3 rounded-2xl border border-[#00FF87]/30 bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="mb-2 flex items-center gap-2">
+                  <Crown className="h-4 w-4 shrink-0 text-[#00FF87]" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#00FF87]">
+                    {t.profile.pass}
+                  </span>
                 </div>
-                <span className="text-sm text-[#A8B4D0]">{text}</span>
-              </li>
-            ))}
-          </ul>
-
-          {isPremium ? (
-            <div className="w-full rounded-xl border border-[#00FF87]/30 bg-[#00FF87]/10 py-3.5 text-center text-sm font-bold text-[#00FF87]">
-              {t.profile.included}
-            </div>
-          ) : (
-            <>
-              <button className="w-full bg-[#00FF87] text-[#070D1A] font-bold text-sm py-3.5 rounded-xl hover:bg-[#00e87a] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(0,255,135,0.3)]">
-                {t.profile.upgrade}
-              </button>
-              <p className="text-center text-[10px] text-[#6A7A9B] mt-2.5">
-                {t.profile.stripe}
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Menu items */}
-      <div className="mx-5 rounded-2xl bg-card border border-[#1A2845] overflow-hidden">
-        <div className="border-b border-[#1A2845]">
-          <button
-            onClick={() => setNotificationsOpen((open) => !open)}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-sm text-[#A8B4D0] hover:bg-[#0F1C35] active:bg-[#0F1C35] transition-colors"
-            aria-expanded={notificationsOpen}
-          >
-            <span>{t.profile.notificationSettings}</span>
-            {notificationsOpen ? (
-              <ChevronDown className="w-4 h-4 text-[#6A7A9B]" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-[#6A7A9B]" />
-            )}
-          </button>
-          {notificationsOpen && (
-            <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-4 py-4">
-              <p className="text-xs leading-relaxed text-[#6A7A9B]">{t.profile.notificationCopy}</p>
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-foreground">{t.profile.language}</span>
-                <div className="grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
-                  <LanguageButton
-                    isActive={language === "en"}
-                    label={t.profile.english}
-                    onClick={() => setLanguage("en")}
-                  />
-                  <LanguageButton
-                    isActive={language === "es"}
-                    label={t.profile.spanish}
-                    onClick={() => setLanguage("es")}
-                  />
-                </div>
+                <p className="text-base font-bold leading-snug text-foreground">
+                  {t.profile.unlock}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-xl font-black leading-none text-foreground">€9.99</p>
+                <p className="mt-1 text-[10px] text-[#6A7A9B]">{t.profile.oneTime}</p>
               </div>
             </div>
-          )}
+
+            <p className="mt-3 text-xs leading-relaxed text-[#A8B4D0]">
+              {t.profile.upgradeCopy}
+            </p>
+
+            <div className="mt-4">
+              <ul className="mb-4 flex flex-col gap-2.5">
+                {t.profile.features.slice(0, 3).map((text) => (
+                  <li key={text} className="flex items-center gap-3">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#00FF87]/30 bg-[#00FF87]/15">
+                      <Check className="h-3 w-3 text-[#00FF87]" />
+                    </div>
+                    <span className="text-sm text-[#A8B4D0]">{text}</span>
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full rounded-xl bg-[#00FF87] py-3.5 text-sm font-bold text-[#070D1A] shadow-[0_0_20px_rgba(0,255,135,0.3)] transition-all hover:bg-[#00e87a] active:scale-[0.98]">
+                {t.profile.upgrade}
+              </button>
+              <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">
+                {t.profile.stripe}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Settings */}
+      <div className="mx-5 overflow-hidden rounded-2xl border border-[#1A2845] bg-card">
+        <div className="flex items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-3.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Globe2 className="h-4 w-4 shrink-0 text-[#00FF87]" />
+            <span className="text-sm font-semibold text-[#A8B4D0]">{t.profile.language}</span>
+          </div>
+          <div className="grid shrink-0 grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
+            <LanguageButton
+              isActive={language === "en"}
+              label={t.profile.english}
+              onClick={() => setLanguage("en")}
+            />
+            <LanguageButton
+              isActive={language === "es"}
+              label={t.profile.spanish}
+              onClick={() => setLanguage("es")}
+            />
+          </div>
         </div>
-        {menuItems.map(({ label, icon: Icon }, index) => (
+
+        <button
+          onClick={() => setNotificationsOpen((open) => !open)}
+          className="w-full flex items-center justify-between border-b border-[#1A2845] px-4 py-3.5 text-sm text-[#A8B4D0] hover:bg-[#0F1C35] active:bg-[#0F1C35] transition-colors"
+          aria-expanded={notificationsOpen}
+        >
+          <span className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-[#6A7A9B]" />
+            {t.profile.notificationSettings}
+          </span>
+          {notificationsOpen ? (
+            <ChevronDown className="w-4 h-4 text-[#6A7A9B]" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-[#6A7A9B]" />
+          )}
+        </button>
+        {notificationsOpen && (
+          <div className="border-b border-[#1A2845] bg-[#0A1325]/70 px-4 py-3">
+            <p className="text-xs leading-relaxed text-[#6A7A9B]">{t.profile.notificationCopy}</p>
+          </div>
+        )}
+        {menuItems.map(({ label, description, icon: Icon }, index) => (
           <button
             key={label}
-            className={`w-full flex items-center justify-between px-4 py-3.5 text-sm text-[#A8B4D0] hover:bg-[#0F1C35] active:bg-[#0F1C35] transition-colors ${
+            className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#0F1C35] active:bg-[#0F1C35] transition-colors ${
               index < menuItems.length - 1 ? "border-b border-[#1A2845]" : ""
             }`}
           >
-            <span>{label}</span>
-            <Icon className="w-4 h-4 text-[#6A7A9B]" />
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 text-sm font-semibold text-[#A8B4D0]">
+                {Icon === ShieldCheck && <Icon className="h-4 w-4 shrink-0 text-[#00FF87]" />}
+                {label}
+              </span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-[#6A7A9B]">{description}</span>
+            </span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-[#6A7A9B]" />
           </button>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function StatusRow({
+  title,
+  description,
+  value,
+  tone,
+}: {
+  title: string
+  description: string
+  value: string
+  tone: "green" | "gold"
+}) {
+  const toneClass =
+    tone === "green"
+      ? "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
+      : "border-[#FFD600]/25 bg-[#FFD600]/10 text-[#FFD600]"
+
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-[#A8B4D0]">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-[#6A7A9B]">{description}</p>
+      </div>
+      <div className={`shrink-0 rounded-full border px-3 py-1 ${toneClass}`}>
+        <span className="text-[11px] font-bold">{value}</span>
       </div>
     </div>
   )
