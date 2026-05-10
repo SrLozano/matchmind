@@ -12,10 +12,22 @@ class DummyChatSessionContext:
         "daily_chat_count": 1,
         "daily_chat_count_limit": 5,
     }
-    conversation = {"id": "conversation-1", "messages": []}
+    conversation = {
+        "id": "conversation-1",
+        "messages": [
+            {"role": "user", "content": "Brazil to beat Japan at 1.80"},
+            {"role": "assistant", "content": "I lean fair, but not exciting."},
+            {"role": "user", "content": "What if I can get 2.10?"},
+        ],
+    }
+
+    @property
+    def previous_messages(self) -> list[dict]:
+        return self.conversation["messages"][:-1]
 
     async def save_assistant_turn(self, response: str, confidence_score: float) -> dict:
         return {
+            "conversation_id": self.conversation["id"],
             "response": response,
             "confidence_score": confidence_score,
             "daily_chats_remaining": 4,
@@ -32,6 +44,26 @@ class ChatResilienceTest(unittest.IsolatedAsyncioTestCase):
             result = await chat_router._safe_context_call("test_source", failing_builder)
 
         self.assertIsNone(result)
+
+    async def test_follow_up_message_reuses_previous_bet_for_provider_matching(self) -> None:
+        message = chat_router._message_with_current_bet_context(
+            "What if I can get 2.10?",
+            [
+                {"role": "user", "content": "Brazil to beat Japan at 1.80"},
+                {"role": "assistant", "content": "I lean fair, but not exciting."},
+            ],
+        )
+
+        self.assertIn("Current user message: What if I can get 2.10?", message)
+        self.assertIn("Previous bet under discussion: Brazil to beat Japan at 1.80", message)
+
+    async def test_complete_new_bet_does_not_reuse_previous_context(self) -> None:
+        message = chat_router._message_with_current_bet_context(
+            "Argentina to beat Morocco at 1.90",
+            [{"role": "user", "content": "Brazil to beat Japan at 1.80"}],
+        )
+
+        self.assertEqual(message, "Argentina to beat Morocco at 1.90")
 
     async def test_chat_continues_when_all_data_sources_fail(self) -> None:
         ai_result = AIChatResult(
@@ -73,11 +105,16 @@ class ChatResilienceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.verdict, "NOT ENOUGH INFO")
         self.assertEqual(response.stake_posture, "avoid")
         self.assertIsNone(response.market_signal)
+        self.assertEqual(response.conversation_id, "conversation-1")
         self.assertEqual(response.daily_chats_remaining, 4)
         generate_reply.assert_awaited_once()
         self.assertEqual(generate_reply.await_args.args[1], None)
         self.assertEqual(generate_reply.await_args.args[2], None)
         self.assertEqual(generate_reply.await_args.args[3], None)
+        self.assertEqual(
+            generate_reply.await_args.kwargs["conversation_memory"],
+            DummyChatSessionContext.conversation["messages"][:-1],
+        )
 
 
 if __name__ == "__main__":

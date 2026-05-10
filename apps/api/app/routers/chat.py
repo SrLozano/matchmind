@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.models.chat import ChatMarketSignal, ChatRequest, ChatResponse
 from app.services.api_football import build_match_context_for_chat
+from app.services.bet_parser import parse_bet_message
 from app.services.gpt import generate_chat_reply
 from app.services.odds_api import build_bookmaker_context_for_chat
 from app.services.polymarket import build_polymarket_context_for_chat
@@ -21,15 +22,20 @@ T = TypeVar("T")
 async def chat(payload: ChatRequest) -> ChatResponse:
     user_context = None
     try:
-        user_context = await enforce_daily_limit_and_store(payload.user_id, payload.message)
+        user_context = await enforce_daily_limit_and_store(
+            payload.user_id,
+            payload.message,
+            conversation_id=payload.conversation_id,
+        )
+        context_message = _message_with_current_bet_context(payload.message, user_context.previous_messages)
         match_context, polymarket_context = await asyncio.gather(
-            _safe_context_call("api_football", build_match_context_for_chat, payload.message),
-            _safe_context_call("polymarket", build_polymarket_context_for_chat, payload.message),
+            _safe_context_call("api_football", build_match_context_for_chat, context_message),
+            _safe_context_call("polymarket", build_polymarket_context_for_chat, context_message),
         )
         bookmaker_context = await _safe_context_call(
             "bookmaker_odds",
             build_bookmaker_context_for_chat,
-            payload.message,
+            context_message,
             match_context=match_context,
         )
         ai_result = await generate_chat_reply(
@@ -38,12 +44,14 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             polymarket_context,
             bookmaker_context,
             preferred_language=payload.preferred_language,
+            conversation_memory=user_context.previous_messages,
         )
         saved_turn = await user_context.save_assistant_turn(
             ai_result.response,
             ai_result.confidence_score,
         )
         return ChatResponse(
+            conversation_id=saved_turn["conversation_id"],
             response=saved_turn["response"],
             confidence_score=saved_turn["confidence_score"],
             verdict=ai_result.verdict,
@@ -85,6 +93,28 @@ async def _safe_context_call(
     except Exception:
         logger.warning("Chat data source failed: %s", source_name, exc_info=True)
         return None
+
+
+def _message_with_current_bet_context(message: str, previous_messages: list[dict[str, Any]]) -> str:
+    parsed = parse_bet_message(message)
+    if parsed.teams:
+        return message
+
+    previous_user_message = _latest_user_message(previous_messages)
+    if not previous_user_message:
+        return message
+
+    return f"Current user message: {message}\nPrevious bet under discussion: {previous_user_message}"
+
+
+def _latest_user_message(messages: list[dict[str, Any]]) -> str | None:
+    for previous_message in reversed(messages):
+        if previous_message.get("role") != "user":
+            continue
+        content = str(previous_message.get("content") or "").strip()
+        if content:
+            return content
+    return None
 
 
 def _build_chat_market_signal(polymarket_context: dict | None) -> ChatMarketSignal | None:

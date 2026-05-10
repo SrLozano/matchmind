@@ -1,9 +1,12 @@
+import json
 import unittest
 
 from app.services.bet_parser import parse_bet_message
 from app.models.chat import AIChatResult
 from app.services.gpt import (
+    _build_user_context,
     _chat_response_format,
+    _compact_conversation_memory,
     _extract_json,
     _fallback_result,
     _finalize_result,
@@ -111,6 +114,36 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertEqual(result.implied_probability, 0.5556)
         self.assertEqual(result.verdict, "FAIR")
         self.assertEqual(result.stake_posture, "small")
+
+    def test_conversation_memory_is_compacted_for_prompt_context(self) -> None:
+        memory = _compact_conversation_memory(
+            [
+                {"role": "system", "content": "ignore"},
+                {"role": "user", "content": "Spain to win Group A at 1.80"},
+                {"role": "assistant", "content": "I would pass at that number."},
+                {"role": "user", "content": "x" * 1300},
+            ],
+            max_turns=4,
+        )
+
+        self.assertEqual([message["role"] for message in memory], ["user", "assistant", "user"])
+        self.assertEqual(len(memory[-1]["content"]), 1200)
+
+    def test_user_context_includes_conversation_memory(self) -> None:
+        parsed = parse_bet_message("What if I can get 2.10?")
+        context = json.loads(
+            _build_user_context(
+                "What if I can get 2.10?",
+                parsed,
+                conversation_memory=[
+                    {"role": "user", "content": "Brazil to beat Japan at 1.80"},
+                    {"role": "assistant", "content": "I lean fair, but not exciting."},
+                ],
+            )
+        )
+
+        self.assertEqual(context["conversation_memory"][0]["content"], "Brazil to beat Japan at 1.80")
+        self.assertEqual(context["user_message"], "What if I can get 2.10?")
 
 
 if __name__ == "__main__":

@@ -18,6 +18,13 @@ class ChatSessionContext:
     user: dict[str, Any]
     conversation: dict[str, Any]
 
+    @property
+    def previous_messages(self) -> list[dict[str, Any]]:
+        messages = list(self.conversation.get("messages", []))
+        if messages and messages[-1].get("role") == "user":
+            return messages[:-1]
+        return messages
+
     async def save_assistant_turn(self, response: str, confidence_score: float) -> dict[str, Any]:
         messages = list(self.conversation.get("messages", []))
         messages.append(
@@ -42,6 +49,7 @@ class ChatSessionContext:
             daily_remaining = max(self.user["daily_chat_count_limit"] - self.user["daily_chat_count"], 0)
 
         return {
+            "conversation_id": self.conversation["id"],
             "response": response,
             "confidence_score": confidence_score,
             "daily_chats_remaining": daily_remaining,
@@ -98,6 +106,96 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
     }
 
 
+async def list_user_conversations(user_id: UUID, limit: int = 20) -> list[dict[str, Any]]:
+    client = await get_supabase()
+    response = (
+        await client.table("conversations")
+        .select("*")
+        .eq("user_id", str(user_id))
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    conversations = response.data or []
+    summaries = [_conversation_summary(conversation) for conversation in conversations]
+    return sorted(
+        summaries,
+        key=lambda conversation: conversation.get("updated_at") or conversation.get("created_at") or "",
+        reverse=True,
+    )
+
+
+async def get_user_conversation(user_id: UUID, conversation_id: UUID) -> dict[str, Any]:
+    conversation = await _get_conversation_for_user(str(user_id), conversation_id)
+    summary = _conversation_summary(conversation)
+    return {
+        **summary,
+        "messages": _conversation_messages(conversation),
+    }
+
+
+def _conversation_summary(conversation: dict[str, Any]) -> dict[str, Any]:
+    messages = _conversation_messages(conversation)
+    first_user_message = next((message for message in messages if message["role"] == "user"), None)
+    last_message = messages[-1] if messages else None
+    title_source = first_user_message["content"] if first_user_message else "New conversation"
+    preview_source = last_message["content"] if last_message else None
+
+    return {
+        "id": str(conversation.get("id") or ""),
+        "user_id": str(conversation.get("user_id") or ""),
+        "title": _compact_text(title_source, 64),
+        "last_message_preview": _compact_text(preview_source, 96) if preview_source else None,
+        "message_count": len(messages),
+        "created_at": _string_or_none(conversation.get("created_at")),
+        "updated_at": _conversation_updated_at(conversation, messages),
+    }
+
+
+def _conversation_messages(conversation: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_messages = conversation.get("messages") or []
+    if not isinstance(raw_messages, list):
+        return []
+
+    messages: list[dict[str, Any]] = []
+    for raw_message in raw_messages:
+        if not isinstance(raw_message, dict):
+            continue
+        role = str(raw_message.get("role") or "").strip()
+        content = str(raw_message.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        messages.append(
+            {
+                "role": role,
+                "content": content,
+                "confidence_score": raw_message.get("confidence_score"),
+                "created_at": _string_or_none(raw_message.get("created_at")),
+            }
+        )
+    return messages
+
+
+def _conversation_updated_at(conversation: dict[str, Any], messages: list[dict[str, Any]]) -> str | None:
+    for message in reversed(messages):
+        if message.get("created_at"):
+            return message["created_at"]
+    return _string_or_none(conversation.get("created_at"))
+
+
+def _compact_text(value: str, limit: int) -> str:
+    text = " ".join(value.split())
+    if len(text) <= limit:
+        return text
+    return f"{text[: max(limit - 3, 0)].rstrip()}..."
+
+
+def _string_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
 async def _reset_daily_count_if_needed(user: dict[str, Any]) -> dict[str, Any]:
     today = date.today()
     last_reset_raw = user.get("last_reset_date")
@@ -144,6 +242,46 @@ async def _enforce_daily_limit(user: dict[str, Any]) -> dict[str, Any]:
     return updated_user
 
 
+async def _get_conversation_for_user(user_id: str, conversation_id: UUID) -> dict[str, Any]:
+    client = await get_supabase()
+    response = (
+        await client.table("conversations")
+        .select("*")
+        .eq("id", str(conversation_id))
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not response.data:
+        raise ValueError("Conversation not found.")
+    return response.data[0]
+
+
+async def _append_user_turn(conversation: dict[str, Any], message: str) -> dict[str, Any]:
+    messages = list(conversation.get("messages", []))
+    messages.append(
+        {
+            "role": "user",
+            "content": message,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    client = await get_supabase()
+    response = (
+        await client.table("conversations")
+        .update({"messages": messages})
+        .eq("id", conversation["id"])
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update conversation.",
+        )
+    return response.data[0]
+
+
 async def _create_conversation(user_id: str, message: str) -> dict[str, Any]:
     client = await get_supabase()
     response = (
@@ -170,10 +308,18 @@ async def _create_conversation(user_id: str, message: str) -> dict[str, Any]:
     return response.data[0]
 
 
-async def enforce_daily_limit_and_store(user_id: UUID, message: str) -> ChatSessionContext:
+async def enforce_daily_limit_and_store(
+    user_id: UUID,
+    message: str,
+    conversation_id: UUID | None = None,
+) -> ChatSessionContext:
     user = await _get_user(user_id)
     updated_user = await _enforce_daily_limit(user)
-    conversation = await _create_conversation(str(user_id), message)
+    if conversation_id is None:
+        conversation = await _create_conversation(str(user_id), message)
+    else:
+        existing_conversation = await _get_conversation_for_user(str(user_id), conversation_id)
+        conversation = await _append_user_turn(existing_conversation, message)
     return ChatSessionContext(user=updated_user, conversation=conversation)
 
 

@@ -24,6 +24,7 @@ Voice:
 - Keep only JSON metadata enum values in English. The visible response text must still be Spanish for Spanish users.
 
 Use the provided parsed_bet facts as deterministic context. Do not contradict the supplied odds or implied probability.
+Use conversation_memory to understand follow-up messages. If the current message is incomplete but clearly refers to the previous bet, carry forward the prior bet context and explain that you are treating it as the same bet with the updated detail. Do not carry forward old context when the user clearly switches teams, market, or topic.
 If live_data_available is false, clearly say live market/team data is missing when relevant. Do not claim real-time odds, injuries, lineups, API-Football data, bookmaker data, or prediction-market data unless it is explicitly provided.
 If match_context is present, use it only when relevant to the user's bet. It contains cached World Cup fixture context from API-Football, not odds or prediction-market data.
 If polymarket_context is present, use it only as crowd probability or market signal for supported long-term World Cup markets. Never mention "Polymarket" in the user-facing response. Never call it truth, a sure bet, or an instruction to bet. If it says matched=false, mention that no useful market signal was found only when relevant.
@@ -300,10 +301,12 @@ def _build_user_context(
     match_context: dict[str, Any] | None = None,
     polymarket_context: dict[str, Any] | None = None,
     bookmaker_context: dict[str, Any] | None = None,
+    conversation_memory: list[dict[str, Any]] | None = None,
 ) -> str:
     context = {
         "user_message": message,
         "parsed_bet": parsed_bet.model_dump(),
+        "conversation_memory": _compact_conversation_memory(conversation_memory),
         "response_language": parsed_bet.detected_language,
         "language_instruction": (
             "Write all user-facing response text and section labels in Spanish. "
@@ -320,6 +323,27 @@ def _build_user_context(
         else None,
     }
     return json.dumps(context, ensure_ascii=False)
+
+
+def _compact_conversation_memory(messages: list[dict[str, Any]] | None, max_turns: int = 8) -> list[dict[str, str]]:
+    if not messages:
+        return []
+
+    compact_messages: list[dict[str, str]] = []
+    for message in messages[-max_turns:]:
+        role = str(message.get("role") or "").strip().lower()
+        if role not in {"user", "assistant"}:
+            continue
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        compact_messages.append(
+            {
+                "role": role,
+                "content": content[:1200],
+            }
+        )
+    return compact_messages
 
 
 def _chat_response_format() -> dict[str, Any]:
@@ -478,6 +502,7 @@ async def generate_chat_reply(
     polymarket_context: dict[str, Any] | None = None,
     bookmaker_context: dict[str, Any] | None = None,
     preferred_language: str | None = None,
+    conversation_memory: list[dict[str, Any]] | None = None,
 ) -> AIChatResult:
     parsed_bet = parse_bet_message(message)
     if preferred_language in {"en", "es"}:
@@ -489,7 +514,17 @@ async def generate_chat_reply(
         response_format=_chat_response_format(),
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_context(message, parsed_bet, match_context, polymarket_context, bookmaker_context)},
+            {
+                "role": "user",
+                "content": _build_user_context(
+                    message,
+                    parsed_bet,
+                    match_context,
+                    polymarket_context,
+                    bookmaker_context,
+                    conversation_memory,
+                ),
+            },
         ],
         temperature=0.4,
     )

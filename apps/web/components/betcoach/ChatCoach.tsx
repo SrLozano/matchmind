@@ -1,8 +1,14 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Activity, Send, Zap } from "lucide-react"
-import { sendChatMessage, type ChatMarketSignal } from "@/lib/api"
+import { Activity, History, Plus, Send, X, Zap } from "lucide-react"
+import {
+  getConversation,
+  getConversations,
+  sendChatMessage,
+  type ChatMarketSignal,
+  type ConversationSummary,
+} from "@/lib/api"
 import { useLanguage } from "@/lib/i18n"
 
 type Message = {
@@ -35,6 +41,11 @@ export default function ChatCoach() {
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [dailyChatsRemaining, setDailyChatsRemaining] = useState<number | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [history, setHistory] = useState<ConversationSummary[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasUserSentMessage = useRef(false)
 
@@ -63,8 +74,10 @@ export default function ChatCoach() {
     setIsSending(true)
 
     try {
-      const result = await sendChatMessage(trimmed, language)
+      const result = await sendChatMessage(trimmed, language, conversationId)
+      setConversationId(result.conversation_id)
       setDailyChatsRemaining(result.daily_chats_remaining)
+      void loadHistory()
       setMessages((prev) =>
         prev.map((message) =>
           message.id === pendingCoachMsg.id
@@ -91,6 +104,52 @@ export default function ChatCoach() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") void handleSend()
+  }
+
+  const loadHistory = async () => {
+    setIsLoadingHistory(true)
+    setHistoryError(null)
+    try {
+      const result = await getConversations()
+      setHistory(result.conversations)
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : t.chat.historyError)
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
+  const toggleHistory = () => {
+    const nextOpen = !historyOpen
+    setHistoryOpen(nextOpen)
+    if (nextOpen) void loadHistory()
+  }
+
+  const handleNewChat = () => {
+    setConversationId(null)
+    setMessages(getInitialMessages())
+    setInput("")
+    hasUserSentMessage.current = false
+    setHistoryOpen(false)
+  }
+
+  const handleOpenConversation = async (id: string) => {
+    setHistoryError(null)
+    try {
+      const conversation = await getConversation(id)
+      setConversationId(conversation.id)
+      hasUserSentMessage.current = true
+      setMessages(
+        conversation.messages.map((message, index) => ({
+          id: index + 1,
+          role: message.role === "assistant" ? "coach" : "user",
+          text: message.content,
+        }))
+      )
+      setHistoryOpen(false)
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : t.chat.historyError)
+    }
   }
 
   const renderText = (text: string) => {
@@ -128,6 +187,18 @@ export default function ChatCoach() {
       top_goalscorer: { en: "Top goalscorer", es: "Máximo goleador" },
     }
     return labels[value]?.[language] ?? value.replaceAll("_", " ")
+  }
+
+  const formatHistoryDate = (value: string | null) => {
+    if (!value) return ""
+    try {
+      return new Intl.DateTimeFormat(language === "es" ? "es-ES" : "en-US", {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(value))
+    } catch {
+      return ""
+    }
   }
 
   const renderMarketSignal = (signal: ChatMarketSignal | null | undefined) => {
@@ -200,7 +271,7 @@ export default function ChatCoach() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-6 pb-4 flex-shrink-0 border-b border-[#1A2845]">
         <div className="flex items-center gap-3">
@@ -213,12 +284,100 @@ export default function ChatCoach() {
             <p className="text-xs text-[#00FF87]">{t.chat.status}</p>
           </div>
           <div className="ml-auto">
-            <span className="text-[10px] font-semibold bg-[#FFD600]/10 border border-[#FFD600]/30 text-[#FFD600] rounded-full px-2.5 py-1 uppercase tracking-wider">
-              {dailyChatsRemaining === null ? t.chat.dailyLimit : `${dailyChatsRemaining} ${t.chat.left}`}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleNewChat}
+                className="h-8 w-8 rounded-lg border border-[#1A2845] bg-[#0F1C35] text-[#A8B4D0] hover:text-[#00FF87] transition-colors flex items-center justify-center"
+                aria-label={t.chat.newChat}
+                title={t.chat.newChat}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                onClick={toggleHistory}
+                className="h-8 w-8 rounded-lg border border-[#1A2845] bg-[#0F1C35] text-[#A8B4D0] hover:text-[#00FF87] transition-colors flex items-center justify-center"
+                aria-label={t.chat.history}
+                title={t.chat.history}
+              >
+                {historyOpen ? <X className="h-4 w-4" /> : <History className="h-4 w-4" />}
+              </button>
+              <span className="text-[10px] font-semibold bg-[#FFD600]/10 border border-[#FFD600]/30 text-[#FFD600] rounded-full px-2.5 py-1 uppercase tracking-wider">
+                {dailyChatsRemaining === null ? t.chat.dailyLimit : `${dailyChatsRemaining} ${t.chat.left}`}
+              </span>
+            </div>
           </div>
         </div>
       </div>
+
+      {historyOpen && (
+        <div className="absolute inset-0 z-20 flex justify-end bg-[#070D1A]/70 backdrop-blur-sm">
+          <button
+            className="absolute inset-0 cursor-default"
+            onClick={() => setHistoryOpen(false)}
+            aria-label={t.chat.closeHistory}
+          />
+          <aside className="relative z-10 flex h-full w-full max-w-[360px] flex-col border-l border-[#1A2845] bg-[#0B162B] shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-4">
+              <div>
+                <p className="text-sm font-bold text-foreground">{t.chat.history}</p>
+                <p className="text-xs text-[#6A7A9B]">{t.chat.historySubtitle}</p>
+              </div>
+              <button
+                onClick={() => setHistoryOpen(false)}
+                className="h-8 w-8 rounded-lg border border-[#1A2845] text-[#A8B4D0] hover:text-foreground flex items-center justify-center"
+                aria-label={t.chat.closeHistory}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="border-b border-[#1A2845] px-4 py-3">
+              <button
+                onClick={handleNewChat}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#00FF87] px-3 py-2 text-sm font-semibold text-[#070D1A] hover:bg-[#00e87a] transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                {t.chat.newChat}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-3">
+              {isLoadingHistory && <p className="px-1 text-xs text-[#6A7A9B]">{t.chat.loadingHistory}</p>}
+              {historyError && <p className="px-1 text-xs text-[#FFD600]">{historyError}</p>}
+              {!isLoadingHistory && !historyError && history.length === 0 && (
+                <p className="px-1 text-xs text-[#6A7A9B]">{t.chat.emptyHistory}</p>
+              )}
+              <div className="flex flex-col gap-2">
+                {history.map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    onClick={() => void handleOpenConversation(conversation.id)}
+                    className={`text-left rounded-lg border px-3 py-3 transition-colors ${
+                      conversation.id === conversationId
+                        ? "border-[#00FF87]/40 bg-[#00FF87]/10"
+                        : "border-[#1A2845] bg-[#0F1C35] hover:border-[#00FF87]/30"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+                        {conversation.title}
+                      </p>
+                      <span className="shrink-0 text-[10px] text-[#6A7A9B]">
+                        {formatHistoryDate(conversation.updated_at)}
+                      </span>
+                    </div>
+                    {conversation.last_message_preview && (
+                      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#6A7A9B]">
+                        {conversation.last_message_preview}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">

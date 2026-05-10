@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     user_id: UUID = DEFAULT_DEV_USER_ID
     message: str = Field(..., min_length=1, max_length=4000)
     preferred_language: str | None = Field(default=None, pattern="^(en|es)$")
+    conversation_id: UUID | None = None
 
 
 class ChatMarketSignal(BaseModel):
@@ -30,6 +31,7 @@ class ChatMarketSignal(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    conversation_id: str | None = None
     response: str
     confidence_score: float = Field(..., ge=1, le=10)
     verdict: str | None = None

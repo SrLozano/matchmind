@@ -2,6 +2,7 @@ const DEFAULT_API_URL = "http://localhost:8000"
 const DEFAULT_DEV_USER_ID = "a87d09e8-7e10-46b8-9927-c9500c9559cf"
 
 export type ChatResponse = {
+  conversation_id: string | null
   response: string
   confidence_score: number
   verdict: string | null
@@ -27,6 +28,32 @@ export type ChatMarketSignal = {
   match_confidence: number | null
   last_fetched_at: string | null
   note: string | null
+}
+
+export type ConversationMessage = {
+  role: "user" | "assistant"
+  content: string
+  confidence_score: number | null
+  created_at: string | null
+}
+
+export type ConversationSummary = {
+  id: string
+  user_id: string
+  title: string
+  last_message_preview: string | null
+  message_count: number
+  created_at: string | null
+  updated_at: string | null
+}
+
+export type ConversationListResponse = {
+  conversations: ConversationSummary[]
+  count: number
+}
+
+export type ConversationDetailResponse = ConversationSummary & {
+  messages: ConversationMessage[]
 }
 
 export type MarketSignal = {
@@ -186,7 +213,11 @@ async function readApiError(response: Response, fallback: string) {
   }
 }
 
-export async function sendChatMessage(message: string, preferredLanguage?: "en" | "es"): Promise<ChatResponse> {
+export async function sendChatMessage(
+  message: string,
+  preferredLanguage?: "en" | "es",
+  conversationId?: string | null
+): Promise<ChatResponse> {
   const apiUrl = getApiUrl()
   const userId = getDevUserId()
 
@@ -199,6 +230,7 @@ export async function sendChatMessage(message: string, preferredLanguage?: "en" 
       user_id: userId,
       message,
       preferred_language: preferredLanguage,
+      conversation_id: conversationId,
     }),
   })
 
@@ -213,6 +245,40 @@ function normalizeChatResponse(payload: ChatResponse): ChatResponse {
   return {
     ...payload,
     response: unwrapNestedResponse(payload.response),
+  }
+}
+
+export async function getConversations(limit = 20): Promise<ConversationListResponse> {
+  const apiUrl = getApiUrl()
+  const userId = getDevUserId()
+  const response = await fetch(`${apiUrl}/conversations?user_id=${userId}&limit=${limit}`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load conversation history."))
+  }
+
+  return (await response.json()) as ConversationListResponse
+}
+
+export async function getConversation(conversationId: string): Promise<ConversationDetailResponse> {
+  const apiUrl = getApiUrl()
+  const userId = getDevUserId()
+  const response = await fetch(`${apiUrl}/conversations/${conversationId}?user_id=${userId}`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load this conversation."))
+  }
+
+  return normalizeConversationDetail((await response.json()) as ConversationDetailResponse)
+}
+
+function normalizeConversationDetail(payload: ConversationDetailResponse): ConversationDetailResponse {
+  return {
+    ...payload,
+    messages: payload.messages.map((message) => ({
+      ...message,
+      content: unwrapNestedResponse(message.content),
+    })),
   }
 }
 
