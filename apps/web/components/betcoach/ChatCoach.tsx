@@ -26,16 +26,6 @@ export default function ChatCoach() {
       role: "coach" as const,
       text: t.chat.initialCoach,
     },
-    {
-      id: 2,
-      role: "user" as const,
-      text: t.chat.initialUser,
-    },
-    {
-      id: 3,
-      role: "coach" as const,
-      text: t.chat.initialAnalysis,
-    },
   ]
   const [messages, setMessages] = useState<Message[]>(getInitialMessages)
   const [input, setInput] = useState("")
@@ -47,6 +37,7 @@ export default function ChatCoach() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const hasUserSentMessage = useRef(false)
 
   useEffect(() => {
@@ -104,6 +95,12 @@ export default function ChatCoach() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") void handleSend()
+  }
+
+  const handleExamplePrompt = (prompt: string) => {
+    if (isSending) return
+    setInput(prompt)
+    inputRef.current?.focus()
   }
 
   const loadHistory = async () => {
@@ -403,6 +400,24 @@ export default function ChatCoach() {
             </div>
           </div>
         ))}
+        {!hasUserSentMessage.current && (
+          <div className="ml-9 flex flex-col gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6A7A9B]">
+              {t.chat.exampleTitle}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {t.chat.examplePrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => handleExamplePrompt(prompt)}
+                  className="rounded-lg border border-[#1A2845] bg-[#0F1C35] px-3 py-2 text-left text-xs leading-snug text-[#A8B4D0] transition-colors hover:border-[#00FF87]/40 hover:text-foreground"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -410,6 +425,7 @@ export default function ChatCoach() {
       <div className="px-4 pb-4 flex-shrink-0">
         <div className="flex items-center gap-2 bg-[#0F1C35] border border-[#1A2845] rounded-2xl px-4 py-2.5 focus-within:border-[#00FF87]/50 transition-colors">
           <input
+            ref={inputRef}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-[#6A7A9B] outline-none"
             placeholder={t.chat.placeholder}
             value={input}

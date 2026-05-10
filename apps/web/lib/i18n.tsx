@@ -73,10 +73,14 @@ export const translations = {
       status: "Online · World Cup 2026 expert",
       dailyLimit: "5 chats/day",
       left: "left",
-      initialCoach: "Hey! Tell me about the bet you're thinking of placing. I'll give you my honest take.",
-      initialUser: "I'm thinking of betting €20 on Spain to win Group A at 1.8 odds",
-      initialAnalysis:
-        "Good question. Let me break this down for you:\n\n**Bookmaker odds:** 1.80 (implied prob: 55.6%)\n**Crowd probability:** ~64% (fair odds: ~1.56)\n\nThe book is offering you worse value than the broader market signal suggests, meaning the crowd thinks Spain is more likely to win than the bookmaker's price implies. That's a divergence working in your favour.\n\nHowever, Spain face Morocco and Japan in Group A. Morocco are dangerous at home-continent odds and Japan are historically solid. The 1.80 price is stingy for what's a real risk group.\n\n**My recommendation: Pass or reduce stake.** If you must play, €10 max at these odds. Wait for post-matchday 1 odds which may open up.\n\n**Confidence score: 6/10**",
+      initialCoach:
+        "Tell me the bet you're considering and the odds you found. I'll pressure-test the price, compare it with the data I have, and give you a direct verdict with confidence.",
+      exampleTitle: "Try one of these",
+      examplePrompts: [
+        "Brazil to beat Japan at 1.80",
+        "Is Argentina to win the World Cup at 7.50 good value?",
+        "Spain to win Group H at 2.10",
+      ],
       pending: "Checking the bet and building a straight answer...",
       requestFailed: "I couldn't complete that request.",
       reachError: "Unable to reach the Matchmind coach.",
@@ -277,10 +281,14 @@ export const translations = {
       status: "En línea · Experto Mundial 2026",
       dailyLimit: "5 chats/día",
       left: "restantes",
-      initialCoach: "¡Ey! Cuéntame qué apuesta estás pensando hacer y te doy mi opinión honesta.",
-      initialUser: "Estoy pensando en apostar 20€ a que España gana el Grupo A a cuota 1.8",
-      initialAnalysis:
-        "Buena pregunta. Te lo desgloso:\n\n**Cuota de la casa:** 1.80 (prob. implícita: 55.6%)\n**Probabilidad de mercado:** ~64% (cuota justa: ~1.56)\n\nLa casa te ofrece peor valor de lo que sugiere la señal agregada de mercado, es decir, la gente cree que España tiene más opciones de ganar de lo que implica esa cuota. Esa divergencia juega a tu favor.\n\nAun así, España se enfrenta a Marruecos y Japón en el Grupo A. Marruecos es peligroso y Japón suele competir muy bien. La cuota 1.80 es algo corta para un grupo con riesgo real.\n\n**Mi recomendación: pasar o bajar stake.** Si entras, máximo 10€ a estas cuotas. Esperaría a después de la primera jornada por si se abre el precio.\n\n**Confianza: 6/10**",
+      initialCoach:
+        "Dime la apuesta que estás mirando y la cuota que encontraste. Voy a poner el precio a prueba, compararlo con los datos disponibles y darte un veredicto directo con confianza.",
+      exampleTitle: "Prueba con una de estas",
+      examplePrompts: [
+        "Brasil gana a Japón a cuota 1.80",
+        "¿Argentina campeona del Mundial a 7.50 tiene valor?",
+        "España gana el Grupo H a cuota 2.10",
+      ],
       pending: "Revisando la apuesta y preparando una respuesta directa...",
       requestFailed: "No pude completar esa petición.",
       reachError: "No se pudo contactar con el coach de Matchmind.",
