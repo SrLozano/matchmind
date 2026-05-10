@@ -1,5 +1,7 @@
 import logging
 import asyncio
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -12,6 +14,7 @@ from app.services.supabase import enforce_daily_limit_and_store, release_reserve
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -20,10 +23,15 @@ async def chat(payload: ChatRequest) -> ChatResponse:
     try:
         user_context = await enforce_daily_limit_and_store(payload.user_id, payload.message)
         match_context, polymarket_context = await asyncio.gather(
-            build_match_context_for_chat(payload.message),
-            build_polymarket_context_for_chat(payload.message),
+            _safe_context_call("api_football", build_match_context_for_chat, payload.message),
+            _safe_context_call("polymarket", build_polymarket_context_for_chat, payload.message),
         )
-        bookmaker_context = await build_bookmaker_context_for_chat(payload.message, match_context=match_context)
+        bookmaker_context = await _safe_context_call(
+            "bookmaker_odds",
+            build_bookmaker_context_for_chat,
+            payload.message,
+            match_context=match_context,
+        )
         ai_result = await generate_chat_reply(
             payload.message,
             match_context,
@@ -64,6 +72,19 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to process chat request.",
         ) from exc
+
+
+async def _safe_context_call(
+    source_name: str,
+    builder: Callable[..., Awaitable[T]],
+    *args: Any,
+    **kwargs: Any,
+) -> T | None:
+    try:
+        return await builder(*args, **kwargs)
+    except Exception:
+        logger.warning("Chat data source failed: %s", source_name, exc_info=True)
+        return None
 
 
 def _build_chat_market_signal(polymarket_context: dict | None) -> ChatMarketSignal | None:

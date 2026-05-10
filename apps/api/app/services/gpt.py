@@ -20,7 +20,7 @@ Voice:
 - Sound like a sharp, honest betting friend, not a generic chatbot.
 - Be willing to say "do not take this bet" when the edge is weak.
 - Reply in the user's detected language. Use Spanish when detected_language is "es"; use English otherwise.
-- If detected_language is "es", every user-facing sentence and every visible section label in response must be Spanish. Do not write visible labels like "Verdict", "My take", "Odds check", "Risk notes", "Stake posture", or "Confidence"; use Spanish labels instead.
+- If detected_language is "es", every user-facing sentence and every visible label in response must be Spanish.
 - Keep only JSON metadata enum values in English. The visible response text must still be Spanish for Spanish users.
 
 Use the provided parsed_bet facts as deterministic context. Do not contradict the supplied odds or implied probability.
@@ -32,39 +32,16 @@ If bookmaker_context is present, use it as cached bookmaker consensus only. It i
 Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-Football predictions, prediction-market probabilities, or broader team form unless those fields are explicitly present.
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
-Every response text must follow this structure. Translate section labels naturally for Spanish users, but keep the same order:
-
-Verdict: [GOOD VALUE / FAIR / RISKY / AVOID / NOT ENOUGH INFO]
-
-My take:
-[2-4 direct sentences. Identify the bet being considered. Give the core betting opinion.]
-
-Odds check:
-- Your odds: [decimal odds or "not provided"]
-- Implied probability: [percentage or "not calculable without odds"]
-- Value judgment: [attractive, fair, poor, or not enough information]
-
-Risk notes:
-- [1 concise risk note]
-- [optional second risk note]
-- [optional third risk note]
-
-Stake posture:
-[avoid / very small / small / medium] — [short explanation. Never recommend a large or aggressive stake.]
-
-Confidence:
-[x]/10
-
-Spanish visible-label equivalents:
-- Verdict -> Veredicto
-- My take -> Mi lectura
-- Odds check -> Chequeo de cuota
-- Your odds -> Tu cuota
-- Implied probability -> Probabilidad implícita
-- Value judgment -> Juicio de valor
-- Risk notes -> Notas de riesgo
-- Stake posture -> Postura de stake
-- Confidence -> Confianza
+The visible response should feel like a sharp friend answering in chat, not a reusable report template.
+- Start with the bottom line in plain language.
+- Use 2-5 short paragraphs or bullets, whichever feels more natural for the user's question.
+- Keep it concise, usually 90-170 words.
+- Mention the user's odds and implied probability when odds are supplied.
+- Mention bookmaker consensus, best cached price, fixture context, or market-signal probability only when those fields are explicitly provided.
+- Include the confidence score naturally at the end, but avoid making every answer look identical.
+- Vary wording across answers. Do not always use the same section labels or the same order.
+- For vague inputs, ask one useful follow-up question and give only a light preliminary read.
+- Never recommend a large or aggressive stake. Use stake language as posture, not instruction.
 
 Behavior rules:
 - If no odds are provided, ask for the odds but still give a preliminary football opinion if teams or market are clear.
@@ -78,11 +55,56 @@ Return valid JSON with keys:
 For JSON metadata, always use English enum values:
 - verdict: GOOD VALUE, FAIR, RISKY, AVOID, or NOT ENOUGH INFO
 - stake_posture: avoid, very small, small, or medium
+- confidence_score must be a number from 1 to 10.
+- implied_probability must be a number from 0 to 1, or null when not calculable.
 """.strip()
 
 
 VERDICTS = {"GOOD VALUE", "FAIR", "RISKY", "AVOID", "NOT ENOUGH INFO"}
 STAKE_POSTURES = {"avoid", "very small", "small", "medium"}
+CHAT_RESPONSE_JSON_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "matchmind_chat_reply",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "response": {
+                    "type": "string",
+                    "description": "User-facing chat answer in the requested language.",
+                },
+                "confidence_score": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 10,
+                },
+                "verdict": {
+                    "type": "string",
+                    "enum": ["GOOD VALUE", "FAIR", "RISKY", "AVOID", "NOT ENOUGH INFO"],
+                },
+                "implied_probability": {
+                    "anyOf": [
+                        {"type": "number", "minimum": 0, "maximum": 1},
+                        {"type": "null"},
+                    ],
+                },
+                "stake_posture": {
+                    "type": "string",
+                    "enum": ["avoid", "very small", "small", "medium"],
+                },
+            },
+            "required": [
+                "response",
+                "confidence_score",
+                "verdict",
+                "implied_probability",
+                "stake_posture",
+            ],
+        },
+    },
+}
 SPANISH_VERDICT_MAP = {
     "BUEN VALOR": "GOOD VALUE",
     "VALOR": "GOOD VALUE",
@@ -139,6 +161,12 @@ def _extract_json(content: str) -> AIChatResult:
             confidence_score=_clamp_score(score),
             verdict=_extract_verdict(content),
             stake_posture=_extract_stake_posture(content),
+        )
+
+    if not isinstance(payload, dict):
+        return AIChatResult(
+            response=str(payload or "").strip(),
+            confidence_score=5.0,
         )
 
     response = _normalize_response_text(payload.get("response", ""))
@@ -294,6 +322,26 @@ def _build_user_context(
     return json.dumps(context, ensure_ascii=False)
 
 
+def _chat_response_format() -> dict[str, Any]:
+    return CHAT_RESPONSE_JSON_SCHEMA
+
+
+def _finalize_result(result: AIChatResult, parsed_bet: ParsedBet) -> AIChatResult:
+    fallback = _fallback_result(parsed_bet)
+    if not result.response:
+        return fallback
+
+    if parsed_bet.detected_language == "es":
+        result.response = _localize_visible_response_es(result.response)
+    if result.implied_probability is None:
+        result.implied_probability = parsed_bet.implied_probability
+    if result.verdict is None:
+        result.verdict = fallback.verdict
+    if result.stake_posture is None:
+        result.stake_posture = fallback.stake_posture
+    return result
+
+
 def _fallback_result(parsed_bet: ParsedBet) -> AIChatResult:
     if parsed_bet.detected_language == "es":
         return _fallback_result_es(parsed_bet)
@@ -340,25 +388,13 @@ def _fallback_result_en(parsed_bet: ParsedBet) -> AIChatResult:
         my_take = f"I do not hate the bet on {bet_target}, but I would not call it clear value without live odds, team news, and market comparison. Treat it as a controlled opinion, not a spot to force."
         value_judgment = "Potentially fair, but not obviously generous."
 
-    response = f"""Verdict: {verdict}
+    response = f"""Short version: {verdict}. {my_take}
 
-My take:
-{my_take}
+At the price you gave me, the odds are {odds_text} and the implied probability is {probability_text}. My value read: {value_judgment}
 
-Odds check:
-- Your odds: {odds_text}
-- Implied probability: {probability_text}
-- Value judgment: {value_judgment}
+The main caveat is that I do not have live bookmaker, lineup, injury, or market-signal data in this fallback analysis. Keep the stake posture {stake_posture}; do not size up because of loyalty, emotion, or chasing.
 
-Risk notes:
-- Live bookmaker, lineup, injury, and market-signal data are not available in this analysis.
-- Do not increase the stake because of loyalty, emotion, or chasing a previous result.
-
-Stake posture:
-{stake_posture} — Keep this controlled; this is decision support, not financial advice.
-
-Confidence:
-{confidence_score:g}/10"""
+Confidence: {confidence_score:g}/10"""
 
     return AIChatResult(
         response=response,
@@ -419,25 +455,13 @@ def _fallback_result_es(parsed_bet: ParsedBet) -> AIChatResult:
         my_take = f"No odio la apuesta sobre {bet_target}, pero no la llamaría valor claro sin cuotas en vivo, noticias del equipo y comparación de mercado. Trátala como una opinión controlada, no como algo que haya que forzar."
         value_judgment = "Potencialmente justa, pero no claramente generosa."
 
-    response = f"""Veredicto: {visible_verdict}
+    response = f"""Resumen rápido: {visible_verdict}. {my_take}
 
-Mi lectura:
-{my_take}
+Con la cuota que me das, el precio es {odds_text} y la probabilidad implícita es {probability_text}. Mi lectura de valor: {value_judgment}
 
-Chequeo de cuota:
-- Tu cuota: {odds_text}
-- Probabilidad implícita: {probability_text}
-- Juicio de valor: {value_judgment}
+La gran cautela es que no tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni señales de mercado en este análisis de respaldo. Postura de stake: {visible_posture}; no subas el importe por lealtad, emoción o por intentar recuperar.
 
-Notas de riesgo:
-- No tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni señales de mercado en este análisis.
-- No subas el stake por lealtad, emoción o por intentar recuperar una apuesta anterior.
-
-Postura de stake:
-{visible_posture} — Mantén esto controlado; es apoyo para decidir, no asesoramiento financiero.
-
-Confianza:
-{confidence_score:g}/10"""
+Confianza: {confidence_score:g}/10"""
 
     return AIChatResult(
         response=response,
@@ -462,7 +486,7 @@ async def generate_chat_reply(
     client = AsyncOpenAI(api_key=settings.openai_api_key)
     completion = await client.chat.completions.create(
         model=settings.openai_model,
-        response_format={"type": "json_object"},
+        response_format=_chat_response_format(),
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": _build_user_context(message, parsed_bet, match_context, polymarket_context, bookmaker_context)},
@@ -471,15 +495,4 @@ async def generate_chat_reply(
     )
     content = completion.choices[0].message.content or "{}"
     result = _extract_json(content)
-    fallback = _fallback_result(parsed_bet)
-    if not result.response:
-        return fallback
-    if parsed_bet.detected_language == "es":
-        result.response = _localize_visible_response_es(result.response)
-    if result.implied_probability is None:
-        result.implied_probability = parsed_bet.implied_probability
-    if result.verdict is None:
-        result.verdict = fallback.verdict
-    if result.stake_posture is None:
-        result.stake_posture = fallback.stake_posture
-    return result
+    return _finalize_result(result, parsed_bet)

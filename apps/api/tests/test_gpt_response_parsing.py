@@ -1,7 +1,14 @@
 import unittest
 
 from app.services.bet_parser import parse_bet_message
-from app.services.gpt import _extract_json, _fallback_result, _localize_visible_response_es
+from app.models.chat import AIChatResult
+from app.services.gpt import (
+    _chat_response_format,
+    _extract_json,
+    _fallback_result,
+    _finalize_result,
+    _localize_visible_response_es,
+)
 
 
 class GPTResponseParsingTest(unittest.TestCase):
@@ -49,9 +56,8 @@ class GPTResponseParsingTest(unittest.TestCase):
         parsed = parse_bet_message("Brazil to beat Japan at 1.30")
         result = _fallback_result(parsed)
 
-        self.assertIn("Verdict:", result.response)
-        self.assertIn("Odds check:", result.response)
-        self.assertIn("Stake posture:", result.response)
+        self.assertIn("Short version:", result.response)
+        self.assertIn("Confidence:", result.response)
         self.assertEqual(result.implied_probability, 0.7692)
         self.assertIn(result.stake_posture, {"avoid", "very small", "small", "medium"})
 
@@ -59,8 +65,8 @@ class GPTResponseParsingTest(unittest.TestCase):
         parsed = parse_bet_message("Brasil gana a Japón a 1,30")
         result = _fallback_result(parsed)
 
-        self.assertIn("Veredicto:", result.response)
-        self.assertIn("Chequeo de cuota:", result.response)
+        self.assertIn("Resumen rápido:", result.response)
+        self.assertIn("Confianza:", result.response)
         self.assertEqual(result.verdict, "RISKY")
         self.assertEqual(result.stake_posture, "very small")
         self.assertEqual(result.implied_probability, 0.7692)
@@ -82,6 +88,29 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertIn("señal de mercado", response)
         self.assertIn("Postura de stake:\npequeño", response)
         self.assertIn("Confianza:", response)
+
+    def test_chat_response_format_uses_strict_json_schema(self) -> None:
+        response_format = _chat_response_format()
+        schema = response_format["json_schema"]["schema"]
+
+        self.assertEqual(response_format["type"], "json_schema")
+        self.assertTrue(response_format["json_schema"]["strict"])
+        self.assertFalse(schema["additionalProperties"])
+        self.assertEqual(
+            schema["required"],
+            ["response", "confidence_score", "verdict", "implied_probability", "stake_posture"],
+        )
+
+    def test_finalize_result_fills_missing_metadata(self) -> None:
+        parsed = parse_bet_message("Brazil to beat Japan at 1.80")
+        result = _finalize_result(
+            AIChatResult(response="I lean fair at that number.", confidence_score=6),
+            parsed,
+        )
+
+        self.assertEqual(result.implied_probability, 0.5556)
+        self.assertEqual(result.verdict, "FAIR")
+        self.assertEqual(result.stake_posture, "small")
 
 
 if __name__ == "__main__":
