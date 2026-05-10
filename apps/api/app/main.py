@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.routers.bets import router as bets_router
 from app.routers.chat import router as chat_router
+from app.routers.odds import router as odds_router
 from app.routers.polymarket import router as polymarket_router
 from app.routers.users import router as users_router
 from app.routers.world_cup import router as world_cup_router
@@ -50,6 +51,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(world_cup_router)
 app.include_router(polymarket_router)
+app.include_router(odds_router)
 app.include_router(bets_router)
 app.include_router(users_router)
 

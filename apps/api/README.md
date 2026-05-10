@@ -71,6 +71,11 @@ make api-test
 - `GET /polymarket/signals` returns compact active World Cup 2026 prediction-market signals from Supabase/memory.
 - `POST /polymarket/seed-from-discovery` seeds Polymarket markets from `POLYMARKET_DISCOVERY_PATH`. This is internal and requires `X-Internal-Token`.
 - `POST /polymarket/refresh` refreshes Polymarket markets from Gamma/CLOB APIs. This is internal and requires `X-Internal-Token`.
+- `GET /odds/matches` returns compact cached bookmaker consensus for match cards.
+- `POST /odds/analyze` compares a user-entered price against cached bookmaker consensus.
+- `POST /odds/seed-from-discovery` seeds bookmaker odds from `ODDS_API_DISCOVERY_PATH`. This is internal and requires `X-Internal-Token`.
+- `POST /odds/refresh/events` refreshes The Odds API World Cup event ids. This is internal and requires `X-Internal-Token`.
+- `POST /odds/refresh` refreshes featured World Cup match and outright bookmaker odds. This is internal and requires `X-Internal-Token`.
 - `POST /bets` logs a manual bet in the tracker.
 - `GET /bets?user_id=...` returns bet history plus tracker summary metrics.
 - `PATCH /bets/{bet_id}` updates a tracked bet and recalculates P&L.
@@ -255,6 +260,96 @@ create table if not exists public.polymarket_market_snapshots (
 create index if not exists idx_polymarket_snapshots_market_time
     on public.polymarket_market_snapshots(polymarket_market_id, fetched_at desc);
 
+create table if not exists public.bookmaker_events (
+    id uuid primary key default gen_random_uuid(),
+    odds_api_event_id text not null unique,
+    api_football_fixture_id bigint,
+    sport_key text not null,
+    sport_title text,
+    home_team text,
+    away_team text,
+    commence_time timestamptz,
+    matchmind_match_key text,
+    raw_payload jsonb not null default '{}'::jsonb,
+    last_fetched_at timestamptz not null,
+    created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_bookmaker_events_commence_time
+    on public.bookmaker_events(commence_time);
+
+create index if not exists idx_bookmaker_events_match_key
+    on public.bookmaker_events(matchmind_match_key);
+
+create table if not exists public.bookmaker_odds (
+    id uuid primary key default gen_random_uuid(),
+    odds_api_event_id text not null references public.bookmaker_events(odds_api_event_id) on delete cascade,
+    bookmaker_key text not null,
+    bookmaker_title text,
+    market_key text not null,
+    line_key text not null,
+    outcome_name text not null,
+    outcome_team text,
+    price numeric(10, 4) not null,
+    point numeric(10, 3),
+    odds_format text not null default 'decimal',
+    bookmaker_last_update timestamptz,
+    fetched_at timestamptz not null,
+    raw_payload jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default timezone('utc', now()),
+    unique (odds_api_event_id, bookmaker_key, market_key, outcome_name, line_key)
+);
+
+create index if not exists idx_bookmaker_odds_event_market
+    on public.bookmaker_odds(odds_api_event_id, market_key);
+
+create table if not exists public.bookmaker_odds_snapshots (
+    id uuid primary key default gen_random_uuid(),
+    odds_api_event_id text not null references public.bookmaker_events(odds_api_event_id) on delete cascade,
+    bookmaker_key text not null,
+    bookmaker_title text,
+    market_key text not null,
+    line_key text not null,
+    outcome_name text not null,
+    outcome_team text,
+    price numeric(10, 4) not null,
+    point numeric(10, 3),
+    odds_format text not null default 'decimal',
+    bookmaker_last_update timestamptz,
+    fetched_at timestamptz not null,
+    raw_payload jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_bookmaker_snapshots_event_market_time
+    on public.bookmaker_odds_snapshots(odds_api_event_id, market_key, fetched_at desc);
+
+create table if not exists public.bookmaker_market_consensus (
+    id uuid primary key default gen_random_uuid(),
+    odds_api_event_id text not null references public.bookmaker_events(odds_api_event_id) on delete cascade,
+    market_key text not null,
+    line_key text not null,
+    outcome_name text not null,
+    outcome_team text,
+    point numeric(10, 3),
+    best_price numeric(10, 4),
+    best_bookmaker_key text,
+    best_bookmaker_title text,
+    median_price numeric(10, 4),
+    mean_price numeric(10, 4),
+    min_price numeric(10, 4),
+    max_price numeric(10, 4),
+    no_vig_probability numeric(8, 6),
+    bookmaker_count integer not null default 0,
+    stale_bookmaker_count integer not null default 0,
+    fetched_at timestamptz not null,
+    created_at timestamptz not null default timezone('utc', now()),
+    unique (odds_api_event_id, market_key, outcome_name, line_key)
+);
+
+create index if not exists idx_bookmaker_consensus_event_market
+    on public.bookmaker_market_consensus(odds_api_event_id, market_key);
+
 grant usage on schema public to service_role;
 grant select, insert, update on public.users to service_role;
 grant select, insert, update on public.conversations to service_role;
@@ -262,6 +357,10 @@ grant select, insert, update, delete on public.bet_tracker to service_role;
 grant select, insert, update on public.world_cup_matches to service_role;
 grant select, insert, update on public.polymarket_markets to service_role;
 grant select, insert on public.polymarket_market_snapshots to service_role;
+grant select, insert, update on public.bookmaker_events to service_role;
+grant select, insert, update on public.bookmaker_odds to service_role;
+grant select, insert on public.bookmaker_odds_snapshots to service_role;
+grant select, insert, update on public.bookmaker_market_consensus to service_role;
 ```
 
 Seed a local dev user if you are using the default frontend env:
@@ -302,6 +401,15 @@ POLYMARKET_CACHE_TTL_SECONDS=600
 POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=40
 POLYMARKET_MIN_MATCH_CONFIDENCE=0.7
 POLYMARKET_MIN_SIGNAL_QUALITY=40
+ODDS_API_KEY=
+ODDS_API_BASE_URL=https://api.the-odds-api.com
+ODDS_API_REGIONS=eu
+ODDS_API_BOOKMAKERS=
+ODDS_API_MARKETS=h2h,spreads,totals
+ODDS_API_OUTRIGHT_MARKETS=outrights
+ODDS_API_ODDS_FORMAT=decimal
+ODDS_API_CACHE_TTL_SECONDS=600
+ODDS_API_DISCOVERY_PATH=tmp/odds_api_world_cup_discovery.json
 INTERNAL_API_TOKEN=
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
@@ -310,9 +418,35 @@ Match detection uses a local tournament team alias registry first. If no confide
 
 Polymarket context reads from Supabase first, then falls back to the normalized exploration output at `POLYMARKET_DISCOVERY_PATH` if the table is empty or unavailable. Chat only injects it for supported long-term markets such as World Cup winner, group winner, and team advancement. Match-level bets, totals, cards, corners, and handicaps intentionally do not receive a Polymarket context block until active fixture-level World Cup markets exist.
 
+## The Odds API Cache Flow
+
+Chat requests do not call The Odds API. Bookmaker data is refreshed manually or by a scheduled job, persisted in `bookmaker_events`, `bookmaker_odds`, `bookmaker_odds_snapshots`, and `bookmaker_market_consensus`, then served through memory cache:
+
+```text
+The Odds API
+-> scheduled or manual refresh
+-> Supabase bookmaker odds tables
+-> in-memory TTL cache
+-> /chat, /odds/matches, /odds/analyze
+```
+
+On a machine where live odds refresh is not desired, seed the first cache from the exploration JSON:
+
+```bash
+curl -X POST http://localhost:8000/odds/seed-from-discovery \
+  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
+```
+
+In an environment that can reach The Odds API, refresh live featured markets:
+
+```bash
+curl -X POST http://localhost:8000/odds/refresh \
+  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
+```
+
 ## Current Not-Yet-Wired Areas
 
-- The Odds API is not integrated yet. Do not document or depend on bookmaker divergence until an odds cache table and refresh endpoint exist.
+- The Odds API is integrated as a cache-first bookmaker layer for featured match odds and tournament outrights. Additional event-specific markets such as BTTS, cards, corners, and player props are still not wired into product surfaces.
 - Stripe is not integrated yet. `STRIPE_SECRET_KEY` is present as a future payment placeholder.
 - Frontend auth is not integrated yet. Local development uses the dev user ID documented above.
 

@@ -2,18 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AlertCircle, CalendarDays, Clock, Lock, RefreshCw, Sparkles } from "lucide-react"
-import { getWorldCupFixtures, type WorldCupFixture } from "@/lib/api"
+import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage } from "@/lib/i18n"
 
 type FeedState = {
   matches: WorldCupFixture[]
+  oddsMatches: OddsMatch[]
   lastUpdated: Date | null
 }
 
 export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
   const { language, t } = useLanguage()
-  const [feed, setFeed] = useState<FeedState>({ matches: [], lastUpdated: null })
+  const [feed, setFeed] = useState<FeedState>({ matches: [], oddsMatches: [], lastUpdated: null })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const locale = language === "es" ? "es-ES" : "en-US"
@@ -49,9 +50,16 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
     setError(null)
 
     try {
-      const result = await getWorldCupFixtures()
+      const [fixturesResult, oddsResult] = await Promise.allSettled([
+        getWorldCupFixtures(),
+        getOddsMatches(),
+      ])
+      if (fixturesResult.status === "rejected") {
+        throw fixturesResult.reason
+      }
       setFeed({
-        matches: result.matches,
+        matches: fixturesResult.value.matches,
+        oddsMatches: oddsResult.status === "fulfilled" ? oddsResult.value.matches : [],
         lastUpdated: new Date(),
       })
     } catch (err) {
@@ -117,6 +125,7 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
               key={`${match.id ?? match.match}-${match.kickoff_time ?? index}`}
               match={match}
               access={getMatchAccess(match, index, isPremium)}
+              odds={findOddsForFixture(match, feed.oddsMatches)}
               dateFormatter={dateFormatter}
               timeFormatter={timeFormatter}
             />
@@ -130,11 +139,13 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
 function MatchRow({
   match,
   access,
+  odds,
   dateFormatter,
   timeFormatter,
 }: {
   match: WorldCupFixture
   access: MatchAccess
+  odds: OddsMatch | null
   dateFormatter: Intl.DateTimeFormat
   timeFormatter: Intl.DateTimeFormat
 }) {
@@ -180,7 +191,7 @@ function MatchRow({
         {access === "locked" ? (
           <LockedInsight teaser={match.teaser} />
         ) : (
-          <UnlockedInsight match={match} hasPick={hasPick} access={access} />
+          <UnlockedInsight match={match} hasPick={hasPick} access={access} odds={odds} />
         )}
       </div>
     </article>
@@ -234,43 +245,70 @@ function UnlockedInsight({
   match,
   hasPick,
   access,
+  odds,
 }: {
   match: WorldCupFixture
   hasPick: boolean
   access: MatchAccess
+  odds: OddsMatch | null
 }) {
   const { t } = useLanguage()
   const isPremiumAccess = access === "premium"
+  const favorite = odds?.h2h?.[0] ?? null
 
   return (
-    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-      <div className="min-w-0">
-        <p className="truncate text-xs font-semibold text-foreground">
-          {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
-        </p>
-        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
-          {match.coach_summary ??
-            (hasPick
-              ? t.feed.coachAvailable
-              : isPremiumAccess
-                ? t.feed.premiumFixture
-                : t.feed.unlockedFixture)}
-        </p>
-      </div>
-      <div className="flex min-w-[74px] flex-col items-end">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
-          {t.feed.confidence}
-        </span>
-        <span className={`text-sm font-bold ${isPremiumAccess ? "text-[#FFD600]" : "text-[#00FF87]"}`}>
-          {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
-        </span>
-        {typeof match.edge === "number" && (
-          <span className="text-[10px] font-semibold text-[#00FF87]">
-            {match.edge > 0 ? "+" : ""}
-            {match.edge.toFixed(1)}% {t.feed.edge}
+    <div className="space-y-3">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-foreground">
+            {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
+          </p>
+          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
+            {match.coach_summary ??
+              (hasPick
+                ? t.feed.coachAvailable
+                : isPremiumAccess
+                  ? t.feed.premiumFixture
+                  : t.feed.unlockedFixture)}
+          </p>
+        </div>
+        <div className="flex min-w-[74px] flex-col items-end">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+            {t.feed.confidence}
           </span>
-        )}
+          <span className={`text-sm font-bold ${isPremiumAccess ? "text-[#FFD600]" : "text-[#00FF87]"}`}>
+            {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
+          </span>
+          {typeof match.edge === "number" && (
+            <span className="text-[10px] font-semibold text-[#00FF87]">
+              {match.edge > 0 ? "+" : ""}
+              {match.edge.toFixed(1)}% {t.feed.edge}
+            </span>
+          )}
+        </div>
       </div>
+      {favorite && <BookmakerStrip favorite={favorite} />}
+    </div>
+  )
+}
+
+function BookmakerStrip({ favorite }: { favorite: OddsConsensusRow }) {
+  const { t } = useLanguage()
+
+  return (
+    <div className="grid grid-cols-3 gap-2 border-t border-[#1A2845] pt-3">
+      <MiniMetric label={t.feed.marketFavorite} value={favorite.outcome_name ?? t.feed.noValue} />
+      <MiniMetric label={t.feed.bestPrice} value={formatPrice(favorite.best_price, t.feed.noValue)} accent="text-[#00FF87]" />
+      <MiniMetric label={t.feed.fairProbability} value={formatPercent(favorite.no_vig_probability, t.feed.noValue)} />
+    </div>
+  )
+}
+
+function MiniMetric({ label, value, accent = "text-foreground" }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{label}</p>
+      <p className={`mt-0.5 truncate text-xs font-bold ${accent}`}>{value}</p>
     </div>
   )
 }
@@ -394,6 +432,33 @@ function parseKickoff(value: string | null) {
 function getKickoffTimestamp(match: WorldCupFixture) {
   const date = parseKickoff(match.kickoff_time)
   return date ? date.getTime() : Number.POSITIVE_INFINITY
+}
+
+function findOddsForFixture(match: WorldCupFixture, oddsMatches: OddsMatch[]) {
+  const key = fixtureKey(match.home_team, match.away_team, match.kickoff_time)
+  return oddsMatches.find((odds) => fixtureKey(odds.home_team, odds.away_team, odds.commence_time) === key) ?? null
+}
+
+function fixtureKey(homeTeam: string | null, awayTeam: string | null, kickoffTime: string | null) {
+  const teams = [homeTeam, awayTeam].map(normalizeTeam).sort().join("|")
+  return `${teams}|${(kickoffTime ?? "").slice(0, 10)}`
+}
+
+function normalizeTeam(value: string | null) {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+}
+
+function formatPrice(value: number | null, fallback: string) {
+  return typeof value === "number" ? value.toFixed(2) : fallback
+}
+
+function formatPercent(value: number | null, fallback: string) {
+  return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : fallback
 }
 
 function formatUpdatedAt(

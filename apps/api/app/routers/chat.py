@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.models.chat import ChatMarketSignal, ChatRequest, ChatResponse
 from app.services.api_football import build_match_context_for_chat
 from app.services.gpt import generate_chat_reply
+from app.services.odds_api import build_bookmaker_context_for_chat
 from app.services.polymarket import build_polymarket_context_for_chat
 from app.services.supabase import enforce_daily_limit_and_store, release_reserved_chat
 
@@ -22,10 +23,12 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             build_match_context_for_chat(payload.message),
             build_polymarket_context_for_chat(payload.message),
         )
+        bookmaker_context = await build_bookmaker_context_for_chat(payload.message, match_context=match_context)
         ai_result = await generate_chat_reply(
             payload.message,
             match_context,
             polymarket_context,
+            bookmaker_context,
             preferred_language=payload.preferred_language,
         )
         saved_turn = await user_context.save_assistant_turn(

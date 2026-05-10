@@ -102,6 +102,37 @@ export type WorldCupFixturesResponse = {
   }
 }
 
+export type OddsConsensusRow = {
+  market_key: string | null
+  outcome_name: string | null
+  point: number | null
+  best_price: number | null
+  best_bookmaker_title: string | null
+  median_price: number | null
+  no_vig_probability: number | null
+  bookmaker_count: number
+}
+
+export type OddsMatch = {
+  odds_api_event_id: string
+  sport_key: string | null
+  home_team: string | null
+  away_team: string | null
+  match: string
+  commence_time: string | null
+  last_fetched_at: string | null
+  h2h: OddsConsensusRow[]
+  featured_markets: {
+    spreads?: OddsConsensusRow[]
+    totals?: OddsConsensusRow[]
+  }
+}
+
+export type OddsMatchesResponse = {
+  matches: OddsMatch[]
+  count: number
+}
+
 export type BetOutcome = "win" | "loss" | "pending"
 
 export type TrackedBet = {
@@ -206,6 +237,17 @@ export async function getWorldCupFixtures(): Promise<WorldCupFixturesResponse> {
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load the World Cup match radar. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function getOddsMatches({ limit = 50 }: { limit?: number } = {}): Promise<OddsMatchesResponse> {
+  const params = new URLSearchParams({ limit: limit.toString() })
+  const response = await fetch(`${getApiUrl()}/odds/matches?${params.toString()}`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load bookmaker odds. Try again in a moment."))
   }
 
   return response.json()
