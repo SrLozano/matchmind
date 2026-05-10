@@ -12,6 +12,8 @@ apps/api/
 │   ├── routers/
 │   │   ├── bets.py
 │   │   ├── chat.py
+│   │   ├── conversations.py
+│   │   ├── odds.py
 │   │   ├── polymarket.py
 │   │   ├── users.py
 │   │   └── world_cup.py
@@ -20,12 +22,14 @@ apps/api/
 │   │   ├── bet_parser.py
 │   │   ├── bets.py
 │   │   ├── gpt.py
+│   │   ├── odds_api.py
 │   │   ├── polymarket.py
 │   │   ├── supabase.py
 │   │   └── world_cup_teams.py
 │   └── models/
 │       ├── bets.py
 │       ├── chat.py
+│       ├── conversations.py
 │       └── users.py
 ├── tests/
 ├── .env.example
@@ -80,12 +84,16 @@ make api-test
 - `GET /bets?user_id=...` returns bet history plus tracker summary metrics.
 - `PATCH /bets/{bet_id}` updates a tracked bet and recalculates P&L.
 - `DELETE /bets/{bet_id}?user_id=...` deletes a tracked bet.
+- `GET /conversations?user_id=...&limit=20` returns conversation summaries derived from `conversations.messages`.
+- `GET /conversations/{conversation_id}?user_id=...` returns one conversation and its stored messages.
 - `POST /chat` accepts:
 
 ```json
 {
   "user_id": "00000000-0000-0000-0000-000000000000",
-  "message": "Thinking of betting €20 on Spain to beat Germany at 2.10"
+  "message": "Thinking of betting €20 on Spain to beat Germany at 2.10",
+  "preferred_language": "en",
+  "conversation_id": null
 }
 ```
 
@@ -93,7 +101,8 @@ Returns:
 
 ```json
 {
-  "response": "Verdict: FAIR\n\nMy take:\n...",
+  "conversation_id": "11111111-1111-1111-1111-111111111111",
+  "response": "I lean fair at that number, but I would keep it controlled...",
   "confidence_score": 6,
   "verdict": "FAIR",
   "implied_probability": 0.4762,
@@ -103,7 +112,29 @@ Returns:
 }
 ```
 
-`preferred_language` can be `"en"` or `"es"`. If omitted, the backend detects language from the message and asks the coach to answer in that language.
+`preferred_language` can be `"en"` or `"es"`. If omitted, the backend detects language from the message and asks the coach to answer in that language. `conversation_id` is optional; omit it to start a new conversation, or send a previous ID to append a follow-up and give the coach recent conversation memory.
+
+The OpenAI call uses a strict JSON schema for `response`, `confidence_score`, `verdict`, `implied_probability`, and `stake_posture`. The visible `response` is allowed to be conversational and varied, while these metadata fields stay stable for UI rendering.
+
+Chat provider context is resilient by design. API-Football, Polymarket, and bookmaker context builders are best-effort in the `/chat` route; a provider/cache failure is logged and omitted instead of crashing the chat request.
+
+### Conversations
+
+Conversation history uses the existing `conversations.messages` JSONB field; no additional Supabase columns are required for the current UI.
+
+List summaries:
+
+```bash
+curl "http://localhost:8000/conversations?user_id=a87d09e8-7e10-46b8-9927-c9500c9559cf&limit=20"
+```
+
+Fetch one conversation:
+
+```bash
+curl "http://localhost:8000/conversations/{conversation_id}?user_id=a87d09e8-7e10-46b8-9927-c9500c9559cf"
+```
+
+Summaries derive `title` from the first user message, `last_message_preview` from the latest valid message, and `updated_at` from the latest message timestamp when available. A future explicit `updated_at` column would make this faster and cleaner, but it is not required for v1.
 
 ### Bet Tracker
 
@@ -505,9 +536,12 @@ Manual verification checklist:
 9. Send `Spain vs Alemania at 2.10, cómo lo ves?`.
 10. Send `Argentina campeona del mundial a cuota 6.50` and confirm no forced match fixture context.
 11. Send `¿Qué apuesta ves buena hoy?` and confirm normal clarification behavior.
-12. Remove or break `API_FOOTBALL_KEY`; chat should still work from cached Supabase data or without match context.
-13. Repeat chat calls and confirm `api_football_usage.fixture_requests` does not increase.
-14. Wait for `WORLD_CUP_CACHE_TTL_SECONDS`, then confirm chat can reload fixtures from Supabase without calling API-Football.
+12. Send a follow-up such as `what if I can get 2.30 instead?` with the returned `conversation_id` and confirm the coach treats it as the same bet with the updated price.
+13. Call `GET /conversations` and confirm the chat appears in history.
+14. Call `GET /conversations/{conversation_id}` and confirm stored user/assistant messages are returned.
+15. Remove or break `API_FOOTBALL_KEY`; chat should still work from cached Supabase data or without match context.
+16. Repeat chat calls and confirm `api_football_usage.fixture_requests` does not increase.
+17. Wait for `WORLD_CUP_CACHE_TTL_SECONDS`, then confirm chat can reload fixtures from Supabase without calling API-Football.
 
 ## Notes
 
@@ -516,5 +550,7 @@ Manual verification checklist:
 - Matchmind never places bets; it only provides analysis and coaching.
 - The coach parses decimal odds, stake, teams, and obvious markets before calling the AI model so implied probability is stable even when live data is unavailable.
 - English and Spanish are supported in the coach flow. Parser output is canonicalized to English for API consistency, while the coach replies in the detected user language.
+- Chat returns stable structured metadata for UI chips: `verdict`, `confidence_score`, `stake_posture`, and `implied_probability`.
+- Conversations preserve follow-up memory through `conversation_id` and compact recent `conversation_memory` in the prompt.
 - API-Football fixture context is cached persistently in Supabase and only refreshed outside the normal per-message chat path.
 - The Odds API bookmaker context is cached persistently in Supabase and only refreshed or seeded outside the normal per-message chat path.

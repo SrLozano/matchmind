@@ -21,6 +21,10 @@ routers/
 
 Chat is intentionally a lightweight request path. It stores the user turn, checks the daily limit, reads cached provider context, calls OpenAI, and stores the assistant turn. It should not call slow or fragile provider APIs directly. Provider data is refreshed separately into Supabase, then served to chat through a short in-memory cache.
 
+Chat provider context is best-effort. API-Football, Polymarket, and bookmaker odds failures are logged and omitted independently so the coach can still answer from the user message, parsed odds, and any remaining sources.
+
+Conversations are stored in the existing `conversations.messages` JSONB field. `POST /chat` accepts an optional `conversation_id`; when present, the backend appends the new user turn to that conversation and injects compact recent `conversation_memory` into the model prompt. If the current user message lacks teams but appears to be a follow-up, provider matching can use the previous bet under discussion for context. `GET /conversations` and `GET /conversations/{conversation_id}` power the web history panel.
+
 ## Data Flow Pattern
 
 For provider integrations, prefer this shape:
@@ -45,7 +49,8 @@ Current examples:
 
 ## Current Product Surfaces
 
-- Chat: `POST /chat`, backed by OpenAI plus cached API-Football context, supported long-term Polymarket context, and cached bookmaker consensus when the user asks about a supported match/tournament market.
+- Chat: `POST /chat`, backed by OpenAI plus cached API-Football context, supported long-term Polymarket context, cached bookmaker consensus when the user asks about a supported match/tournament market, and recent conversation memory for follow-ups. The web UI shows structured response chips for verdict, confidence, stake posture, and implied probability.
+- Conversation History: `GET /conversations` and `GET /conversations/{conversation_id}`, deriving titles, previews, and message lists from `conversations.messages`.
 - Match Radar / Daily Feed: `GET /world-cup/fixtures` plus `GET /odds/matches`, showing cached fixtures, 1X2 bookmaker prices, the market favorite, no-vig/fair probability, bookmaker count, freshness, and expandable goals over/under and goal handicap markets.
 - Market Signals: `GET /polymarket/signals`, showing usable tournament-level crowd signals with premium locking.
 - Bet Tracker: `POST /bets`, `GET /bets`, `PATCH /bets/{bet_id}`, and `DELETE /bets/{bet_id}`.
@@ -70,6 +75,7 @@ The frontend currently uses this data in Match Radar. The expandable label is in
 - Stripe checkout is represented in pricing/profile UI and env placeholders, but no payment endpoints are implemented yet.
 - Additional The Odds API event-specific markets such as BTTS, cards, corners, and player props are not wired into product surfaces yet.
 - Bookmaker-vs-Polymarket divergence is not implemented yet. The clean first overlap would be bookmaker `outrights` vs Polymarket `tournament_outright`.
+- Rich source transparency/freshness chips for exactly which data sources were used in each chat answer are not implemented yet.
 - `packages/shared` is intentionally empty until shared generated clients, schemas, or constants are needed.
 
 ## Documentation Map

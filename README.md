@@ -72,7 +72,7 @@ The API env variables are documented in [apps/api/README.md](apps/api/README.md)
 
 ## Frontend Status
 
-`apps/web` now contains the imported v1 Next.js app. It includes the mobile shell, bottom navigation, chat coach, Match Radar with cached fixture and bookmaker odds data, Polymarket market signals, bet tracker, profile, language toggle, and API client wiring.
+`apps/web` now contains the imported v1 Next.js app. It includes the mobile shell, bottom navigation, chat coach with conversation history, structured response chips, Match Radar with cached fixture and bookmaker odds data, Polymarket market signals, bet tracker, profile, language toggle, and API client wiring.
 
 Match Radar reads fixtures from `/world-cup/fixtures` and bookmaker consensus from `/odds/matches`. Each match card shows 1X2 best prices, the bookmaker-consensus favorite, no-vig/fair probability, bookmaker count, freshness, and an expandable "More markets" area for goals over/under and goal handicap.
 

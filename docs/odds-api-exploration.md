@@ -440,6 +440,7 @@ Chat integration:
 
 - `build_bookmaker_context_for_chat(message, parsed_bet, match_context)` reads cached bookmaker consensus.
 - Chat injects only compact fields into GPT context: event, market, user odds, implied probability, consensus probability, best price, best bookmaker title, freshness, and caveats.
+- In `/chat`, bookmaker context is best-effort. If the cache read fails or no relevant event/market can be matched, the coach still answers from parsed bet facts and any other available context.
 
 ## V1 Rollout
 

@@ -37,7 +37,7 @@ Polymarket Gamma/CLOB APIs or local discovery JSON
 -> /chat and /polymarket/signals
 ```
 
-This mirrors the API-Football cache design and keeps chat resilient when providers fail.
+This mirrors the API-Football cache design and keeps chat resilient when providers fail. In `/chat`, Polymarket context is best-effort: if the cache read or fallback discovery read fails, the route logs the issue, omits the market-signal block, and still asks the coach to answer from the remaining context.
 
 ## Endpoints
 
