@@ -13,6 +13,8 @@ type AuthContextValue = {
   authError: string | null
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
+  requestPasswordReset: (email: string) => Promise<void>
+  updatePassword: (password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -82,6 +84,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!supabase) return
         setAuthError(null)
         const { error } = await supabase.auth.signUp({ email, password })
+        if (error) {
+          setAuthError(error.message)
+          throw error
+        }
+      },
+      async requestPasswordReset(email) {
+        if (!supabase) return
+        setAuthError(null)
+        const redirectTo = `${window.location.origin}/reset-password`
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+        if (error) {
+          setAuthError(error.message)
+          throw error
+        }
+      },
+      async updatePassword(password) {
+        if (!supabase) return
+        setAuthError(null)
+        const { error } = await supabase.auth.updateUser({ password })
         if (error) {
           setAuthError(error.message)
           throw error
