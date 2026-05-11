@@ -507,6 +507,8 @@ Copy the `whsec_...` value printed by the CLI into `STRIPE_WEBHOOK_SECRET`. In t
 
 Do not put Stripe secret keys in `apps/web/.env.local`. The frontend only calls `/payments/create-checkout-session` with the user's Supabase bearer token and redirects to the returned Checkout URL.
 
+See [Stripe Payments](../../docs/stripe-payments.md) for the complete local setup, troubleshooting guide, and production checklist.
+
 ## Current Not-Yet-Wired Areas
 
 - The Odds API is integrated as a cache-first bookmaker layer for featured match odds and tournament outrights. Additional event-specific markets such as BTTS, cards, corners, and player props are still not wired into product surfaces.

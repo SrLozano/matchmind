@@ -89,6 +89,7 @@ The frontend currently uses this data in Match Radar. The expandable label is in
 
 - [Polymarket Integration](polymarket-integration.md): market scope, cache flow, endpoints, schema meaning, classification, and known caveats.
 - [The Odds API Exploration](odds-api-exploration.md): extractable bookmaker odds data, Matchmind use cases, cache schema proposal, and rollout plan.
+- [Stripe Payments](stripe-payments.md): test-mode setup, webhook troubleshooting, and production migration checklist for the tournament pass.
 - [API README](../apps/api/README.md): local setup, endpoint list, environment variables, and SQL schema.
 - [Root README](../README.md): repo structure and local development commands.
 

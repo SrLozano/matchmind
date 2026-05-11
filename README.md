@@ -67,6 +67,7 @@ The API env variables are documented in [apps/api/README.md](apps/api/README.md)
 - [Architecture](docs/architecture.md) explains repo boundaries and provider cache flows.
 - [Polymarket Integration](docs/polymarket-integration.md) records the current Polymarket data model, endpoints, classification rules, and operational caveats.
 - [The Odds API Exploration](docs/odds-api-exploration.md) records bookmaker coverage, implemented cache tables, endpoints, and product usage.
+- [Stripe Payments](docs/stripe-payments.md) documents test-mode checkout, webhook setup, troubleshooting, and the production checklist.
 - [Backend README](apps/api/README.md) documents endpoints, environment variables, and SQL schema.
 - [Web README](apps/web/README.md) documents the Next.js app, public env vars, and frontend commands.
 
@@ -89,7 +90,7 @@ Keep public browser-safe keys in frontend env files, and keep secret service key
 
 ## Stripe Test-Mode Payments
 
-Matchmind uses Stripe Checkout for the one-time €9.99 World Cup Tournament Pass. Keep all Stripe values in the root/backend `.env` and use test-mode keys only:
+Matchmind uses Stripe Checkout for the one-time €9.99 World Cup Tournament Pass. Keep all Stripe values in the root/backend `.env` and use test-mode keys only during development:
 
 ```text
 STRIPE_SECRET_KEY=sk_test_...
@@ -105,3 +106,5 @@ stripe listen --forward-to localhost:8000/payments/webhook
 ```
 
 Use Stripe's test card `4242 4242 4242 4242` with any future expiry, CVC, and postal code. The frontend must not contain Stripe secret keys.
+
+The full local setup, troubleshooting notes, and production migration checklist live in [docs/stripe-payments.md](docs/stripe-payments.md).

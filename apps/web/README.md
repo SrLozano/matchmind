@@ -97,6 +97,8 @@ stripe listen --forward-to localhost:8000/payments/webhook
 
 Use the Stripe test card `4242 4242 4242 4242`.
 
+See [Stripe Payments](../../docs/stripe-payments.md) for the complete local setup, troubleshooting guide, and production checklist.
+
 ## Useful Commands
 
 From the repo root:
@@ -122,7 +124,7 @@ pnpm lint
 - The app name is `@matchmind/web` so pnpm can target it from the monorepo root.
 - Shared frontend/backend contracts can go in `packages/shared` later.
 - Static assets belong in `apps/web/public`.
-- Payments are not wired yet. The profile upgrade button is a UI placeholder until Stripe checkout exists.
+- Payments use Stripe Checkout through the backend. The frontend must never expose Stripe secret keys.
 - Real auth is wired for email/password and Google OAuth sessions when Supabase public env vars are present. Dev-user fallback remains available for local development.
 - Local beta auth decision: keep Supabase email confirmation off for now. Before larger public launch, configure custom SMTP, then reconsider enabling email confirmation. The UI already handles confirmation-required signups if this is turned back on.
 - The green highlight in Match Radar bookmaker odds marks the bookmaker-consensus favorite by highest no-vig probability. It does not mean Matchmind recommends that bet.
