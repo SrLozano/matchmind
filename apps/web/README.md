@@ -85,6 +85,18 @@ The frontend calls the FastAPI backend on `NEXT_PUBLIC_API_URL`. When `NEXT_PUBL
 
 Do not put private backend secrets in the frontend. Keep `OPENAI_API_KEY`, Supabase service-role keys, Stripe secrets, and provider API keys in the root/backend `.env`.
 
+## Tournament Pass Checkout
+
+The Profile upgrade button calls the FastAPI endpoint `/payments/create-checkout-session` with the current Supabase bearer token, then redirects the browser to Stripe Checkout. After a successful or cancelled payment, Stripe redirects back to `APP_URL` from the backend `.env`; when the tab regains focus, the app reloads `/users/me` and shows the premium plan once the webhook has updated Supabase.
+
+Stripe keys and price IDs belong in the backend `.env`, not in `apps/web/.env.local`. For local end-to-end testing, run:
+
+```bash
+stripe listen --forward-to localhost:8000/payments/webhook
+```
+
+Use the Stripe test card `4242 4242 4242 4242`.
+
 ## Useful Commands
 
 From the repo root:

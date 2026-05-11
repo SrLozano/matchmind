@@ -202,6 +202,10 @@ export type CreateBetPayload = {
   outcome?: BetOutcome
 }
 
+export type CheckoutSessionResponse = {
+  url: string
+}
+
 function getApiUrl() {
   return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
 }
@@ -417,4 +421,16 @@ export async function deleteTrackedBet(betId: string): Promise<void> {
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to delete this bet. Try again in a moment."))
   }
+}
+
+export async function createTournamentPassCheckoutSession(): Promise<CheckoutSessionResponse> {
+  const response = await apiFetch(`${getApiUrl()}/payments/create-checkout-session`, {
+    method: "POST",
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to start checkout. Try again in a moment."))
+  }
+
+  return response.json()
 }

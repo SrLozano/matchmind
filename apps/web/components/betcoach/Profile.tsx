@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, RefreshCw, ShieldCheck } from "lucide-react"
-import type { CurrentUser } from "@/lib/api"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, Loader2, RefreshCw, ShieldCheck } from "lucide-react"
+import { createTournamentPassCheckoutSession, type CurrentUser } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 
@@ -20,6 +20,8 @@ export default function Profile({
   const { language, setLanguage, t } = useLanguage()
   const { isConfigured, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const isPremium = currentUser?.plan === "premium"
   const chatLimit = currentUser?.daily_chat_count_limit ?? 5
   const chatsUsed = currentUser?.daily_chat_count ?? 0
@@ -31,6 +33,19 @@ export default function Profile({
     { label: t.profile.help, description: t.profile.helpCopy, icon: ChevronRight },
     { label: t.profile.privacy, description: t.profile.privacyCopy, icon: ChevronRight },
   ]
+
+  const startCheckout = async () => {
+    setIsStartingCheckout(true)
+    setCheckoutError(null)
+
+    try {
+      const checkoutSession = await createTournamentPassCheckoutSession()
+      window.location.assign(checkoutSession.url)
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Unable to start checkout.")
+      setIsStartingCheckout(false)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full overflow-y-auto pb-8">
@@ -161,9 +176,18 @@ export default function Profile({
                   </li>
                 ))}
               </ul>
-              <button className="w-full rounded-xl bg-[#00FF87] py-3.5 text-sm font-bold text-[#070D1A] shadow-[0_0_20px_rgba(0,255,135,0.3)] transition-all hover:bg-[#00e87a] active:scale-[0.98]">
-                {t.profile.upgrade}
+              <button
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00FF87] py-3.5 text-sm font-bold text-[#070D1A] shadow-[0_0_20px_rgba(0,255,135,0.3)] transition-all hover:bg-[#00e87a] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+                type="button"
+                onClick={() => void startCheckout()}
+                disabled={isStartingCheckout}
+              >
+                {isStartingCheckout && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isStartingCheckout ? (language === "es" ? "Abriendo Stripe..." : "Opening Stripe...") : t.profile.upgrade}
               </button>
+              {checkoutError && (
+                <p className="mt-2.5 text-center text-[11px] font-semibold text-[#FF4D4D]">{checkoutError}</p>
+              )}
               <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">
                 {t.profile.stripe}
               </p>

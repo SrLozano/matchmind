@@ -55,6 +55,7 @@ Current examples:
 - Market Signals: `GET /polymarket/signals`, showing usable tournament-level crowd signals with premium locking.
 - Bet Tracker: `POST /bets`, `GET /bets`, `PATCH /bets/{bet_id}`, and `DELETE /bets/{bet_id}`.
 - Profile: `GET /users/me`, using Supabase email/password sessions when frontend public Supabase env vars are configured, with a dev-user fallback for local development.
+- Payments: `POST /payments/create-checkout-session` and `POST /payments/webhook`, using Stripe test-mode Checkout for the one-time World Cup Tournament Pass and upgrading `public.users.plan` to `premium` after verified `checkout.session.completed` webhooks.
 
 ## Bookmaker Odds Layer
 
@@ -72,7 +73,7 @@ The frontend currently uses this data in Match Radar. The expandable label is in
 ## Current Gaps
 
 - Google OAuth and email/password auth are wired through Supabase Auth. Apple login is not wired yet.
-- Stripe checkout is represented in pricing/profile UI and env placeholders, but no payment endpoints are implemented yet.
+- Stripe supports the one-time tournament pass in test mode. Subscriptions, billing portal, refunds, invoices, coupon logic, and tax logic are not implemented yet.
 - Additional The Odds API event-specific markets such as BTTS, cards, corners, and player props are not wired into product surfaces yet.
 - Bookmaker-vs-Polymarket divergence is not implemented yet. The clean first overlap would be bookmaker `outrights` vs Polymarket `tournament_outright`.
 - Rich source transparency/freshness chips for exactly which data sources were used in each chat answer are not implemented yet.

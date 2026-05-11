@@ -86,3 +86,22 @@ NEXT_PUBLIC_DEV_USER_ID=a87d09e8-7e10-46b8-9927-c9500c9559cf
 ```
 
 Keep public browser-safe keys in frontend env files, and keep secret service keys in the backend `.env`. When Supabase public env vars are set, the web app uses real Supabase email/password sessions and sends the access token to FastAPI. Without them, it keeps the documented dev-user fallback.
+
+## Stripe Test-Mode Payments
+
+Matchmind uses Stripe Checkout for the one-time €9.99 World Cup Tournament Pass. Keep all Stripe values in the root/backend `.env` and use test-mode keys only:
+
+```text
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+APP_URL=http://localhost:3000
+```
+
+For local webhook testing, run the API and then forward Stripe CLI events:
+
+```bash
+stripe listen --forward-to localhost:8000/payments/webhook
+```
+
+Use Stripe's test card `4242 4242 4242 4242` with any future expiry, CVC, and postal code. The frontend must not contain Stripe secret keys.

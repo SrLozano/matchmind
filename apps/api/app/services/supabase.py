@@ -137,6 +137,17 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
     }
 
 
+async def update_user_plan(user_id: UUID, plan: str) -> dict[str, Any]:
+    client = await get_supabase()
+    response = await client.table("users").update({"plan": plan}).eq("id", str(user_id)).execute()
+    if not response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found.",
+        )
+    return response.data[0]
+
+
 async def list_user_conversations(user_id: UUID, limit: int = 20) -> list[dict[str, Any]]:
     client = await get_supabase()
     response = (

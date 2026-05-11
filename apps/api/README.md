@@ -80,6 +80,8 @@ make api-test
 - `POST /odds/seed-from-discovery` seeds bookmaker odds from `ODDS_API_DISCOVERY_PATH`. This is internal and requires `X-Internal-Token`.
 - `POST /odds/refresh/events` refreshes The Odds API World Cup event ids. This is internal and requires `X-Internal-Token`.
 - `POST /odds/refresh` refreshes featured World Cup match and outright bookmaker odds. This is internal and requires `X-Internal-Token`.
+- `POST /payments/create-checkout-session` creates a Stripe Checkout Session for the one-time tournament pass. This requires a Supabase bearer token.
+- `POST /payments/webhook` receives Stripe webhooks, verifies `Stripe-Signature`, and upgrades users to `plan = 'premium'` on `checkout.session.completed`.
 - `POST /bets` logs a manual bet in the tracker.
 - `GET /bets?user_id=...` returns bet history plus tracker summary metrics.
 - `PATCH /bets/{bet_id}` updates a tracked bet and recalculates P&L.
@@ -484,10 +486,31 @@ The current product-facing market keys are:
 
 Match Radar reads `GET /odds/matches`. It shows 1X2 best prices by default and exposes `totals` and `spreads` inside the expandable "More markets" area, labelled for users as "Goals over/under" and "Goal handicap."
 
+## Stripe Test-Mode Checkout
+
+Payments are test-mode only for local development. Create a one-time Stripe Price for €9.99 and set the backend `.env` values:
+
+```text
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+APP_URL=http://localhost:3000
+```
+
+Start the API, then forward webhooks with the Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:8000/payments/webhook
+```
+
+Copy the `whsec_...` value printed by the CLI into `STRIPE_WEBHOOK_SECRET`. In the web app, sign in with Supabase Auth, open Profile, and use the upgrade button. Stripe's standard test card is `4242 4242 4242 4242` with any future expiry, CVC, and postal code.
+
+Do not put Stripe secret keys in `apps/web/.env.local`. The frontend only calls `/payments/create-checkout-session` with the user's Supabase bearer token and redirects to the returned Checkout URL.
+
 ## Current Not-Yet-Wired Areas
 
 - The Odds API is integrated as a cache-first bookmaker layer for featured match odds and tournament outrights. Additional event-specific markets such as BTTS, cards, corners, and player props are still not wired into product surfaces.
-- Stripe is not integrated yet. `STRIPE_SECRET_KEY` is present as a future payment placeholder.
+- Stripe supports the one-time test-mode tournament pass only. Subscriptions, billing portal, refunds, invoices, coupons, and tax logic are intentionally not implemented yet.
 - Frontend auth is integrated for Supabase email/password sessions when the web app has public Supabase env vars. Local development can still use the dev user ID documented above.
 
 ## Polymarket Cache Flow

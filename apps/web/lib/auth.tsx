@@ -20,13 +20,16 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+let supabaseClient: SupabaseClient | null | undefined
 
 function createSupabaseClient(): SupabaseClient | null {
+  if (supabaseClient !== undefined) return supabaseClient
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
-  if (!url || !key) return null
-  return createClient(url, key)
+  supabaseClient = url && key ? createClient(url, key) : null
+  return supabaseClient
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,9 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     let mounted = true
-    supabase.auth.getSession().then(({ data, error }) => {
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (!mounted) return
-      if (error) setAuthError(error.message)
+      if (error) {
+        setAuthError(error.message)
+        await supabase.auth.signOut({ scope: "local" })
+        setSession(null)
+        setIsLoading(false)
+        return
+      }
       setSession(data.session)
       setIsLoading(false)
     })
