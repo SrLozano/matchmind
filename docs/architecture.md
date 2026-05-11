@@ -54,7 +54,7 @@ Current examples:
 - Match Radar / Daily Feed: `GET /world-cup/fixtures` plus `GET /odds/matches`, showing cached fixtures, 1X2 bookmaker prices, the market favorite, no-vig/fair probability, bookmaker count, freshness, and expandable goals over/under and goal handicap markets.
 - Market Signals: `GET /polymarket/signals`, showing usable tournament-level crowd signals with premium locking.
 - Bet Tracker: `POST /bets`, `GET /bets`, `PATCH /bets/{bet_id}`, and `DELETE /bets/{bet_id}`.
-- Profile: `GET /users/me`, currently using a dev user ID until real auth is wired.
+- Profile: `GET /users/me`, using Supabase email/password sessions when frontend public Supabase env vars are configured, with a dev-user fallback for local development.
 
 ## Bookmaker Odds Layer
 
@@ -71,12 +71,18 @@ The frontend currently uses this data in Match Radar. The expandable label is in
 
 ## Current Gaps
 
-- Auth is not wired in the frontend yet. The web app uses `NEXT_PUBLIC_DEV_USER_ID`.
+- Google OAuth and email/password auth are wired through Supabase Auth. Apple login is not wired yet.
 - Stripe checkout is represented in pricing/profile UI and env placeholders, but no payment endpoints are implemented yet.
 - Additional The Odds API event-specific markets such as BTTS, cards, corners, and player props are not wired into product surfaces yet.
 - Bookmaker-vs-Polymarket divergence is not implemented yet. The clean first overlap would be bookmaker `outrights` vs Polymarket `tournament_outright`.
 - Rich source transparency/freshness chips for exactly which data sources were used in each chat answer are not implemented yet.
 - `packages/shared` is intentionally empty until shared generated clients, schemas, or constants are needed.
+
+## TODO
+
+- Now / local beta: keep Supabase email confirmation off to avoid built-in email sender rate limits and reduce signup friction.
+- Before bigger public launch: configure a custom SMTP provider for Supabase Auth emails.
+- After custom SMTP is stable: reconsider turning email confirmation back on. The frontend already handles confirmation-required signups by telling users to check their email.
 
 ## Documentation Map
 
