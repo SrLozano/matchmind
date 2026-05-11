@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, RefreshCw, ShieldCheck } from "lucide-react"
 import type { CurrentUser } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 
 export default function Profile({
@@ -17,6 +18,7 @@ export default function Profile({
   onRetryUser: () => void
 }) {
   const { language, setLanguage, t } = useLanguage()
+  const { isConfigured, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const isPremium = currentUser?.plan === "premium"
   const chatLimit = currentUser?.daily_chat_count_limit ?? 5
@@ -229,6 +231,15 @@ export default function Profile({
           </button>
         ))}
       </div>
+      {isConfigured && (
+        <button
+          className="mx-5 mt-3 rounded-2xl border border-[#1A2845] bg-card px-4 py-3 text-sm font-semibold text-[#A8B4D0] transition-colors hover:bg-[#0F1C35]"
+          type="button"
+          onClick={() => void signOut()}
+        >
+          {language === "es" ? "Cerrar sesión" : "Sign out"}
+        </button>
+      )}
     </div>
   )
 }

@@ -1,6 +1,12 @@
 const DEFAULT_API_URL = "http://localhost:8000"
 const DEFAULT_DEV_USER_ID = "a87d09e8-7e10-46b8-9927-c9500c9559cf"
 
+let authTokenProvider: (() => Promise<string | null>) | null = null
+
+export function setAuthTokenProvider(provider: (() => Promise<string | null>) | null) {
+  authTokenProvider = provider
+}
+
 export type ChatResponse = {
   conversation_id: string | null
   response: string
@@ -197,11 +203,11 @@ export type CreateBetPayload = {
 }
 
 function getApiUrl() {
-  return process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL
+  return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
 }
 
 function getDevUserId() {
-  return process.env.NEXT_PUBLIC_DEV_USER_ID ?? DEFAULT_DEV_USER_ID
+  return process.env.NEXT_PUBLIC_DEV_USER_ID || DEFAULT_DEV_USER_ID
 }
 
 async function readApiError(response: Response, fallback: string) {
@@ -213,6 +219,21 @@ async function readApiError(response: Response, fallback: string) {
   }
 }
 
+async function authHeaders(extra?: HeadersInit): Promise<HeadersInit> {
+  const token = authTokenProvider ? await authTokenProvider() : null
+  return {
+    ...(extra ?? {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
+async function apiFetch(input: string, init: RequestInit = {}) {
+  return fetch(input, {
+    ...init,
+    headers: await authHeaders(init.headers),
+  })
+}
+
 export async function sendChatMessage(
   message: string,
   preferredLanguage?: "en" | "es",
@@ -221,7 +242,7 @@ export async function sendChatMessage(
   const apiUrl = getApiUrl()
   const userId = getDevUserId()
 
-  const response = await fetch(`${apiUrl}/chat`, {
+  const response = await apiFetch(`${apiUrl}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -251,7 +272,7 @@ function normalizeChatResponse(payload: ChatResponse): ChatResponse {
 export async function getConversations(limit = 20): Promise<ConversationListResponse> {
   const apiUrl = getApiUrl()
   const userId = getDevUserId()
-  const response = await fetch(`${apiUrl}/conversations?user_id=${userId}&limit=${limit}`)
+  const response = await apiFetch(`${apiUrl}/conversations?user_id=${userId}&limit=${limit}`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load conversation history."))
@@ -263,7 +284,7 @@ export async function getConversations(limit = 20): Promise<ConversationListResp
 export async function getConversation(conversationId: string): Promise<ConversationDetailResponse> {
   const apiUrl = getApiUrl()
   const userId = getDevUserId()
-  const response = await fetch(`${apiUrl}/conversations/${conversationId}?user_id=${userId}`)
+  const response = await apiFetch(`${apiUrl}/conversations/${conversationId}?user_id=${userId}`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load this conversation."))
@@ -331,7 +352,7 @@ export async function getMarketSignals({ limit = 16 }: { limit?: number } = {}):
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
-  const response = await fetch(`${getApiUrl()}/users/me?user_id=${getDevUserId()}`)
+  const response = await apiFetch(`${getApiUrl()}/users/me?user_id=${getDevUserId()}`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load your profile. Try again in a moment."))
@@ -341,7 +362,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 }
 
 export async function getTrackedBets(): Promise<BetListResponse> {
-  const response = await fetch(`${getApiUrl()}/bets?user_id=${getDevUserId()}`)
+  const response = await apiFetch(`${getApiUrl()}/bets?user_id=${getDevUserId()}`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load your bet tracker. Try again in a moment."))
@@ -351,7 +372,7 @@ export async function getTrackedBets(): Promise<BetListResponse> {
 }
 
 export async function createTrackedBet(payload: CreateBetPayload): Promise<TrackedBet> {
-  const response = await fetch(`${getApiUrl()}/bets`, {
+  const response = await apiFetch(`${getApiUrl()}/bets`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -370,7 +391,7 @@ export async function createTrackedBet(payload: CreateBetPayload): Promise<Track
 }
 
 export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome): Promise<TrackedBet> {
-  const response = await fetch(`${getApiUrl()}/bets/${betId}`, {
+  const response = await apiFetch(`${getApiUrl()}/bets/${betId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -389,7 +410,7 @@ export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome
 }
 
 export async function deleteTrackedBet(betId: string): Promise<void> {
-  const response = await fetch(`${getApiUrl()}/bets/${betId}?user_id=${getDevUserId()}`, {
+  const response = await apiFetch(`${getApiUrl()}/bets/${betId}?user_id=${getDevUserId()}`, {
     method: "DELETE",
   })
 

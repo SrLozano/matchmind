@@ -8,15 +8,30 @@ import Profile from "@/components/betcoach/Profile"
 import BottomNav from "@/components/betcoach/BottomNav"
 import MarketSignals from "@/components/betcoach/MarketSignals"
 import { getCurrentUser, type CurrentUser } from "@/lib/api"
+import { AuthProvider, useAuth } from "@/lib/auth"
 import { LanguageProvider } from "@/lib/i18n"
+import AuthGate from "@/components/betcoach/AuthGate"
 
 export type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
 
 export default function BetCoachApp() {
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <AuthGate>
+          <BetCoachShell />
+        </AuthGate>
+      </AuthProvider>
+    </LanguageProvider>
+  )
+}
+
+function BetCoachShell() {
   const [activeTab, setActiveTab] = useState<Tab>("chat")
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [userError, setUserError] = useState<string | null>(null)
+  const { session } = useAuth()
   const isPremium = currentUser?.plan === "premium"
 
   const loadCurrentUser = async () => {
@@ -34,7 +49,7 @@ export default function BetCoachApp() {
 
   useEffect(() => {
     void loadCurrentUser()
-  }, [])
+  }, [session?.access_token])
 
   useEffect(() => {
     const refreshOnFocus = () => {
@@ -46,7 +61,6 @@ export default function BetCoachApp() {
   }, [])
 
   return (
-    <LanguageProvider>
       <div className="flex items-center justify-center min-h-screen bg-[#040810]">
         {/* Phone frame — max-width 430px, full height on mobile */}
         <div
@@ -83,6 +97,5 @@ export default function BetCoachApp() {
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
       </div>
-    </LanguageProvider>
   )
 }

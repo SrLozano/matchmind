@@ -3,10 +3,11 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, status
 
 from app.models.chat import ChatMarketSignal, ChatRequest, ChatResponse
 from app.services.api_football import build_match_context_for_chat
+from app.services.auth import get_authenticated_user
 from app.services.bet_parser import parse_bet_message
 from app.services.gpt import generate_chat_reply
 from app.services.odds_api import build_bookmaker_context_for_chat
@@ -19,11 +20,14 @@ T = TypeVar("T")
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest) -> ChatResponse:
+async def chat(payload: ChatRequest, authorization: str | None = Header(default=None)) -> ChatResponse:
     user_context = None
+    user_id = payload.user_id
     try:
+        authenticated_user = await get_authenticated_user(authorization)
+        user_id = authenticated_user.id if authenticated_user else user_id
         user_context = await enforce_daily_limit_and_store(
-            payload.user_id,
+            user_id,
             payload.message,
             conversation_id=payload.conversation_id,
         )
@@ -75,7 +79,7 @@ async def chat(payload: ChatRequest) -> ChatResponse:
     except Exception as exc:
         if user_context is not None:
             await release_reserved_chat(user_context.user)
-        logger.exception("Chat request failed for user_id=%s", payload.user_id)
+        logger.exception("Chat request failed for user_id=%s", user_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to process chat request.",

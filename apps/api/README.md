@@ -488,7 +488,7 @@ Match Radar reads `GET /odds/matches`. It shows 1X2 best prices by default and e
 
 - The Odds API is integrated as a cache-first bookmaker layer for featured match odds and tournament outrights. Additional event-specific markets such as BTTS, cards, corners, and player props are still not wired into product surfaces.
 - Stripe is not integrated yet. `STRIPE_SECRET_KEY` is present as a future payment placeholder.
-- Frontend auth is not integrated yet. Local development uses the dev user ID documented above.
+- Frontend auth is integrated for Supabase email/password sessions when the web app has public Supabase env vars. Local development can still use the dev user ID documented above.
 
 ## Polymarket Cache Flow
 

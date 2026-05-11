@@ -87,6 +87,37 @@ async def _get_user(user_id: UUID) -> dict[str, Any]:
     return response.data[0]
 
 
+async def ensure_user_profile(user_id: UUID, email: str | None = None) -> dict[str, Any]:
+    client = await get_supabase()
+    existing = await client.table("users").select("*").eq("id", str(user_id)).limit(1).execute()
+    if existing.data:
+        user = existing.data[0]
+        if email and user.get("email") != email:
+            updated = await client.table("users").update({"email": email}).eq("id", str(user_id)).execute()
+            return updated.data[0] if updated.data else user
+        return user
+
+    response = (
+        await client.table("users")
+        .insert(
+            {
+                "id": str(user_id),
+                "email": email,
+                "plan": "free",
+                "daily_chat_count": 0,
+                "last_reset_date": date.today().isoformat(),
+            }
+        )
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user profile.",
+        )
+    return response.data[0]
+
+
 async def get_user_profile(user_id: UUID) -> dict[str, Any]:
     settings = get_settings()
     user = await _reset_daily_count_if_needed(await _get_user(user_id))

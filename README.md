@@ -80,7 +80,9 @@ Recommended frontend env naming:
 
 ```text
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 NEXT_PUBLIC_DEV_USER_ID=a87d09e8-7e10-46b8-9927-c9500c9559cf
 ```
 
-Keep public browser-safe keys in frontend env files, and keep secret service keys in the backend `.env`.
+Keep public browser-safe keys in frontend env files, and keep secret service keys in the backend `.env`. When Supabase public env vars are set, the web app uses real Supabase email/password sessions and sends the access token to FastAPI. Without them, it keeps the documented dev-user fallback.

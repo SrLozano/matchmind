@@ -76,10 +76,12 @@ Create `apps/web/.env.local` when you need to override the local defaults:
 
 ```text
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 NEXT_PUBLIC_DEV_USER_ID=a87d09e8-7e10-46b8-9927-c9500c9559cf
 ```
 
-The frontend calls the FastAPI backend on `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_DEV_USER_ID` should match a user that exists in Supabase while auth is still being wired.
+The frontend calls the FastAPI backend on `NEXT_PUBLIC_API_URL`. When `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are present, the app shows a Supabase email/password auth gate and sends the access token to the API. If those values are absent, local development falls back to `NEXT_PUBLIC_DEV_USER_ID`.
 
 Do not put private backend secrets in the frontend. Keep `OPENAI_API_KEY`, Supabase service-role keys, Stripe secrets, and provider API keys in the root/backend `.env`.
 
@@ -109,6 +111,6 @@ pnpm lint
 - Shared frontend/backend contracts can go in `packages/shared` later.
 - Static assets belong in `apps/web/public`.
 - Payments are not wired yet. The profile upgrade button is a UI placeholder until Stripe checkout exists.
-- Real auth is not wired yet. The app uses the dev user ID for all user-specific calls.
+- Real auth is wired for email/password sessions when Supabase public env vars are present. Dev-user fallback remains available for local development.
 - The green highlight in Match Radar bookmaker odds marks the bookmaker-consensus favorite by highest no-vig probability. It does not mean Matchmind recommends that bet.
 - The chat starter state is intentionally not a fake analyzed conversation. It shows one coach welcome plus example prompt chips that fill the input without auto-sending.
