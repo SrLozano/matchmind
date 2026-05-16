@@ -159,12 +159,20 @@ def market_line_key(market_key: str, outcome: dict[str, Any]) -> str:
     point = outcome.get("point")
     if point is None:
         return market_key
+    return f"{market_key}:{point}"
+
+
+def pricing_line_key(row: dict[str, Any]) -> str:
+    market_key = str(row.get("market_key") or "")
+    point = row.get("point")
+    if point is None:
+        return market_key
     if market_key == "spreads":
         try:
             return f"{market_key}:{abs(float(point))}"
         except (TypeError, ValueError):
             return f"{market_key}:{point}"
-    return f"{market_key}:{point}"
+    return str(row.get("line_key") or f"{market_key}:{point}")
 
 
 def normalize_event(event: dict[str, Any], aliases_by_team: dict[str, tuple[str, ...]]) -> dict[str, Any]:
@@ -227,7 +235,7 @@ def build_consensus(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 row.get("event_id"),
                 row.get("bookmaker_key"),
                 row.get("market_key"),
-                row.get("line_key"),
+                pricing_line_key(row),
             )
         ].append(row)
 

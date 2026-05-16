@@ -375,7 +375,7 @@ Main fields:
 - `raw_payload jsonb`
 - unique constraint on `odds_api_event_id, bookmaker_key, market_key, outcome_name, line_key`
 
-`line_key` exists because Postgres unique constraints do not treat `null` values as equal. Without it, `h2h` and `outrights` rows with `point = null` can duplicate across refreshes. For regular no-line markets, `line_key` is the market key, for example `h2h`. For line markets, it includes the point, for example `totals:2.5` or `spreads:1.5`.
+`line_key` exists because Postgres unique constraints do not treat `null` values as equal. Without it, `h2h` and `outrights` rows with `point = null` can duplicate across refreshes. For regular no-line markets, `line_key` is the market key, for example `h2h`. For line markets, it includes the signed point, for example `totals:2.5` or `spreads:-1.5`. Spread consensus still uses an unsigned pricing key internally when calculating no-vig probabilities across opposing sides.
 
 ### `bookmaker_odds_snapshots`
 

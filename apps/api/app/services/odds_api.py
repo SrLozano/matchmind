@@ -458,7 +458,14 @@ def build_consensus(rows: list[dict[str, Any]], fetched_at: str | None = None) -
     fetched_at = fetched_at or datetime.now(timezone.utc).isoformat()
     by_bookmaker_line: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        by_bookmaker_line[(row.get("odds_api_event_id"), row.get("bookmaker_key"), row.get("market_key"), line_key(row))].append(row)
+        by_bookmaker_line[
+            (
+                row.get("odds_api_event_id"),
+                row.get("bookmaker_key"),
+                row.get("market_key"),
+                pricing_line_key(row),
+            )
+        ].append(row)
 
     no_vig_by_identity: dict[tuple[Any, ...], float] = {}
     for items in by_bookmaker_line.values():
@@ -802,13 +809,12 @@ def line_key(row: dict[str, Any]) -> str:
     point = row.get("point")
     if point is None:
         return str(row.get("market_key") or "")
-    if row.get("market_key") == "spreads":
-        return f"{row.get('market_key')}:{abs(float(point))}"
     return f"{row.get('market_key')}:{point}"
 
 
-def market_line_key(market_key: str, outcome: dict[str, Any]) -> str:
-    point = outcome.get("point")
+def pricing_line_key(row: dict[str, Any]) -> str:
+    market_key = str(row.get("market_key") or "")
+    point = row.get("point")
     if point is None:
         return market_key
     if market_key == "spreads":
@@ -816,6 +822,13 @@ def market_line_key(market_key: str, outcome: dict[str, Any]) -> str:
             return f"{market_key}:{abs(float(point))}"
         except (TypeError, ValueError):
             return f"{market_key}:{point}"
+    return str(row.get("line_key") or f"{market_key}:{point}")
+
+
+def market_line_key(market_key: str, outcome: dict[str, Any]) -> str:
+    point = outcome.get("point")
+    if point is None:
+        return market_key
     return f"{market_key}:{point}"
 
 

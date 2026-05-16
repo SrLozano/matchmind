@@ -90,6 +90,49 @@ class OddsAPIServiceTest(unittest.TestCase):
         self.assertEqual(rows[0]["outcome_team"], "Spain")
         self.assertEqual(rows[0]["no_vig_probability"], 0.38)
 
+    def test_spread_consensus_keeps_signed_handicap_identity(self) -> None:
+        rows = flatten_odds(
+            [
+                {
+                    "id": "event-1",
+                    "sport_key": "soccer_fifa_world_cup",
+                    "commence_time": "2026-06-11T19:00:00Z",
+                    "home_team": "Spain",
+                    "away_team": "Germany",
+                    "bookmakers": [
+                        {
+                            "key": "book-a",
+                            "title": "Book A",
+                            "last_update": "2026-05-10T10:00:00Z",
+                            "markets": [
+                                {
+                                    "key": "spreads",
+                                    "last_update": "2026-05-10T10:00:00Z",
+                                    "outcomes": [
+                                        {"name": "Spain", "price": 1.91, "point": -1.5},
+                                        {"name": "Germany", "price": 1.91, "point": 1.5},
+                                        {"name": "Spain", "price": 2.1, "point": 1.5},
+                                        {"name": "Germany", "price": 1.75, "point": -1.5},
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            fetched_at="2026-05-10T10:00:00+00:00",
+        )
+        consensus = build_consensus(rows, fetched_at="2026-05-10T10:00:00+00:00")
+
+        conflict_keys = [
+            (row["odds_api_event_id"], row["market_key"], row["outcome_name"], row["line_key"])
+            for row in consensus
+        ]
+
+        self.assertEqual(len(conflict_keys), len(set(conflict_keys)))
+        self.assertIn(("event-1", "spreads", "Spain", "spreads:-1.5"), conflict_keys)
+        self.assertIn(("event-1", "spreads", "Spain", "spreads:1.5"), conflict_keys)
+
     def test_value_edge_compares_user_price_to_consensus(self) -> None:
         edge = value_edge(2.80, {"no_vig_probability": 0.40})
 
