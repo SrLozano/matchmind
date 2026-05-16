@@ -5,6 +5,7 @@
 
 :root {
   /* Matchmind dark-first theme — deep navy base */
+  --matchmind-viewport-height: max(100dvh, 100vh);
   --background: #070D1A;
   --foreground: #F0F4FF;
   --card: #0D1629;

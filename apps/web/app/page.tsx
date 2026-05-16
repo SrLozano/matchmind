@@ -62,6 +62,35 @@ function MatchmindShell() {
     return () => window.removeEventListener("focus", refreshOnFocus)
   }, [])
 
+  useEffect(() => {
+    const setViewportHeight = () => {
+      const visualHeight = window.visualViewport?.height ?? 0
+      const layoutHeight = window.innerHeight || 0
+      const clientHeight = document.documentElement.clientHeight || 0
+      const keyboardIsOpen = visualHeight > 0 && layoutHeight > 0 && visualHeight < layoutHeight - 120
+      const viewportHeight = keyboardIsOpen
+        ? visualHeight
+        : Math.max(visualHeight, layoutHeight, clientHeight)
+
+      if (viewportHeight > 0) {
+        document.documentElement.style.setProperty("--matchmind-viewport-height", `${Math.ceil(viewportHeight)}px`)
+      }
+    }
+
+    setViewportHeight()
+    window.addEventListener("resize", setViewportHeight)
+    window.addEventListener("orientationchange", setViewportHeight)
+    window.visualViewport?.addEventListener("resize", setViewportHeight)
+    window.visualViewport?.addEventListener("scroll", setViewportHeight)
+
+    return () => {
+      window.removeEventListener("resize", setViewportHeight)
+      window.removeEventListener("orientationchange", setViewportHeight)
+      window.visualViewport?.removeEventListener("resize", setViewportHeight)
+      window.visualViewport?.removeEventListener("scroll", setViewportHeight)
+    }
+  }, [])
+
   const handleFocusCapture = (event: FocusEvent<HTMLDivElement>) => {
     const tagName = (event.target as HTMLElement | null)?.tagName
     if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
@@ -77,9 +106,9 @@ function MatchmindShell() {
   }
 
   return (
-      <div className="flex min-h-[100dvh] items-stretch justify-center bg-[#040810] md:items-center">
+      <div className="flex min-h-[var(--matchmind-viewport-height,100dvh)] items-stretch justify-center bg-[#040810] md:items-center">
         <div
-          className="matchmind-shell relative flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden bg-background md:h-[min(844px,100dvh)] md:rounded-3xl md:shadow-[0_0_60px_rgba(0,255,135,0.08),0_0_120px_rgba(0,0,0,0.8)]"
+          className="matchmind-shell relative flex h-[var(--matchmind-viewport-height,100dvh)] w-full max-w-[430px] flex-col overflow-hidden bg-background md:h-[min(844px,var(--matchmind-viewport-height,100dvh))] md:rounded-3xl md:shadow-[0_0_60px_rgba(0,255,135,0.08),0_0_120px_rgba(0,0,0,0.8)]"
           onFocusCapture={handleFocusCapture}
           onBlurCapture={handleBlurCapture}
         >
