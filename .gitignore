@@ -158,6 +158,8 @@ activemq-data/
 # Environments
 .env
 .envrc
+.env.local
+.env.*.local
 .venv
 env/
 venv/
@@ -222,6 +224,7 @@ node_modules/
 *.tsbuildinfo
 .yarn/
 apps/web/.next/
+apps/web/out/
 apps/web/dist/
 apps/web/build/
 apps/web/coverage/
