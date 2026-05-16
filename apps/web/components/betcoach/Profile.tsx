@@ -48,25 +48,25 @@ export default function Profile({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto pb-8">
+    <div className="flex h-full flex-col overflow-y-auto pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
       {/* Header */}
       <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
         <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.profile.title}</h1>
       </div>
 
       {/* User card */}
-      <div className="mx-5 mb-3 rounded-2xl bg-[#0F1C35] border border-[#1A2845] p-4 flex items-center gap-4">
-        <div className="relative">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00FF87]/30 to-[#0F1C35] border-2 border-[#00FF87]/40 flex items-center justify-center flex-shrink-0">
+      <div className="mx-4 mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-[#1A2845] bg-[#0F1C35] p-4 sm:mx-5 sm:gap-4">
+        <div className="relative shrink-0">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#00FF87]/40 bg-gradient-to-br from-[#00FF87]/30 to-[#0F1C35]">
             <span className="text-2xl">👤</span>
           </div>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-base font-bold text-foreground">{accountLabel}</p>
           <p className="text-xs text-[#6A7A9B]">{t.profile.account}</p>
-          <div className="flex items-center gap-1.5 mt-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <div className={`rounded-full px-2.5 py-0.5 ${isPremium ? "border border-[#00FF87]/25 bg-[#00FF87]/10" : "bg-[#1A2845]"}`}>
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isPremium ? "text-[#00FF87]" : "text-[#6A7A9B]"}`}>
+              <span className={`text-[10px] font-semibold uppercase tracking-wide ${isPremium ? "text-[#00FF87]" : "text-[#6A7A9B]"}`}>
                 {isLoadingUser ? t.profile.loadingPlan : isPremium ? t.profile.premiumPlan : t.profile.freePlan}
               </span>
             </div>
@@ -83,7 +83,7 @@ export default function Profile({
       </div>
 
       {userError && (
-        <div className="mx-5 mb-3 rounded-xl border border-[#FF4D4D]/30 bg-[#FF4D4D]/10 p-4">
+        <div className="mx-4 mb-3 shrink-0 rounded-xl border border-[#FF4D4D]/30 bg-[#FF4D4D]/10 p-4 sm:mx-5">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#FF4D4D]" />
             <div className="min-w-0 flex-1">
@@ -103,7 +103,7 @@ export default function Profile({
       )}
 
       {isPremium ? (
-        <div className="mx-5 mb-3 divide-y divide-[#1A2845] overflow-hidden rounded-2xl border border-[#1A2845] bg-card">
+        <div className="mx-4 mb-3 shrink-0 divide-y divide-[#1A2845] overflow-hidden rounded-2xl border border-[#1A2845] bg-card sm:mx-5">
           <StatusRow
             title={t.profile.dailyChats}
             description={t.profile.noDailyCap}
@@ -120,31 +120,31 @@ export default function Profile({
       ) : (
         <>
           {/* Usage */}
-          <div className="mx-5 mb-3 rounded-2xl bg-card border border-[#1A2845] p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="mx-4 mb-3 shrink-0 rounded-2xl border border-[#1A2845] bg-card p-4 sm:mx-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-1.5">
               <p className="text-sm font-semibold text-foreground">{t.profile.dailyChats}</p>
-              <span className="text-xs text-[#6A7A9B]">{t.profile.resets}</span>
+              <span className="text-right text-xs text-[#6A7A9B]">{t.profile.resets}</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 rounded-full bg-[#1A2845] overflow-hidden">
+              <div className="h-2 min-w-[120px] flex-1 overflow-hidden rounded-full bg-[#1A2845]">
                 <div
                   className="h-full rounded-full bg-[#00FF87] transition-all"
                   style={{ width: `${usagePercent}%` }}
                 />
               </div>
-              <span className="text-sm font-bold text-foreground flex-shrink-0">
+              <span className="flex-shrink-0 text-sm font-bold text-foreground">
                 {chatsUsed}/{chatLimit}
               </span>
             </div>
-            <p className="text-[11px] text-[#6A7A9B] mt-2">
+            <p className="mt-2 text-[11px] text-[#6A7A9B]">
               {chatsRemaining === null ? t.profile.remaining : `${chatsRemaining} ${t.chat.left}`}
             </p>
           </div>
 
           {/* Upgrade card */}
-          <div className="mx-5 mb-3 rounded-2xl border border-[#00FF87]/30 bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+          <div className="mx-4 mb-3 shrink-0 rounded-2xl border border-[#00FF87]/30 bg-card p-4 sm:mx-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-[190px] flex-1">
                 <div className="mb-2 flex items-center gap-2">
                   <Crown className="h-4 w-4 shrink-0 text-[#00FF87]" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[#00FF87]">
@@ -168,11 +168,11 @@ export default function Profile({
             <div className="mt-4">
               <ul className="mb-4 flex flex-col gap-2.5">
                 {t.profile.features.slice(0, 3).map((text) => (
-                  <li key={text} className="flex items-center gap-3">
+                  <li key={text} className="flex items-start gap-3">
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#00FF87]/30 bg-[#00FF87]/15">
                       <Check className="h-3 w-3 text-[#00FF87]" />
                     </div>
-                    <span className="text-sm text-[#A8B4D0]">{text}</span>
+                    <span className="min-w-0 text-sm leading-snug text-[#A8B4D0]">{text}</span>
                   </li>
                 ))}
               </ul>
@@ -197,13 +197,13 @@ export default function Profile({
       )}
 
       {/* Settings */}
-      <div className="mx-5 overflow-hidden rounded-2xl border border-[#1A2845] bg-card">
-        <div className="flex items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-3.5">
+      <div className="mx-4 shrink-0 overflow-hidden rounded-2xl border border-[#1A2845] bg-card sm:mx-5">
+        <div className="flex flex-col gap-3 border-b border-[#1A2845] px-4 py-3.5 min-[390px]:flex-row min-[390px]:items-center min-[390px]:justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <Globe2 className="h-4 w-4 shrink-0 text-[#00FF87]" />
             <span className="text-sm font-semibold text-[#A8B4D0]">{t.profile.language}</span>
           </div>
-          <div className="grid shrink-0 grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
+          <div className="grid w-full grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1 min-[390px]:w-auto min-[390px]:shrink-0">
             <LanguageButton
               isActive={language === "en"}
               label={t.profile.english}
@@ -219,11 +219,11 @@ export default function Profile({
 
         <button
           onClick={() => setNotificationsOpen((open) => !open)}
-          className="w-full flex items-center justify-between border-b border-[#1A2845] px-4 py-3.5 text-sm text-[#A8B4D0] hover:bg-[#0F1C35] active:bg-[#0F1C35] transition-colors"
+          className="flex w-full items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-3.5 text-left text-sm text-[#A8B4D0] transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35]"
           aria-expanded={notificationsOpen}
         >
-          <span className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-[#6A7A9B]" />
+          <span className="flex min-w-0 items-center gap-2">
+            <Bell className="h-4 w-4 shrink-0 text-[#6A7A9B]" />
             {t.profile.notificationSettings}
           </span>
           {notificationsOpen ? (
@@ -240,7 +240,7 @@ export default function Profile({
         {menuItems.map(({ label, description, icon: Icon }, index) => (
           <button
             key={label}
-            className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#0F1C35] active:bg-[#0F1C35] transition-colors ${
+            className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35] ${
               index < menuItems.length - 1 ? "border-b border-[#1A2845]" : ""
             }`}
           >
@@ -257,7 +257,7 @@ export default function Profile({
       </div>
       {isConfigured && (
         <button
-          className="mx-5 mt-3 rounded-2xl border border-[#1A2845] bg-card px-4 py-3 text-sm font-semibold text-[#A8B4D0] transition-colors hover:bg-[#0F1C35]"
+          className="mx-4 mt-3 shrink-0 rounded-2xl border border-[#1A2845] bg-card px-4 py-3 text-sm font-semibold text-[#A8B4D0] transition-colors hover:bg-[#0F1C35] sm:mx-5"
           type="button"
           onClick={() => void signOut()}
         >
@@ -285,8 +285,8 @@ function StatusRow({
       : "border-[#FFD600]/25 bg-[#FFD600]/10 text-[#FFD600]"
 
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-      <div className="min-w-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+      <div className="min-w-[180px] flex-1">
         <p className="text-sm font-semibold text-[#A8B4D0]">{title}</p>
         <p className="mt-0.5 text-xs leading-relaxed text-[#6A7A9B]">{description}</p>
       </div>
@@ -309,7 +309,7 @@ function LanguageButton({
   return (
     <button
       onClick={onClick}
-      className={`min-w-[72px] rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+      className={`min-w-0 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
         isActive
           ? "bg-[#00FF87] text-[#070D1A]"
           : "text-[#6A7A9B] hover:text-[#A8B4D0]"
