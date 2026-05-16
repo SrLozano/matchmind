@@ -69,7 +69,7 @@ export const translations = {
       noValue: "—",
     },
     chat: {
-      title: "BetCoach AI",
+      title: "Matchmind AI",
       status: "Online · World Cup 2026 expert",
       dailyLimit: "5 chats/day",
       left: "left",
@@ -281,7 +281,7 @@ export const translations = {
       noValue: "—",
     },
     chat: {
-      title: "BetCoach AI",
+      title: "Matchmind AI",
       status: "En línea · Experto Mundial 2026",
       dailyLimit: "5 chats/día",
       left: "restantes",

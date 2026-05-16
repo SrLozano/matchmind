@@ -15,19 +15,19 @@ import AuthGate from "@/components/betcoach/AuthGate"
 
 export type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
 
-export default function BetCoachApp() {
+export default function MatchmindApp() {
   return (
     <LanguageProvider>
       <AuthProvider>
         <AuthGate>
-          <BetCoachShell />
+          <MatchmindShell />
         </AuthGate>
       </AuthProvider>
     </LanguageProvider>
   )
 }
 
-function BetCoachShell() {
+function MatchmindShell() {
   const [activeTab, setActiveTab] = useState<Tab>("chat")
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)

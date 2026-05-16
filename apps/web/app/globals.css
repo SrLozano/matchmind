@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* BetCoach dark-first theme — deep navy base */
+  /* Matchmind dark-first theme — deep navy base */
   --background: #070D1A;
   --foreground: #F0F4FF;
   --card: #0D1629;
