@@ -16,6 +16,10 @@ export type ChatResponse = {
   stake_posture: string | null
   market_signal: ChatMarketSignal | null
   daily_chats_remaining: number | null
+  chat_count: number
+  chat_count_limit: number
+  chat_limit_period: "day" | "week"
+  chats_remaining: number
 }
 
 export type ChatMarketSignal = {
@@ -101,6 +105,9 @@ export type CurrentUser = {
   daily_chat_count: number
   daily_chat_count_limit: number
   daily_chats_remaining: number | null
+  chat_count_limit: number
+  chat_limit_period: "day" | "week"
+  chats_remaining: number
   last_reset_date: string | null
   created_at: string | null
 }

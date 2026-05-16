@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -44,15 +44,20 @@ class ChatSessionContext:
             .execute()
         )
 
-        daily_remaining = None
-        if self.user["plan"] == "free":
-            daily_remaining = max(self.user["daily_chat_count_limit"] - self.user["daily_chat_count"], 0)
+        chat_count = int(self.user.get("daily_chat_count", 0))
+        chat_limit = _chat_limit_for_plan(self.user.get("plan", "free"))
+        chats_remaining = max(chat_limit - chat_count, 0)
+        daily_remaining = chats_remaining if self.user.get("plan") == "free" else None
 
         return {
             "conversation_id": self.conversation["id"],
             "response": response,
             "confidence_score": confidence_score,
             "daily_chats_remaining": daily_remaining,
+            "chat_count": chat_count,
+            "chat_count_limit": chat_limit,
+            "chat_limit_period": _chat_limit_period_for_plan(self.user.get("plan", "free")),
+            "chats_remaining": chats_remaining,
             "conversation": updated_conversation.data[0] if updated_conversation.data else None,
         }
 
@@ -119,19 +124,23 @@ async def ensure_user_profile(user_id: UUID, email: str | None = None) -> dict[s
 
 
 async def get_user_profile(user_id: UUID) -> dict[str, Any]:
-    settings = get_settings()
-    user = await _reset_daily_count_if_needed(await _get_user(user_id))
-    daily_chats_remaining = None
-    if user.get("plan") == "free":
-        daily_chats_remaining = max(settings.free_daily_chat_limit - int(user.get("daily_chat_count", 0)), 0)
+    user = await _reset_chat_count_if_needed(await _get_user(user_id))
+    plan = user.get("plan", "free")
+    chat_limit = _chat_limit_for_plan(plan)
+    chat_count = int(user.get("daily_chat_count", 0))
+    chats_remaining = max(chat_limit - chat_count, 0)
+    daily_chats_remaining = chats_remaining if plan == "free" else None
 
     return {
         "id": user["id"],
         "email": user.get("email"),
-        "plan": user.get("plan", "free"),
-        "daily_chat_count": int(user.get("daily_chat_count", 0)),
-        "daily_chat_count_limit": settings.free_daily_chat_limit,
+        "plan": plan,
+        "daily_chat_count": chat_count,
+        "daily_chat_count_limit": chat_limit,
         "daily_chats_remaining": daily_chats_remaining,
+        "chat_count_limit": chat_limit,
+        "chat_limit_period": _chat_limit_period_for_plan(plan),
+        "chats_remaining": chats_remaining,
         "last_reset_date": user.get("last_reset_date"),
         "created_at": user.get("created_at"),
     }
@@ -139,7 +148,12 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
 
 async def update_user_plan(user_id: UUID, plan: str) -> dict[str, Any]:
     client = await get_supabase()
-    response = await client.table("users").update({"plan": plan}).eq("id", str(user_id)).execute()
+    response = (
+        await client.table("users")
+        .update({"plan": plan, "daily_chat_count": 0, "last_reset_date": date.today().isoformat()})
+        .eq("id", str(user_id))
+        .execute()
+    )
     if not response.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -238,8 +252,28 @@ def _string_or_none(value: Any) -> str | None:
     return str(value)
 
 
-async def _reset_daily_count_if_needed(user: dict[str, Any]) -> dict[str, Any]:
+def _chat_limit_for_plan(plan: str) -> int:
+    settings = get_settings()
+    if plan == "premium":
+        return settings.premium_weekly_chat_limit
+    return settings.free_daily_chat_limit
+
+
+def _chat_limit_period_for_plan(plan: str) -> str:
+    return "week" if plan == "premium" else "day"
+
+
+def _current_period_start(plan: str, today: date | None = None) -> date:
+    current_date = today or date.today()
+    if plan == "premium":
+        return current_date - timedelta(days=current_date.weekday())
+    return current_date
+
+
+async def _reset_chat_count_if_needed(user: dict[str, Any]) -> dict[str, Any]:
+    plan = user.get("plan", "free")
     today = date.today()
+    period_start = _current_period_start(plan, today)
     last_reset_raw = user.get("last_reset_date")
     if isinstance(last_reset_raw, date):
         last_reset = last_reset_raw
@@ -248,39 +282,44 @@ async def _reset_daily_count_if_needed(user: dict[str, Any]) -> dict[str, Any]:
     else:
         last_reset = None
 
-    if last_reset == today:
+    if last_reset and last_reset >= period_start:
         return user
 
     client = await get_supabase()
     response = (
         await client.table("users")
-        .update({"daily_chat_count": 0, "last_reset_date": today.isoformat()})
+        .update({"daily_chat_count": 0, "last_reset_date": period_start.isoformat()})
         .eq("id", user["id"])
         .execute()
     )
     return response.data[0]
 
 
-async def _enforce_daily_limit(user: dict[str, Any]) -> dict[str, Any]:
-    settings = get_settings()
-    user = await _reset_daily_count_if_needed(user)
-    user["daily_chat_count_limit"] = settings.free_daily_chat_limit
+async def _enforce_chat_limit(user: dict[str, Any]) -> dict[str, Any]:
+    user = await _reset_chat_count_if_needed(user)
+    plan = user.get("plan", "free")
+    chat_limit = _chat_limit_for_plan(plan)
+    user["daily_chat_count_limit"] = chat_limit
 
-    if user["plan"] != "free":
-        return user
-
-    if user["daily_chat_count"] >= settings.free_daily_chat_limit:
+    if int(user.get("daily_chat_count", 0)) >= chat_limit:
+        if plan == "premium":
+            raise PermissionError("Weekly fair-use chat limit reached for premium plan.")
         raise PermissionError("Daily chat limit reached for free plan.")
 
     client = await get_supabase()
     response = (
         await client.table("users")
-        .update({"daily_chat_count": user["daily_chat_count"] + 1, "last_reset_date": date.today().isoformat()})
+        .update(
+            {
+                "daily_chat_count": int(user.get("daily_chat_count", 0)) + 1,
+                "last_reset_date": _current_period_start(plan).isoformat(),
+            }
+        )
         .eq("id", user["id"])
         .execute()
     )
     updated_user = response.data[0]
-    updated_user["daily_chat_count_limit"] = settings.free_daily_chat_limit
+    updated_user["daily_chat_count_limit"] = chat_limit
     return updated_user
 
 
@@ -356,7 +395,7 @@ async def enforce_daily_limit_and_store(
     conversation_id: UUID | None = None,
 ) -> ChatSessionContext:
     user = await _get_user(user_id)
-    updated_user = await _enforce_daily_limit(user)
+    updated_user = await _enforce_chat_limit(user)
     if conversation_id is None:
         conversation = await _create_conversation(str(user_id), message)
     else:
@@ -366,9 +405,6 @@ async def enforce_daily_limit_and_store(
 
 
 async def release_reserved_chat(user: dict[str, Any]) -> None:
-    if user.get("plan") != "free":
-        return
-
     current_count = max(int(user.get("daily_chat_count", 0)) - 1, 0)
     client = await get_supabase()
     await client.table("users").update({"daily_chat_count": current_count}).eq("id", user["id"]).execute()

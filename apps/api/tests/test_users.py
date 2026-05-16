@@ -13,23 +13,30 @@ class UsersModelTest(unittest.TestCase):
             daily_chat_count=2,
             daily_chat_count_limit=get_settings().free_daily_chat_limit,
             daily_chats_remaining=3,
+            chat_count_limit=get_settings().free_daily_chat_limit,
+            chat_limit_period="day",
+            chats_remaining=3,
         )
 
         self.assertEqual(payload.plan, "free")
         self.assertEqual(payload.daily_chats_remaining, 3)
 
-    def test_user_response_accepts_premium_plan_without_remaining_chats(self) -> None:
+    def test_user_response_accepts_premium_plan_with_weekly_fair_use_chats(self) -> None:
         payload = UserResponse(
             id="a87d09e8-7e10-46b8-9927-c9500c9559cf",
             email=None,
             plan="premium",
-            daily_chat_count=0,
-            daily_chat_count_limit=get_settings().free_daily_chat_limit,
+            daily_chat_count=25,
+            daily_chat_count_limit=get_settings().premium_weekly_chat_limit,
             daily_chats_remaining=None,
+            chat_count_limit=get_settings().premium_weekly_chat_limit,
+            chat_limit_period="week",
+            chats_remaining=175,
         )
 
         self.assertEqual(payload.plan, "premium")
         self.assertIsNone(payload.daily_chats_remaining)
+        self.assertEqual(payload.chats_remaining, 175)
 
 
 if __name__ == "__main__":

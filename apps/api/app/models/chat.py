@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from app.models.users import DEFAULT_DEV_USER_ID
 
@@ -39,6 +40,10 @@ class ChatResponse(BaseModel):
     stake_posture: str | None = None
     market_signal: ChatMarketSignal | None = None
     daily_chats_remaining: int | None
+    chat_count: int
+    chat_count_limit: int
+    chat_limit_period: Literal["day", "week"]
+    chats_remaining: int
 
 
 class AIChatResult(BaseModel):

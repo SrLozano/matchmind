@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, Loader2, RefreshCw, ShieldCheck } from "lucide-react"
-import { createTournamentPassCheckoutSession, type CurrentUser } from "@/lib/api"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, MessageCircleMore, RefreshCw, ShieldCheck } from "lucide-react"
+import { type CurrentUser } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 
@@ -11,41 +11,31 @@ export default function Profile({
   isLoadingUser,
   userError,
   onRetryUser,
+  onShowUpgradePrompt,
 }: {
   currentUser: CurrentUser | null
   isLoadingUser: boolean
   userError: string | null
   onRetryUser: () => void
+  onShowUpgradePrompt: () => void
 }) {
   const { language, setLanguage, t } = useLanguage()
   const { isConfigured, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [isStartingCheckout, setIsStartingCheckout] = useState(false)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const isPremium = currentUser?.plan === "premium"
-  const chatLimit = currentUser?.daily_chat_count_limit ?? 5
+  const chatLimit = currentUser?.chat_count_limit ?? currentUser?.daily_chat_count_limit ?? 5
   const chatsUsed = currentUser?.daily_chat_count ?? 0
-  const chatsRemaining = currentUser?.daily_chats_remaining
+  const chatsRemaining = currentUser?.chats_remaining ?? currentUser?.daily_chats_remaining
+  const visibleChatsRemaining = chatsRemaining ?? Math.max(chatLimit - chatsUsed, 0)
   const usagePercent = isPremium ? 100 : Math.min((chatsUsed / chatLimit) * 100, 100)
+  const isLowFreeQuota = !isPremium && visibleChatsRemaining <= 1
+  const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
   const accountLabel = currentUser?.email ?? t.profile.matchmindUser
   const menuItems = [
     { label: t.profile.responsibleGambling, description: t.profile.responsibleCopy, icon: ShieldCheck },
     { label: t.profile.help, description: t.profile.helpCopy, icon: ChevronRight },
     { label: t.profile.privacy, description: t.profile.privacyCopy, icon: ChevronRight },
   ]
-
-  const startCheckout = async () => {
-    setIsStartingCheckout(true)
-    setCheckoutError(null)
-
-    try {
-      const checkoutSession = await createTournamentPassCheckoutSession()
-      window.location.assign(checkoutSession.url)
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : "Unable to start checkout.")
-      setIsStartingCheckout(false)
-    }
-  }
 
   return (
     <div className="flex h-full flex-col overflow-y-auto pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
@@ -105,9 +95,9 @@ export default function Profile({
       {isPremium ? (
         <div className="mx-4 mb-3 shrink-0 divide-y divide-[#1A2845] overflow-hidden rounded-2xl border border-[#1A2845] bg-card sm:mx-5">
           <StatusRow
-            title={t.profile.dailyChats}
+            title={t.profile.fairUseChatsTitle}
             description={t.profile.noDailyCap}
-            value={t.profile.unlimited}
+            value={`${Math.max(chatLimit - chatsUsed, 0)}/${chatLimit}`}
             tone="green"
           />
           <StatusRow
@@ -128,17 +118,27 @@ export default function Profile({
             <div className="flex items-center gap-3">
               <div className="h-2 min-w-[120px] flex-1 overflow-hidden rounded-full bg-[#1A2845]">
                 <div
-                  className="h-full rounded-full bg-[#00FF87] transition-all"
+                  className={`h-full rounded-full transition-all ${isLowFreeQuota ? "bg-[#FF4D4D]" : "bg-[#00FF87]"}`}
                   style={{ width: `${usagePercent}%` }}
                 />
               </div>
-              <span className="flex-shrink-0 text-sm font-bold text-foreground">
+              <span className={`flex-shrink-0 text-sm font-bold ${isLowFreeQuota ? "text-[#FF6B6B]" : "text-foreground"}`}>
                 {chatsUsed}/{chatLimit}
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-[#6A7A9B]">
-              {chatsRemaining === null ? t.profile.remaining : `${chatsRemaining} ${t.chat.left}`}
-            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p className={`text-[11px] font-semibold ${isLowFreeQuota ? "text-[#FF6B6B]" : "text-[#6A7A9B]"}`}>
+                {visibleChatsRemaining} {t.chat.left}/{periodLabel}
+              </p>
+              <button
+                type="button"
+                onClick={onShowUpgradePrompt}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/10 px-2.5 py-1.5 text-[11px] font-bold text-[#00FF87] transition-colors hover:bg-[#00FF87]/15"
+              >
+                <MessageCircleMore className="h-3.5 w-3.5" />
+                {t.profile.moreMessages}
+              </button>
+            </div>
           </div>
 
           {/* Upgrade card */}
@@ -179,15 +179,10 @@ export default function Profile({
               <button
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00FF87] py-3.5 text-sm font-bold text-[#070D1A] shadow-[0_0_20px_rgba(0,255,135,0.3)] transition-all hover:bg-[#00e87a] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                 type="button"
-                onClick={() => void startCheckout()}
-                disabled={isStartingCheckout}
+                onClick={onShowUpgradePrompt}
               >
-                {isStartingCheckout && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isStartingCheckout ? (language === "es" ? "Abriendo Stripe..." : "Opening Stripe...") : t.profile.upgrade}
+                {t.profile.upgrade}
               </button>
-              {checkoutError && (
-                <p className="mt-2.5 text-center text-[11px] font-semibold text-[#FF4D4D]">{checkoutError}</p>
-              )}
               <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">
                 {t.profile.stripe}
               </p>

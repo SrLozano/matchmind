@@ -7,7 +7,9 @@ import {
   getConversations,
   sendChatMessage,
   type ChatMarketSignal,
+  type ChatResponse,
   type ConversationSummary,
+  type CurrentUser,
 } from "@/lib/api"
 import { useLanguage } from "@/lib/i18n"
 
@@ -22,7 +24,15 @@ type Message = {
   marketSignal?: ChatMarketSignal | null
 }
 
-export default function ChatCoach() {
+export default function ChatCoach({
+  currentUser,
+  onChatUsageUpdate,
+  onShowUpgradePrompt,
+}: {
+  currentUser: CurrentUser | null
+  onChatUsageUpdate: (result: ChatResponse) => void
+  onShowUpgradePrompt: () => void
+}) {
   const { language, t } = useLanguage()
   const getInitialMessages = () => [
     {
@@ -34,7 +44,6 @@ export default function ChatCoach() {
   const [messages, setMessages] = useState<Message[]>(getInitialMessages)
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [dailyChatsRemaining, setDailyChatsRemaining] = useState<number | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [history, setHistory] = useState<ConversationSummary[]>([])
@@ -57,6 +66,10 @@ export default function ChatCoach() {
   const handleSend = async () => {
     const trimmed = input.trim()
     if (!trimmed || isSending) return
+    if (currentUser && currentUser.chats_remaining <= 0) {
+      if (currentUser.plan === "free") onShowUpgradePrompt()
+      return
+    }
     hasUserSentMessage.current = true
     const userMsg: Message = { id: Date.now(), role: "user", text: trimmed }
     const pendingCoachMsg: Message = {
@@ -71,7 +84,10 @@ export default function ChatCoach() {
     try {
       const result = await sendChatMessage(trimmed, language, conversationId)
       setConversationId(result.conversation_id)
-      setDailyChatsRemaining(result.daily_chats_remaining)
+      onChatUsageUpdate(result)
+      if (currentUser?.plan === "free" && result.chats_remaining <= 0) {
+        onShowUpgradePrompt()
+      }
       void loadHistory()
       setMessages((prev) =>
         prev.map((message) =>
@@ -90,6 +106,9 @@ export default function ChatCoach() {
       )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t.chat.reachError
+      if (currentUser?.plan === "free" && errorMessage.toLowerCase().includes("limit")) {
+        onShowUpgradePrompt()
+      }
       setMessages((prev) =>
         prev.map((message) =>
           message.id === pendingCoachMsg.id
@@ -108,6 +127,20 @@ export default function ChatCoach() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") void handleSend()
   }
+
+  const quotaLimit = currentUser?.chat_count_limit ?? currentUser?.daily_chat_count_limit ?? 5
+  const quotaRemaining = currentUser?.chats_remaining ?? currentUser?.daily_chats_remaining ?? null
+  const quotaPeriod = currentUser?.chat_limit_period ?? "day"
+  const isLowFreeQuota = currentUser?.plan === "free" && quotaRemaining !== null && quotaRemaining <= 1
+  const quotaLabel =
+    quotaRemaining === null
+      ? t.chat.dailyLimit
+      : `${quotaRemaining} ${t.chat.left}/${quotaPeriod === "week" ? t.chat.week : t.chat.day}`
+  const quotaClass = isLowFreeQuota
+    ? "border-[#FF4D4D]/40 bg-[#FF4D4D]/12 text-[#FF6B6B]"
+    : currentUser?.plan === "premium"
+      ? "border-[#FFD600]/30 bg-[#FFD600]/10 text-[#FFD600]"
+      : "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
 
   const sendDisabled = !input.trim() || isSending
 
@@ -387,8 +420,11 @@ export default function ChatCoach() {
               >
                 {historyOpen ? <X className="h-4 w-4" /> : <History className="h-4 w-4" />}
               </button>
-              <span className="max-w-[78px] truncate rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-normal text-[#FFD600]">
-                {dailyChatsRemaining === null ? t.chat.dailyLimit : `${dailyChatsRemaining} ${t.chat.left}`}
+              <span
+                className={`max-w-[92px] truncate rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-normal ${quotaClass}`}
+                title={`${quotaRemaining ?? quotaLimit} ${t.chat.left}`}
+              >
+                {quotaLabel}
               </span>
             </div>
           </div>

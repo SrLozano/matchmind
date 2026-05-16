@@ -50,7 +50,7 @@ The user logs their bets manually. The app tracks outcomes, win rate, and P&L ov
 
 ### Freemium
 - **Free tier:** 5 AI chat messages per day, basic daily feed, limited bet history
-- **Premium tier:** Unlimited chats, full divergence alerts, complete history with metrics
+- **Premium tier:** 200 coach chats/week fair use, full divergence alerts, complete history with metrics
 
 ### Pricing
 - €4.99/month
@@ -228,6 +228,7 @@ SUPABASE_KEY=
 OPENAI_API_KEY=
 OPENAI_MODEL=
 FREE_DAILY_CHAT_LIMIT=
+PREMIUM_WEEKLY_CHAT_LIMIT=
 API_FOOTBALL_KEY=
 API_FOOTBALL_BASE_URL=
 STRIPE_SECRET_KEY=
@@ -277,7 +278,7 @@ NEXT_PUBLIC_DEV_USER_ID=
 ### POST /chat
 - **Input:** `{ user_id, message }`
 - **Logic:** checks daily limit for free users, extracts bet facts, reads cached API-Football/Polymarket context when relevant, injects compact context into the prompt, calls OpenAI
-- **Output:** `{ response, confidence_score, daily_chats_remaining }`
+- **Output:** `{ response, confidence_score, daily_chats_remaining, chat_count, chat_count_limit, chat_limit_period, chats_remaining }`
 
 ### GET /polymarket/signals
 - Returns active usable World Cup 2026 market signals from Supabase/memory.

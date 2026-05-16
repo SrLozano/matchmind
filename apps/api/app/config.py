@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     app_url: str = Field(default="http://localhost:3000", alias="APP_URL")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     free_daily_chat_limit: int = Field(default=5, alias="FREE_DAILY_CHAT_LIMIT")
+    premium_weekly_chat_limit: int = Field(default=200, alias="PREMIUM_WEEKLY_CHAT_LIMIT")
     api_football_key: str | None = Field(default=None, alias="API_FOOTBALL_KEY")
     api_football_base_url: str = Field(default="https://v3.football.api-sports.io", alias="API_FOOTBALL_BASE_URL")
     world_cup_league_id: int = Field(default=1, alias="WORLD_CUP_LEAGUE_ID")

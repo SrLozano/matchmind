@@ -110,7 +110,11 @@ Returns:
   "implied_probability": 0.4762,
   "stake_posture": "small",
   "market_signal": null,
-  "daily_chats_remaining": 4
+  "daily_chats_remaining": 4,
+  "chat_count": 1,
+  "chat_count_limit": 5,
+  "chat_limit_period": "day",
+  "chats_remaining": 4
 }
 ```
 
@@ -571,7 +575,7 @@ Manual verification checklist:
 ## Notes
 
 - Free users are limited to `5` chat requests per day by default.
-- Premium users bypass the daily message limit.
+- Premium users have a configurable fair-use limit of `200` chat requests per week by default.
 - Matchmind never places bets; it only provides analysis and coaching.
 - The coach parses decimal odds, stake, teams, and obvious markets before calling the AI model so implied probability is stable even when live data is unavailable.
 - English and Spanish are supported in the coach flow. Parser output is canonicalized to English for API consistency, while the coach replies in the detected user language.

@@ -63,6 +63,10 @@ async def chat(payload: ChatRequest, authorization: str | None = Header(default=
             stake_posture=ai_result.stake_posture,
             market_signal=_build_chat_market_signal(polymarket_context),
             daily_chats_remaining=saved_turn["daily_chats_remaining"],
+            chat_count=saved_turn["chat_count"],
+            chat_count_limit=saved_turn["chat_count_limit"],
+            chat_limit_period=saved_turn["chat_limit_period"],
+            chats_remaining=saved_turn["chats_remaining"],
         )
     except ValueError as exc:
         raise HTTPException(

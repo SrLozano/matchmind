@@ -31,6 +31,10 @@ class DummyChatSessionContext:
             "response": response,
             "confidence_score": confidence_score,
             "daily_chats_remaining": 4,
+            "chat_count": 1,
+            "chat_count_limit": 5,
+            "chat_limit_period": "day",
+            "chats_remaining": 4,
             "conversation": self.conversation,
         }
 
@@ -107,6 +111,7 @@ class ChatResilienceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(response.market_signal)
         self.assertEqual(response.conversation_id, "conversation-1")
         self.assertEqual(response.daily_chats_remaining, 4)
+        self.assertEqual(response.chats_remaining, 4)
         generate_reply.assert_awaited_once()
         self.assertEqual(generate_reply.await_args.args[1], None)
         self.assertEqual(generate_reply.await_args.args[2], None)
