@@ -70,7 +70,39 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    background: #040810;
+  }
+  html,
+  body {
+    min-height: 100%;
+    overscroll-behavior-y: none;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+@media (max-width: 767px) {
+  .matchmind-shell:has(input:focus, textarea:focus, select:focus) [data-bottom-nav] {
+    pointer-events: none;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+
+  .matchmind-shell:has(.chat-keyboard-surface:focus-within) [data-bottom-nav] {
+    pointer-events: none;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(0.75rem);
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import type { FocusEvent } from "react"
 import DailyFeed from "@/components/betcoach/DailyFeed"
 import ChatCoach from "@/components/betcoach/ChatCoach"
 import BetTracker from "@/components/betcoach/BetTracker"
@@ -31,6 +32,7 @@ function BetCoachShell() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [userError, setUserError] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const { session } = useAuth()
   const isPremium = currentUser?.plan === "premium"
 
@@ -60,15 +62,28 @@ function BetCoachShell() {
     return () => window.removeEventListener("focus", refreshOnFocus)
   }, [])
 
+  const handleFocusCapture = (event: FocusEvent<HTMLDivElement>) => {
+    const tagName = (event.target as HTMLElement | null)?.tagName
+    if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+      setIsEditing(true)
+    }
+  }
+
+  const handleBlurCapture = () => {
+    window.setTimeout(() => {
+      const tagName = document.activeElement?.tagName
+      setIsEditing(tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT")
+    }, 80)
+  }
+
   return (
-      <div className="flex items-center justify-center min-h-screen bg-[#040810]">
-        {/* Phone frame — max-width 430px, full height on mobile */}
+      <div className="flex min-h-[100dvh] items-stretch justify-center bg-[#040810] md:items-center">
         <div
-          className="relative w-full max-w-[430px] flex flex-col overflow-hidden md:rounded-3xl md:shadow-[0_0_60px_rgba(0,255,135,0.08),0_0_120px_rgba(0,0,0,0.8)]"
-          style={{ height: "min(844px, 100dvh)" }}
+          className="matchmind-shell relative flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden bg-background md:h-[min(844px,100dvh)] md:rounded-3xl md:shadow-[0_0_60px_rgba(0,255,135,0.08),0_0_120px_rgba(0,0,0,0.8)]"
+          onFocusCapture={handleFocusCapture}
+          onBlurCapture={handleBlurCapture}
         >
-          {/* Screen content */}
-          <main className="flex-1 overflow-hidden bg-background relative">
+          <main className="relative min-h-0 flex-1 overflow-hidden bg-background">
             <div className="relative h-full overflow-hidden">
               <div className={activeTab === "feed" ? "h-full" : "hidden"}>
                 <DailyFeed isPremium={isPremium} />
@@ -93,8 +108,7 @@ function BetCoachShell() {
             </div>
           </main>
 
-          {/* Bottom navigation */}
-          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} isHidden={isEditing} />
         </div>
       </div>
   )

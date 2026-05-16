@@ -91,11 +91,11 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex-shrink-0 px-5 pb-4 pt-6">
+      <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
         <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[#6A7A9B]">
           {today}
         </p>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-normal text-foreground">
           {t.feed.title}
         </h1>
         <div className="mt-2 flex items-center gap-2">
@@ -106,13 +106,13 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
         </div>
       </div>
 
-      <div className="mx-5 mb-5 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35]">
+      <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
         <StatCell label={t.feed.upcoming} value={sortedMatches.length.toString()} />
         <StatCell label={t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
         <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#FFD600]" />
       </div>
 
-      <div className="flex flex-col gap-3 px-5 pb-6">
+      <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
         {isLoading ? (
           <LoadingMatches />
         ) : error ? (
@@ -157,12 +157,12 @@ function MatchRow({
 
   return (
     <article className="overflow-hidden rounded-xl border border-[#1A2845] bg-card">
-      <div className="flex items-start gap-3 px-4 py-4">
-        <div className="flex w-[54px] shrink-0 flex-col items-center rounded-lg border border-[#1A2845] bg-[#0A1325] px-2 py-2 text-center">
+      <div className="flex items-start gap-3 px-3.5 py-3.5">
+        <div className="flex w-[68px] shrink-0 flex-col items-center rounded-lg border border-[#1A2845] bg-[#0A1325] px-2 py-2 text-center">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
             {kickoff ? dateFormatter.format(kickoff).split(" ")[0] : t.feed.tbd}
           </span>
-          <span className="mt-1 text-sm font-bold text-foreground">
+          <span className="mt-1 whitespace-nowrap text-xs font-bold text-foreground">
             {kickoff ? timeFormatter.format(kickoff) : "--:--"}
           </span>
         </div>
@@ -176,7 +176,7 @@ function MatchRow({
             <InsightBadge access={access} />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6A7A9B]">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] leading-snug text-[#6A7A9B]">
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3 w-3" />
               {kickoff ? dateFormatter.format(kickoff) : t.feed.datePending}
@@ -187,7 +187,7 @@ function MatchRow({
         </div>
       </div>
 
-      <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-4 py-3">
+      <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-3.5 py-3">
         <div className="space-y-3">
           {access === "locked" ? (
             <LockedInsight teaser={match.teaser} />
@@ -259,7 +259,7 @@ function UnlockedInsight({
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-3">
       <div className="min-w-0">
-        <p className="truncate text-xs font-semibold text-foreground">
+        <p className="text-xs font-semibold leading-snug text-foreground">
           {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
         </p>
         <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
@@ -321,14 +321,14 @@ function BookmakerPanel({
           <TrendingUp className="h-3.5 w-3.5 shrink-0 text-[#00FF87]" />
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#A8B4D0]">{t.feed.bookmakerOdds}</p>
-            <p className="truncate text-[10px] text-[#6A7A9B]">
+            <p className="line-clamp-1 text-[10px] text-[#6A7A9B]">
               {favorite?.outcome_name ? `${t.feed.marketFavorite}: ${formatOutcomeName(favorite.outcome_name, language)}` : t.feed.marketSnapshot}
             </p>
           </div>
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[9px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{t.feed.updated}</p>
-          <p className="text-[10px] font-semibold text-[#A8B4D0]">{formatShortDate(odds.last_fetched_at, language, t.feed.noValue)}</p>
+          <p className="text-[10px] font-semibold leading-tight text-[#A8B4D0]">{formatShortDate(odds.last_fetched_at, language, t.feed.noValue)}</p>
         </div>
       </div>
 
@@ -374,8 +374,8 @@ function PriceCell({
   const { t } = useLanguage()
 
   return (
-    <div className={`min-w-0 px-2 py-2.5 text-center ${highlighted ? "bg-[#00FF87]/8" : ""}`}>
-      <p className="truncate text-[10px] font-semibold text-[#6A7A9B]">{label}</p>
+    <div className={`min-w-0 px-1.5 py-2.5 text-center ${highlighted ? "bg-[#00FF87]/8" : ""}`}>
+      <p className="line-clamp-2 min-h-[24px] text-[10px] font-semibold leading-tight text-[#6A7A9B]">{label}</p>
       <p className={`mt-1 text-sm font-bold ${highlighted ? "text-[#00FF87]" : "text-foreground"}`}>
         {formatPrice(row?.best_price ?? null, t.feed.noValue)}
       </p>
@@ -465,7 +465,7 @@ function StatCell({
   accent?: string
 }) {
   return (
-    <div className="border-r border-[#1A2845] p-3 text-center last:border-r-0">
+    <div className="border-r border-[#1A2845] px-2 py-3 text-center last:border-r-0">
       <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
       <p className={`text-lg font-bold ${accent}`}>{value}</p>
     </div>

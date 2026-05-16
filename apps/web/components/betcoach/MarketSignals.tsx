@@ -47,13 +47,13 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex-shrink-0 px-5 pb-4 pt-6">
+      <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]">
             <Activity className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t.feed.marketSignals}</h1>
+            <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.feed.marketSignals}</h1>
             <p className="mt-0.5 text-xs leading-relaxed text-[#6A7A9B]">
               {t.feed.marketSignalsSubtitle}
             </p>
@@ -61,13 +61,13 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
         </div>
       </div>
 
-      <div className="mx-5 mb-5 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35]">
+      <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
         <StatCell label={t.signals.available} value={visibleSignals.length.toString()} />
         <StatCell label={t.feed.free} value={headlineSignals.length.toString()} accent="text-[#00FF87]" />
         <StatCell label={t.feed.pro} value={premiumSignals.length.toString()} accent="text-[#FFD600]" />
       </div>
 
-      <div className="flex flex-col gap-3 px-5 pb-6">
+      <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
         {isLoading ? (
           <LoadingSignals />
         ) : error ? (
@@ -148,7 +148,7 @@ function SignalRow({
   const shouldShowMarketDetails = !locked && Boolean(signal.question)
 
   return (
-    <article className={`overflow-hidden rounded-xl border bg-card px-4 py-3 ${locked ? "border-[#FFD600]/25" : "border-[#1A2845]"}`}>
+    <article className={`overflow-hidden rounded-xl border bg-card px-3.5 py-3.5 ${locked ? "border-[#FFD600]/25" : "border-[#1A2845]"}`}>
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -169,25 +169,25 @@ function SignalRow({
               {t.signals.unlockPremium}
             </div>
           ) : (
-            <div className="shrink-0 text-right">
-              <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+            <div className="shrink-0 rounded-lg border border-[#00FF87]/20 bg-[#00FF87]/5 px-2.5 py-1.5 text-right">
+              <p className="text-[9px] uppercase tracking-wide text-[#6A7A9B]">
                 {t.feed.crowdProbability}
               </p>
-              <p className="text-lg font-bold text-[#00FF87]">
+              <p className="text-base font-bold leading-tight text-[#00FF87]">
                 {formatPercent(signal.implied_probability, t.feed.noValue)}
               </p>
             </div>
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
           <SignalMetric label={t.feed.liquidity} value={metricValue ?? signal.liquidity_label ?? t.feed.noValue} />
           <SignalMetric
             label={t.feed.signalQuality}
             value={metricValue ?? (typeof quality === "number" ? `${quality}/100` : t.feed.noValue)}
             accent={locked ? "text-[#FFD600]" : getSignalQualityClass(quality)}
           />
-          <SignalMetric label={t.feed.marketType} value={metricValue ?? formatMarketType(signal.market_type, language)} />
+          <SignalMetric label={t.feed.marketType} value={metricValue ?? formatMarketType(signal.market_type, language)} wide />
         </div>
 
         {shouldShowMarketDetails && (
@@ -224,15 +224,17 @@ function SignalMetric({
   label,
   value,
   accent = "text-[#A8B4D0]",
+  wide = false,
 }: {
   label: string
   value: string
   accent?: string
+  wide?: boolean
 }) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0 ${wide ? "col-span-2" : ""}`}>
       <p className="truncate text-[9px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
-      <p className={`mt-0.5 truncate text-[11px] font-semibold ${accent}`}>{value}</p>
+      <p className={`mt-0.5 text-[11px] font-semibold leading-snug ${accent}`}>{value}</p>
     </div>
   )
 }
@@ -322,7 +324,7 @@ function StatCell({
   accent?: string
 }) {
   return (
-    <div className="border-r border-[#1A2845] p-3 text-center last:border-r-0">
+    <div className="border-r border-[#1A2845] px-2 py-3 text-center last:border-r-0">
       <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
       <p className={`text-lg font-bold ${accent}`}>{value}</p>
     </div>

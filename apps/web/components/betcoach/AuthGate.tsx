@@ -20,7 +20,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#040810] text-[#A8B4D0]">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#040810] text-[#A8B4D0]">
         <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#00FF87]" />
         {copy.loading}
       </div>
@@ -68,7 +68,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#040810] px-5">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#040810] px-4 py-[calc(1rem+env(safe-area-inset-top))]">
       <div className="w-full max-w-[430px] rounded-2xl border border-[#1A2845] bg-[#070D1A] p-5 shadow-[0_0_60px_rgba(0,255,135,0.08)]">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/10">
@@ -106,7 +106,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             <span className="flex items-center gap-2 rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3">
               <Mail className="h-4 w-4 text-[#6A7A9B]" />
               <input
-                className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-[#6A7A9B]"
+                className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-[#6A7A9B] sm:text-sm"
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -121,7 +121,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-[#A8B4D0]">{copy.password}</span>
               <input
-                className="w-full rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3 text-sm text-foreground outline-none placeholder:text-[#6A7A9B]"
+                className="w-full rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3 text-base text-foreground outline-none placeholder:text-[#6A7A9B] sm:text-sm"
                 type="password"
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
                 minLength={6}

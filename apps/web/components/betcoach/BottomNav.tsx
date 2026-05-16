@@ -9,6 +9,7 @@ type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
 interface BottomNavProps {
   activeTab: Tab
   onTabChange: (tab: Tab) => void
+  isHidden?: boolean
 }
 
 const tabs: { id: Tab; labelKey: "picks" | "signals" | "coach" | "tracker" | "profile"; icon: ElementType; featured?: boolean }[] = [
@@ -19,14 +20,18 @@ const tabs: { id: Tab; labelKey: "picks" | "signals" | "coach" | "tracker" | "pr
   { id: "profile", labelKey: "profile", icon: User },
 ]
 
-export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export default function BottomNav({ activeTab, onTabChange, isHidden = false }: BottomNavProps) {
   const { t } = useLanguage()
 
   return (
     <nav
-      className="flex-shrink-0 flex items-center border-t border-[#1A2845] bg-[#080E1E]"
+      data-bottom-nav
+      className={`flex h-[66px] flex-shrink-0 items-center border-t border-[#1A2845] bg-[#080E1E] transition-[height,opacity,transform] duration-200 ${
+        isHidden ? "pointer-events-none h-0 translate-y-3 overflow-hidden opacity-0" : "opacity-100"
+      }`}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label={t.nav.aria}
+      aria-hidden={isHidden}
     >
       {tabs.map(({ id, labelKey, icon: Icon, featured }) => {
         const isActive = activeTab === id
@@ -35,16 +40,16 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           <button
             key={id}
             onClick={() => onTabChange(id)}
-            className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors ${
+            className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
               isActive ? "text-[#00FF87]" : "text-[#6A7A9B] hover:text-[#A8B4D0]"
-            } ${featured ? "pb-2 pt-1" : "py-3"}`}
+            } ${featured ? "pb-1.5 pt-0.5" : "py-2"}`}
             aria-label={label}
             aria-current={isActive ? "page" : undefined}
           >
             <div
               className={`relative flex items-center justify-center ${
                 featured
-                  ? `-mt-5 h-12 w-12 rounded-full border bg-[#0A1325] shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${
+                  ? `-mt-3 h-11 w-11 rounded-full border bg-[#0A1325] shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${
                       isActive ? "border-[#00FF87]/60 text-[#00FF87]" : "border-[#1A2845] text-[#A8B4D0]"
                     }`
                   : ""
@@ -55,7 +60,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-[#00FF87]" />
               )}
             </div>
-            <span className={`text-[10px] font-semibold tracking-wide ${isActive ? "text-[#00FF87]" : "text-[#6A7A9B]"}`}>
+            <span className={`max-w-full truncate px-0.5 text-[10px] font-semibold tracking-normal ${isActive ? "text-[#00FF87]" : "text-[#6A7A9B]"}`}>
               {label}
             </span>
           </button>

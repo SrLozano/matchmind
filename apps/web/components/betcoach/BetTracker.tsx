@@ -202,9 +202,9 @@ export default function BetTracker() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex flex-shrink-0 items-center justify-between px-5 pb-4 pt-6">
+      <div className="flex flex-shrink-0 items-center justify-between gap-3 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t.tracker.title}</h1>
+          <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.tracker.title}</h1>
           <p className="mt-0.5 text-xs text-[#6A7A9B]">{t.tracker.subtitle}</p>
         </div>
         <button
@@ -217,7 +217,7 @@ export default function BetTracker() {
         </button>
       </div>
 
-      <div className="mx-5 mb-5 flex-shrink-0 rounded-lg border border-[#1A2845] bg-[#0F1C35] p-4">
+      <div className="mx-4 mb-4 flex-shrink-0 rounded-lg border border-[#1A2845] bg-[#0F1C35] p-3.5 sm:mx-5">
         <div className="flex items-center justify-between">
           <div className="flex-1 text-center">
             <p className="mb-1 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{t.tracker.totalBets}</p>
@@ -251,7 +251,7 @@ export default function BetTracker() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 px-5 pb-6">
+      <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
         {isLoading ? (
           <div className="rounded-lg border border-[#1A2845] bg-card p-5 text-center text-sm text-[#6A7A9B]">
             {t.tracker.loading}
@@ -366,7 +366,7 @@ export default function BetTracker() {
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-[#6A7A9B]">
               {t.tracker.betDescription}
               <Input
-                className="border-[#1A2845] bg-[#0F1C35] text-sm text-foreground"
+                className="border-[#1A2845] bg-[#0F1C35] text-base text-foreground sm:text-sm"
                 maxLength={200}
                 placeholder={t.tracker.betPlaceholder}
                 value={match}
@@ -379,7 +379,7 @@ export default function BetTracker() {
               <label className="flex flex-col gap-1.5 text-xs font-semibold text-[#6A7A9B]">
                 {t.tracker.stake}
                 <Input
-                  className="border-[#1A2845] bg-[#0F1C35] text-sm text-foreground"
+                  className="border-[#1A2845] bg-[#0F1C35] text-base text-foreground sm:text-sm"
                   inputMode="decimal"
                   pattern="[0-9]+([.,][0-9]+)?"
                   value={amount}
@@ -390,7 +390,7 @@ export default function BetTracker() {
               <label className="flex flex-col gap-1.5 text-xs font-semibold text-[#6A7A9B]">
                 {t.tracker.odds}
                 <Input
-                  className="border-[#1A2845] bg-[#0F1C35] text-sm text-foreground"
+                  className="border-[#1A2845] bg-[#0F1C35] text-base text-foreground sm:text-sm"
                   inputMode="decimal"
                   pattern="[0-9]+([.,][0-9]+)?"
                   value={odds}

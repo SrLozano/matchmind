@@ -10,8 +10,7 @@ Use a managed, low-ops stack:
 
 ```text
 Frontend
--> Cloudflare Pages/Workers if the Next.js app stays mostly client-rendered
--> Vercel Pro fallback if Cloudflare/OpenNext adds launch friction
+-> Cloudflare Pages static export
 
 Backend
 -> Render Web Service for FastAPI
@@ -23,6 +22,23 @@ Scheduled refreshes
 -> GitHub Actions cron first
 -> Render Cron Jobs only if tighter match-day timing is needed
 ```
+
+Vercel Pro remains the fallback if Cloudflare becomes a source of launch friction, but the current frontend is client-rendered enough to deploy as a static export.
+
+## Current Deployed State
+
+As of 2026-05-16:
+
+```text
+Backend: Render Web Service
+Frontend: Cloudflare Pages
+Frontend URL: https://matchmind-web.pages.dev
+Database/Auth: Supabase
+Payments: Stripe test-mode backend integration
+Scheduled refreshes: not configured yet
+```
+
+The frontend and backend are connected. The initial Cloudflare deployment failed to call the API because the static bundle had not been built with the production `NEXT_PUBLIC_API_URL`. For static exports, public environment variables are compiled into the JavaScript at build time, so changing Cloudflare variables requires a new deployment.
 
 The most important architectural constraint remains unchanged:
 
@@ -146,22 +162,51 @@ If local development no longer needs to call the production API, remove localhos
 
 ## Frontend Hosting
 
-The cost-minimizing frontend path is Cloudflare, but Vercel remains the lowest-friction fallback for Next.js.
+The frontend is deployed on Cloudflare Pages as a static Next.js export.
 
-Preferred decision:
+Why this works for the current app:
 
 ```text
-Try Cloudflare if the app can stay mostly client-rendered.
-Use Vercel Pro if OpenNext/Cloudflare compatibility costs more than a day of launch time.
+The app is mostly client-rendered.
+The browser calls FastAPI directly through NEXT_PUBLIC_API_URL.
+The browser uses Supabase client auth with public Supabase env vars.
+No Next.js API routes, server actions, middleware, SSR, or image optimization are required right now.
+```
+
+Required Next.js config:
+
+```js
+const nextConfig = {
+  output: 'export',
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    unoptimized: true,
+  },
+}
+```
+
+Cloudflare Pages build settings from the repo root:
+
+```text
+Framework preset: Next.js (Static HTML Export)
+Production branch: main
+Build command: pnpm install --frozen-lockfile && pnpm --filter @matchmind/web build
+Build output directory: apps/web/out
+Root directory: empty
 ```
 
 Frontend public variables:
 
 ```text
-NEXT_PUBLIC_API_URL=https://your-render-api-url
+NEXT_PUBLIC_API_URL=https://your-render-api-url.onrender.com
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NODE_VERSION=22
 ```
+
+Because this is a static export, `NEXT_PUBLIC_*` values are build-time values. If `NEXT_PUBLIC_API_URL` is wrong or missing during the Cloudflare build, the deployed app can fall back to `http://localhost:8000` and all service calls will fail from the deployed site. Fix the variable in Cloudflare and redeploy.
 
 Never expose:
 
@@ -174,6 +219,14 @@ STRIPE_WEBHOOK_SECRET
 API_FOOTBALL_KEY
 ODDS_API_KEY
 ```
+
+Current Cloudflare default URL:
+
+```text
+https://matchmind-web.pages.dev
+```
+
+This URL is acceptable for testing. Before beta users, prefer a custom domain such as `trymatchmind.com` or `matchmind.app` and then update Render `APP_URL`, Render `CORS_ALLOWED_ORIGINS`, Supabase redirect URLs, and Stripe settings as needed.
 
 ## Stripe Webhook
 
@@ -302,3 +355,15 @@ local code change
 Frequent redeploys do not charge a new monthly service fee. Costs are driven by running services, instance size, bandwidth, and additional paid resources.
 
 Environment variable changes in Render require a restart/redeploy for the app process to pick them up.
+
+With Cloudflare Pages auto-deploy enabled:
+
+```text
+local code change
+-> git commit
+-> git push origin main
+-> Cloudflare builds from the repo root
+-> Cloudflare publishes apps/web/out
+```
+
+Cloudflare static traffic can show many requests immediately after deployment. That is normal because Cloudflare counts every HTML, JS, CSS, font, icon, bot, and validation request. The cost-sensitive signals to watch are Render API logs, OpenAI usage, Supabase usage, and provider API usage.

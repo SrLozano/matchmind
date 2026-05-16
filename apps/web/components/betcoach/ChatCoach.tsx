@@ -357,9 +357,9 @@ export default function ChatCoach() {
   }
 
   return (
-    <div className="relative flex flex-col h-full overflow-hidden">
+    <div className="chat-keyboard-surface relative flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex-shrink-0 border-b border-[#1A2845]">
+      <div className="flex-shrink-0 border-b border-[#1A2845] px-4 pb-3 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
         <div className="flex items-center gap-3">
           <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-[#00FF87]/20 to-[#00FF87]/5 border border-[#00FF87]/30 flex items-center justify-center flex-shrink-0">
             <Zap className="w-5 h-5 text-[#00FF87]" />
@@ -369,8 +369,8 @@ export default function ChatCoach() {
             <h2 className="text-base font-bold text-foreground leading-tight">{t.chat.title}</h2>
             <p className="text-xs text-[#00FF87]">{t.chat.status}</p>
           </div>
-          <div className="ml-auto">
-            <div className="flex items-center gap-2">
+          <div className="ml-auto min-w-0">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleNewChat}
                 className="h-8 w-8 rounded-lg border border-[#1A2845] bg-[#0F1C35] text-[#A8B4D0] hover:text-[#00FF87] transition-colors flex items-center justify-center"
@@ -387,7 +387,7 @@ export default function ChatCoach() {
               >
                 {historyOpen ? <X className="h-4 w-4" /> : <History className="h-4 w-4" />}
               </button>
-              <span className="text-[10px] font-semibold bg-[#FFD600]/10 border border-[#FFD600]/30 text-[#FFD600] rounded-full px-2.5 py-1 uppercase tracking-wider">
+              <span className="max-w-[78px] truncate rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-normal text-[#FFD600]">
                 {dailyChatsRemaining === null ? t.chat.dailyLimit : `${dailyChatsRemaining} ${t.chat.left}`}
               </span>
             </div>
@@ -466,7 +466,7 @@ export default function ChatCoach() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -478,7 +478,7 @@ export default function ChatCoach() {
               </div>
             )}
             <div
-              className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[86%] rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
                 msg.role === "user"
                   ? "bg-[#00FF87] text-[#070D1A] font-medium rounded-br-md"
                   : "bg-[#0F1C35] border border-[#1A2845] text-[#A8B4D0] rounded-bl-md"
@@ -512,11 +512,11 @@ export default function ChatCoach() {
       </div>
 
       {/* Input bar */}
-      <div className="px-4 pb-4 flex-shrink-0">
-        <div className="flex items-center gap-2 bg-[#0F1C35] border border-[#1A2845] rounded-2xl px-4 py-2.5 focus-within:border-[#00FF87]/50 transition-colors">
+      <div className="flex-shrink-0 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-2 rounded-2xl border border-[#1A2845] bg-[#0F1C35] px-3 py-2.5 transition-colors focus-within:border-[#00FF87]/50">
           <input
             ref={inputRef}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-[#6A7A9B] outline-none"
+            className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-[#6A7A9B] sm:text-sm"
             placeholder={t.chat.placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -525,7 +525,7 @@ export default function ChatCoach() {
           />
           <button
             onClick={() => void handleSend()}
-            className={`w-8 h-8 rounded-xl bg-[#00FF87] flex items-center justify-center flex-shrink-0 transition-all ${
+            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#00FF87] transition-all ${
               sendDisabled ? "opacity-40" : "hover:bg-[#00e87a] active:scale-95"
             }`}
             aria-disabled={sendDisabled}
@@ -534,7 +534,7 @@ export default function ChatCoach() {
             <Send className="w-4 h-4 text-[#070D1A]" />
           </button>
         </div>
-        <p className="text-center text-[10px] text-[#6A7A9B] mt-2">
+        <p className="mt-2 text-center text-[10px] leading-snug text-[#6A7A9B]">
           {t.chat.disclaimer}
         </p>
       </div>

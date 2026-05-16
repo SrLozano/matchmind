@@ -22,6 +22,25 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 let supabaseClient: SupabaseClient | null | undefined
 
+function isStaleRefreshTokenError(error: unknown) {
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return message.includes("invalid refresh token") || message.includes("refresh token not found")
+}
+
+async function clearStaleLocalSession(supabase: SupabaseClient) {
+  const { error } = await supabase.auth.signOut({ scope: "local" })
+  if (error && !isStaleRefreshTokenError(error)) {
+    throw error
+  }
+}
+
+async function readSession(supabase: SupabaseClient) {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  return data.session
+}
+
 function createSupabaseClient(): SupabaseClient | null {
   if (supabaseClient !== undefined) return supabaseClient
 
@@ -46,21 +65,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setAuthTokenProvider(async () => {
-      const { data } = await supabase.auth.getSession()
-      return data.session?.access_token ?? null
+      try {
+        const nextSession = await readSession(supabase)
+        return nextSession?.access_token ?? null
+      } catch (error) {
+        if (isStaleRefreshTokenError(error)) {
+          await clearStaleLocalSession(supabase)
+          return null
+        }
+        throw error
+      }
     })
 
     let mounted = true
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    readSession(supabase).then(async (nextSession) => {
       if (!mounted) return
-      if (error) {
-        setAuthError(error.message)
-        await supabase.auth.signOut({ scope: "local" })
-        setSession(null)
-        setIsLoading(false)
-        return
+      setSession(nextSession)
+      setIsLoading(false)
+    }).catch(async (error: unknown) => {
+      if (!mounted) return
+      if (isStaleRefreshTokenError(error)) {
+        await clearStaleLocalSession(supabase)
+        setAuthError(null)
+      } else {
+        setAuthError(error instanceof Error ? error.message : "Unable to check your session.")
       }
-      setSession(data.session)
+      setSession(null)
       setIsLoading(false)
     })
 

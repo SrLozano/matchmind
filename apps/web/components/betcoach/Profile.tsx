@@ -48,10 +48,10 @@ export default function Profile({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto pb-8">
+    <div className="flex h-full flex-col overflow-y-auto pb-8">
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">{t.profile.title}</h1>
+      <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
+        <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.profile.title}</h1>
       </div>
 
       {/* User card */}
