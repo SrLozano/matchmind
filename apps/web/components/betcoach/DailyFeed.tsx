@@ -190,11 +190,11 @@ function MatchRow({
       <div className="border-t border-[#1A2845] bg-[#0A1325]/70 px-3.5 py-3">
         <div className="space-y-3">
           {access === "locked" ? (
-            <LockedInsight teaser={match.teaser} />
+            <LockedInsight />
           ) : (
             <UnlockedInsight match={match} hasPick={hasPick} access={access} />
           )}
-          <BookmakerPanel odds={odds} homeTeam={homeTeam} awayTeam={awayTeam} />
+          <BookmakerPanel odds={odds} homeTeam={homeTeam} awayTeam={awayTeam} access={access} />
         </div>
       </div>
     </article>
@@ -293,10 +293,12 @@ function BookmakerPanel({
   odds,
   homeTeam,
   awayTeam,
+  access,
 }: {
   odds: OddsMatch | null
   homeTeam: string
   awayTeam: string
+  access: MatchAccess
 }) {
   const { language, t } = useLanguage()
   const home = findOutcome(odds?.h2h ?? [], homeTeam)
@@ -304,6 +306,20 @@ function BookmakerPanel({
   const draw = odds?.h2h.find((row) => row.outcome_name === "Draw") ?? null
   const favorite = getFavorite([home, draw, away])
   const hasExpandedMarkets = Boolean((odds?.featured_markets.totals?.length ?? 0) + (odds?.featured_markets.spreads?.length ?? 0))
+
+  if (access === "locked") {
+    return (
+      <div className="rounded-lg border border-[#FFD600]/25 bg-[#071022] px-3 py-3">
+        <div className="flex items-start gap-2">
+          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FFD600]" />
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#FFD600]">{t.feed.bookmakerOdds}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">{t.feed.lockedCopy}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!odds || odds.h2h.length === 0) {
     return (
@@ -429,14 +445,14 @@ function MiniMetric({ label, value, accent = "text-foreground" }: { label: strin
   )
 }
 
-function LockedInsight({ teaser }: { teaser?: string | null }) {
+function LockedInsight() {
   const { t } = useLanguage()
 
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-3">
       <div className="min-w-0">
         <p className="truncate text-xs font-semibold text-foreground">
-          {teaser ?? t.feed.proInsight}
+          {t.feed.proInsight}
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-[#6A7A9B]">
           {t.feed.lockedCopy}
