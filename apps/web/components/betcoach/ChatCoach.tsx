@@ -26,10 +26,12 @@ type Message = {
 
 export default function ChatCoach({
   currentUser,
+  draftPrompt,
   onChatUsageUpdate,
   onShowUpgradePrompt,
 }: {
   currentUser: CurrentUser | null
+  draftPrompt: { id: number; text: string } | null
   onChatUsageUpdate: (result: ChatResponse) => void
   onShowUpgradePrompt: () => void
 }) {
@@ -62,6 +64,12 @@ export default function ChatCoach({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  useEffect(() => {
+    if (!draftPrompt?.text) return
+    setInput(draftPrompt.text)
+    window.setTimeout(() => inputRef.current?.focus(), 80)
+  }, [draftPrompt?.id])
 
   const handleSend = async () => {
     const trimmed = input.trim()

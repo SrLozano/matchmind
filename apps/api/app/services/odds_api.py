@@ -280,6 +280,7 @@ async def build_bookmaker_context_for_chat(
         "bookmaker_count": int(row.get("bookmaker_count") or 0),
         "last_fetched_at": row.get("fetched_at"),
         "value_edge": value_edge(parsed.odds, row),
+        "price_quality": price_quality(parsed.odds, row),
     }
 
 
@@ -339,6 +340,8 @@ def format_bookmaker_context_block(context: dict[str, Any] | None) -> str | None
             f"- Best cached price: {context['best_price']:.2f}"
             + (f" at {context['best_bookmaker_title']}" if context.get("best_bookmaker_title") else "")
         )
+    if context.get("price_quality"):
+        lines.append(f"- Price quality vs best cached price: {context['price_quality']}")
     if context.get("value_edge") is not None:
         lines.append(f"- User price edge vs consensus: {context['value_edge'] * 100:.1f} percentage points")
     lines.append(f"- Bookmakers in consensus: {context.get('bookmaker_count') or 0}")
@@ -810,6 +813,21 @@ def value_edge(user_odds: float | None, row: dict[str, Any]) -> float | None:
     if user_odds is None or not consensus_probability:
         return None
     return round((1 / user_odds) - consensus_probability, 4) * -1
+
+
+def price_quality(user_odds: float | None, row: dict[str, Any]) -> str | None:
+    best_price = as_float(row.get("best_price"))
+    if user_odds is None or not best_price:
+        return None
+
+    ratio = user_odds / best_price
+    if ratio >= 0.995:
+        return "best available or effectively equal to the best cached price"
+    if ratio >= 0.97:
+        return "strong; close to the best cached price"
+    if ratio >= 0.94:
+        return "acceptable; below the best cached price but still in range"
+    return "weak; meaningfully below the best cached price"
 
 
 def compact_consensus_row(row: dict[str, Any]) -> dict[str, Any]:

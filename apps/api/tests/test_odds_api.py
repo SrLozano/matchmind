@@ -10,6 +10,7 @@ from app.services.odds_api import (
     get_compact_odds_matches,
     get_bookmaker_data_from_discovery_file,
     normalize_discovery_consensus,
+    price_quality,
     value_edge,
 )
 
@@ -138,6 +139,20 @@ class OddsAPIServiceTest(unittest.TestCase):
 
         self.assertEqual(edge, 0.0429)
 
+    def test_price_quality_compares_user_price_to_best_cached_price(self) -> None:
+        self.assertEqual(
+            price_quality(1.88, {"best_price": 1.88}),
+            "best available or effectively equal to the best cached price",
+        )
+        self.assertEqual(
+            price_quality(1.82, {"best_price": 1.88}),
+            "acceptable; below the best cached price but still in range",
+        )
+        self.assertEqual(
+            price_quality(1.50, {"best_price": 1.88}),
+            "weak; meaningfully below the best cached price",
+        )
+
     def test_context_from_discovery_file_matches_world_cup_fixture(self) -> None:
         parsed = parse_bet_message("Mexico to beat South Africa at 1.95")
         context = asyncio.run(
@@ -174,12 +189,14 @@ class OddsAPIServiceTest(unittest.TestCase):
                 "bookmaker_count": 12,
                 "last_fetched_at": "2026-05-10T10:00:00+00:00",
                 "value_edge": 0.0228,
+                "price_quality": "strong; close to the best cached price",
             }
         )
 
         self.assertIn("BOOKMAKER CONTEXT:", block)
         self.assertIn("Bookmaker no-vig consensus probability", block)
         self.assertIn("Best cached price", block)
+        self.assertIn("Price quality vs best cached price", block)
 
     def test_broad_recommendation_uses_discovery_context(self) -> None:
         parsed = parse_bet_message("I have 100€ and want World Cup recommendations")

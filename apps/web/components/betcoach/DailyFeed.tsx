@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { KeyboardEvent } from "react"
-import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
+import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, MessageCircle, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage } from "@/lib/i18n"
@@ -17,9 +17,11 @@ type FeedState = {
 export default function DailyFeed({
   isPremium,
   onShowUpgradePrompt,
+  onBringToCoach,
 }: {
   isPremium: boolean
   onShowUpgradePrompt: () => void
+  onBringToCoach: (prompt: string) => void
 }) {
   const { language, t } = useLanguage()
   const [feed, setFeed] = useState<FeedState>({ matches: [], oddsMatches: [], lastUpdated: null })
@@ -136,6 +138,7 @@ export default function DailyFeed({
               access={getMatchAccess(match, index, isPremium)}
               isPremium={isPremium}
               onShowUpgradePrompt={onShowUpgradePrompt}
+              onBringToCoach={onBringToCoach}
               odds={findOddsForFixture(match, feed.oddsMatches)}
               dateFormatter={dateFormatter}
               timeFormatter={timeFormatter}
@@ -152,6 +155,7 @@ function MatchRow({
   access,
   isPremium,
   onShowUpgradePrompt,
+  onBringToCoach,
   odds,
   dateFormatter,
   timeFormatter,
@@ -160,11 +164,12 @@ function MatchRow({
   access: MatchAccess
   isPremium: boolean
   onShowUpgradePrompt: () => void
+  onBringToCoach: (prompt: string) => void
   odds: OddsMatch | null
   dateFormatter: Intl.DateTimeFormat
   timeFormatter: Intl.DateTimeFormat
 }) {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const homeTeam = match.home_team ?? match.match.split(" vs ")[0] ?? "Home"
   const awayTeam = match.away_team ?? match.match.split(" vs ")[1] ?? "Away"
   const kickoff = parseKickoff(match.kickoff_time)
@@ -225,6 +230,16 @@ function MatchRow({
             <UnlockedInsight match={match} hasPick={hasPick} access={access} isPremium={isPremium} />
           )}
           <BookmakerPanel odds={odds} homeTeam={homeTeam} awayTeam={awayTeam} access={access} />
+          {access !== "locked" && (
+            <button
+              type="button"
+              onClick={() => onBringToCoach(buildCoachPrompt(match, odds, homeTeam, awayTeam, language))}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00FF87]/30 bg-[#00FF87]/10 px-3 py-2.5 text-xs font-bold text-[#00FF87] transition-colors hover:border-[#00FF87]/60 hover:bg-[#00FF87]/15"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t.feed.bringToCoach}
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -713,6 +728,40 @@ function formatShortDate(value: string | null, language: "en" | "es", fallback: 
     hour: "2-digit",
     minute: "2-digit",
   }).format(date)
+}
+
+function buildCoachPrompt(
+  match: WorldCupFixture,
+  odds: OddsMatch | null,
+  homeTeam: string,
+  awayTeam: string,
+  language: "en" | "es"
+) {
+  const matchName = `${displayTeamName(homeTeam, language)} vs ${displayTeamName(awayTeam, language)}`
+  const stageText = match.stage ? ` (${match.stage})` : ""
+  const h2hRows = [
+    findOutcome(odds?.h2h ?? [], homeTeam),
+    odds?.h2h.find((row) => row.outcome_name === "Draw") ?? null,
+    findOutcome(odds?.h2h ?? [], awayTeam),
+  ].filter((row): row is OddsConsensusRow => Boolean(row))
+  const h2hText = h2hRows
+    .map((row) => {
+      const label = formatOutcomeName(row.outcome_name, language)
+      const price = formatPrice(row.best_price, "")
+      const probability = formatPercent(row.no_vig_probability, "")
+      return `${label}${price ? ` @ ${price}` : ""}${probability ? ` (${probability})` : ""}`
+    })
+    .join(", ")
+
+  if (language === "es") {
+    return h2hText
+      ? `Analiza este partido del Feed: ${matchName}${stageText}. Las cuotas de la app muestran las mejores cuotas cacheadas por resultado: ${h2hText}. Dime primero si estos precios están bien comprados frente al mercado, luego si hay valor real, qué cuota mínima buscarías para entrar y qué evitarías.`
+      : `Analiza este partido del Feed: ${matchName}${stageText}. No tengo una cuota elegida todavía. ¿Qué mercados mirarías primero, qué precio mínimo buscarías y qué evitarías?`
+  }
+
+  return h2hText
+    ? `Analyze this Feed match: ${matchName}${stageText}. The in-app odds board shows the best cached prices by outcome: ${h2hText}. First tell me whether these are well-bought prices versus the market, then whether there is real value, what minimum price you would want before entering, and what you would avoid.`
+    : `Analyze this Feed match: ${matchName}${stageText}. I have not picked specific odds yet. Which markets would you inspect first, what minimum price would you want, and what would you avoid?`
 }
 
 function formatUpdatedAt(

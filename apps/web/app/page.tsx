@@ -30,6 +30,7 @@ export default function MatchmindApp() {
 
 function MatchmindShell() {
   const [activeTab, setActiveTab] = useState<Tab>("chat")
+  const [chatDraft, setChatDraft] = useState<{ id: number; text: string } | null>(null)
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [userError, setUserError] = useState<string | null>(null)
@@ -122,6 +123,11 @@ function MatchmindShell() {
     })
   }
 
+  const handleBringToCoach = (prompt: string) => {
+    setChatDraft({ id: Date.now(), text: prompt })
+    setActiveTab("chat")
+  }
+
   return (
       <div className="flex min-h-[var(--matchmind-viewport-height,100dvh)] items-stretch justify-center bg-[#040810] md:items-center">
         <div
@@ -132,7 +138,11 @@ function MatchmindShell() {
           <main className="relative min-h-0 flex-1 overflow-hidden bg-background">
             <div className="relative h-full overflow-hidden">
               <div className={activeTab === "feed" ? "h-full" : "hidden"}>
-                <DailyFeed isPremium={isPremium} onShowUpgradePrompt={() => setUpgradePromptOpen(true)} />
+                <DailyFeed
+                  isPremium={isPremium}
+                  onShowUpgradePrompt={() => setUpgradePromptOpen(true)}
+                  onBringToCoach={handleBringToCoach}
+                />
               </div>
               <div className={activeTab === "signals" ? "h-full" : "hidden"}>
                 <MarketSignals isPremium={isPremium} onShowUpgradePrompt={() => setUpgradePromptOpen(true)} />
@@ -140,6 +150,7 @@ function MatchmindShell() {
               <div className={activeTab === "chat" ? "h-full" : "hidden"}>
                 <ChatCoach
                   currentUser={currentUser}
+                  draftPrompt={chatDraft}
                   onChatUsageUpdate={handleChatUsageUpdate}
                   onShowUpgradePrompt={() => setUpgradePromptOpen(true)}
                 />
