@@ -31,6 +31,7 @@ If match_context is present, use it only when relevant to the user's bet. It con
 If polymarket_context is present, use it only as crowd probability or market signal for supported long-term World Cup markets. Never mention "Polymarket" in the user-facing response. Never call it truth, a sure bet, or an instruction to bet. If it says matched=false, mention that no useful market signal was found only when relevant.
 If polymarket_context is present but match_context is absent, do not say all live market data is missing. Say only that team/form/fixture data, injuries, lineups, or bookmaker comparison are missing when relevant.
 If bookmaker_context is present, use it as cached bookmaker consensus only. It is not a guarantee, not a true probability, and not permission to place a bet. Compare the user's price against consensus and best cached price when supplied.
+If bookmaker_context is BOOKMAKER DISCOVERY CONTEXT, the user is asking for help finding where to start. Use the listed in-app matches and prices to create a small guided shortlist or decision path. Do not ask the user to leave the app to find fixtures or odds. Do not call any option good value unless the context gives enough price/probability comparison to support it; otherwise call them watchlist/price-check candidates.
 Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-Football predictions, prediction-market probabilities, or broader team form unless those fields are explicitly present.
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
@@ -48,7 +49,8 @@ The visible response should feel like a sharp friend answering in chat, not a re
 Behavior rules:
 - If no odds are provided, ask for the odds but still give a preliminary football opinion if teams or market are clear.
 - If no teams or bet target are detected but the user asks for recommendations, a budget plan, what to bet, a shortlist, or says they have money to bet, do not answer with only "I need teams/odds".
-  Give a practical starter plan: say you would not deploy the whole budget blindly, explain what inputs create value, suggest 2-3 safe next actions such as sending bookmaker odds, choosing a risk profile, or asking for tournament/fixture angles, and ask one concise follow-up question.
+  First use any BOOKMAKER DISCOVERY CONTEXT or market-signal context already provided by Matchmind. Give 2-4 in-app options to inspect, explain why each is only a candidate or a pass, and ask the user to choose a risk profile or tap one option for a deeper verdict.
+  If no in-app context is available, give a practical starter plan: say you would not deploy the whole budget blindly, explain what inputs create value, suggest 2-3 safe in-app next actions such as Feed, Market Signals, risk profile, or shortlist mode, and ask one concise follow-up question.
   You may describe categories to consider or avoid, but do not invent specific picks without price/data.
   Use verdict NOT ENOUGH INFO, stake_posture avoid or very small, and confidence 3-5 because no specific bet has been priced yet.
 - If no teams or bet target are detected and the user is not asking for discovery/recommendations, use NOT ENOUGH INFO and ask one concise follow-up question.
@@ -422,11 +424,11 @@ def _fallback_result_en(parsed_bet: ParsedBet) -> AIChatResult:
             if parsed_bet.stake_amount and parsed_bet.stake_currency
             else f"{parsed_bet.stake_amount:g}" if parsed_bet.stake_amount else "budget"
         )
-        response = f"""I would not spend that {amount_text} blindly. The value is not in me naming random teams; it is in comparing real odds against a realistic probability and then deciding whether the price is worth touching.
+        response = f"""I would not spend that {amount_text} blindly, but you should not have to leave Matchmind to get started. The value is not in random team names; it is in using the in-app Feed, bookmaker board, and market signals to narrow the board before you stake anything.
 
-Here is the useful way to start: pick a risk style first. Conservative means 1-2 small positions and lots of passing. Balanced means a short list of 3-5 bets to price-check. Aggressive means long shots, but only tiny stakes because World Cup variance is brutal.
+Here is the useful path: pick a risk style first. Conservative means 1-2 small positions and lots of passing. Balanced means a short in-app shortlist of 3-5 bets to price-check. Aggressive means long shots, but only tiny stakes because World Cup variance is brutal.
 
-Send me either your risk style or 2-3 odds you are seeing, and I will turn it into a proper shortlist with avoid/fair/good-value calls. Until then, keep the stake posture as avoid: do not bet just because the money is available.
+Tell me conservative, balanced, or aggressive and I will work from the matches and signals Matchmind already has. Until then, keep the stake posture as avoid: do not bet just because the money is available.
 
 Confidence: {confidence_score:g}/10"""
         return AIChatResult(
@@ -499,11 +501,11 @@ def _fallback_result_es(parsed_bet: ParsedBet) -> AIChatResult:
         stake_posture = "avoid"
         confidence_score = 4.0
         amount_text = f"{parsed_bet.stake_amount:g} {parsed_bet.stake_currency}" if parsed_bet.stake_amount else "ese dinero"
-        response = f"""Yo no metería {amount_text} a ciegas. El valor no está en soltar nombres al azar; está en comparar cuotas reales contra una probabilidad razonable y decidir si el precio merece tocarse.
+        response = f"""Yo no metería {amount_text} a ciegas, pero tampoco deberías tener que salir de Matchmind para empezar. El valor no está en soltar nombres al azar; está en usar el Feed, las cuotas y las señales de mercado de la app para reducir opciones antes de poner dinero.
 
-La forma útil de empezar es elegir perfil de riesgo. Conservador: 1-2 posiciones pequeñas y muchas apuestas descartadas. Equilibrado: una lista corta de 3-5 apuestas para revisar cuota por cuota. Agresivo: cuotas largas, pero con importes muy pequeños porque el Mundial tiene mucha varianza.
+La forma útil de empezar es elegir perfil de riesgo. Conservador: 1-2 posiciones pequeñas y muchas apuestas descartadas. Equilibrado: una shortlist dentro de la app con 3-5 apuestas para revisar. Agresivo: cuotas largas, pero con importes muy pequeños porque el Mundial tiene mucha varianza.
 
-Pásame tu perfil de riesgo o 2-3 cuotas que estés viendo y te lo convierto en una shortlist con veredictos de evitar/justa/buen valor. Hasta entonces, postura de stake: evitar; no apuestes solo porque tienes presupuesto.
+Dime conservador, equilibrado o agresivo y trabajo desde los partidos y señales que Matchmind ya tiene. Hasta entonces, postura de stake: evitar; no apuestes solo porque tienes presupuesto.
 
 Confianza: {confidence_score:g}/10"""
         return AIChatResult(

@@ -92,6 +92,7 @@ export const translations = {
       examplePrompts: [
         "I have €100 and want World Cup recommendations",
         "Build me a balanced shortlist for today",
+        "Show me low-risk options from the app",
         "Brazil to beat Japan at 1.80",
         "Is Argentina to win the World Cup at 7.50 good value?",
       ],
@@ -330,6 +331,7 @@ export const translations = {
       examplePrompts: [
         "Tengo 100€ y quiero recomendaciones para el Mundial",
         "Hazme una shortlist equilibrada para hoy",
+        "Enséñame opciones conservadoras de la app",
         "Brasil gana a Japón a cuota 1.80",
         "¿Argentina campeona del Mundial a 7.50 tiene valor?",
       ],

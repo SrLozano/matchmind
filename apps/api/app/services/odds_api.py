@@ -206,6 +206,21 @@ async def build_bookmaker_context_for_chat(
     match_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     parsed = parsed_bet or parse_bet_message(message)
+    if not parsed.teams and is_odds_discovery_request(message):
+        matches = await get_compact_odds_matches(limit=6)
+        if not matches:
+            return {
+                "matched": False,
+                "mode": "discovery_shortlist",
+                "note": "No cached bookmaker matches are available for a guided shortlist yet.",
+            }
+        return {
+            "matched": True,
+            "mode": "discovery_shortlist",
+            "note": "Use these cached in-app bookmaker markets to guide the user without asking them to leave the app.",
+            "matches": [compact_discovery_match(match) for match in matches],
+        }
+
     if parsed.market_type == "Tournament outright":
         market_key = "outrights"
     elif parsed.market_type in {"Match winner", None}:
@@ -271,6 +286,27 @@ async def build_bookmaker_context_for_chat(
 def format_bookmaker_context_block(context: dict[str, Any] | None) -> str | None:
     if not context:
         return None
+    if context.get("mode") == "discovery_shortlist":
+        lines = [
+            "BOOKMAKER DISCOVERY CONTEXT:",
+            f"- Matched: {str(bool(context.get('matched'))).lower()}",
+            f"- Note: {context.get('note') or 'Cached in-app bookmaker discovery context.'}",
+        ]
+        for index, match in enumerate(context.get("matches") or [], start=1):
+            lines.extend(
+                [
+                    f"- Option {index}: {match.get('match')}",
+                    f"  Kickoff: {match.get('commence_time') or 'unknown'}",
+                    f"  Favorite: {match.get('favorite') or 'unknown'}",
+                    f"  H2H prices: {match.get('h2h_summary') or 'unknown'}",
+                ]
+            )
+            if match.get("totals_summary"):
+                lines.append(f"  Totals: {match['totals_summary']}")
+            if match.get("spreads_summary"):
+                lines.append(f"  Handicaps: {match['spreads_summary']}")
+        return "\n".join(lines)
+
     if not context.get("matched"):
         return "\n".join(
             [
@@ -308,6 +344,67 @@ def format_bookmaker_context_block(context: dict[str, Any] | None) -> str | None
     lines.append(f"- Bookmakers in consensus: {context.get('bookmaker_count') or 0}")
     lines.append(f"- Last fetched: {context.get('last_fetched_at') or 'unknown'}")
     return "\n".join(lines)
+
+
+def is_odds_discovery_request(message: str) -> bool:
+    lowered = message.lower()
+    patterns = [
+        r"\brecommend(?:ation|ations)?\b",
+        r"\bsuggest(?:ion|ions)?\b",
+        r"\bwhat\s+should\s+i\s+bet\b",
+        r"\bgive\s+me\s+(?:some\s+)?(?:bets?|picks?|plays?)\b",
+        r"\bshortlist\b",
+        r"\bbuild\s+me\s+(?:a\s+)?(?:slip|ticket|shortlist)\b",
+        r"\bi\s+have\s+(?:€|\$|£)?\s*\d+",
+        r"\btengo\s+(?:€|\$|£)?\s*\d+",
+        r"\brecomienda\b|\brecomendaciones\b",
+        r"\bsugerencias\b|\bsugi[eé]reme\b",
+        r"\bqu[eé]\s+apuesto\b",
+        r"\bdame\s+(?:algunas\s+)?(?:apuestas|picks|jugadas)\b",
+    ]
+    return any(re.search(pattern, lowered, re.IGNORECASE) for pattern in patterns)
+
+
+def compact_discovery_match(match: dict[str, Any]) -> dict[str, Any]:
+    h2h = match.get("h2h") or []
+    favorite = max(
+        h2h,
+        key=lambda row: as_float(row.get("no_vig_probability")) or 0,
+        default=None,
+    )
+    return {
+        "match": match.get("match"),
+        "commence_time": match.get("commence_time"),
+        "favorite": _format_compact_row(favorite),
+        "h2h_summary": "; ".join(_format_compact_row(row) for row in h2h[:3] if row),
+        "totals_summary": "; ".join(
+            _format_compact_row(row)
+            for row in (match.get("featured_markets") or {}).get("totals", [])[:4]
+            if row
+        ),
+        "spreads_summary": "; ".join(
+            _format_compact_row(row)
+            for row in (match.get("featured_markets") or {}).get("spreads", [])[:4]
+            if row
+        ),
+    }
+
+
+def _format_compact_row(row: dict[str, Any] | None) -> str:
+    if not row:
+        return ""
+    outcome = row.get("outcome_name") or "unknown"
+    point = row.get("point")
+    price = as_float(row.get("best_price"))
+    probability = as_float(row.get("no_vig_probability"))
+    label = str(outcome)
+    if point is not None:
+        label = f"{label} {point:g}"
+    if price is not None:
+        label = f"{label} @ {price:.2f}"
+    if probability is not None:
+        label = f"{label} ({probability * 100:.1f}% fair)"
+    return label
 
 
 async def get_cached_bookmaker_data() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:

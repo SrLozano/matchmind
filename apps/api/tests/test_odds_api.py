@@ -181,6 +181,19 @@ class OddsAPIServiceTest(unittest.TestCase):
         self.assertIn("Bookmaker no-vig consensus probability", block)
         self.assertIn("Best cached price", block)
 
+    def test_broad_recommendation_uses_discovery_context(self) -> None:
+        parsed = parse_bet_message("I have 100€ and want World Cup recommendations")
+        context = asyncio.run(build_bookmaker_context_for_chat(parsed.original_message, parsed_bet=parsed))
+
+        self.assertIsNotNone(context)
+        self.assertTrue(context["matched"])
+        self.assertEqual(context["mode"], "discovery_shortlist")
+        self.assertGreaterEqual(len(context["matches"]), 1)
+
+        block = format_bookmaker_context_block(context)
+        self.assertIn("BOOKMAKER DISCOVERY CONTEXT:", block)
+        self.assertIn("Option 1:", block)
+
     def test_compact_odds_matches_from_discovery_file(self) -> None:
         matches = asyncio.run(get_compact_odds_matches(limit=3))
 
