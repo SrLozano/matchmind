@@ -142,13 +142,17 @@ export default function ChatCoach({
       ? t.chat.fullAccess
       : quotaRemaining === null
       ? t.chat.dailyLimit
-      : `${quotaRemaining} ${t.chat.left}/${quotaPeriod === "week" ? t.chat.week : t.chat.day}`
+      : `${quotaRemaining}/${quotaLimit}`
   const quotaClass = isLowFreeQuota
     ? "border-[#FF4D4D]/40 bg-[#FF4D4D]/12 text-[#FF6B6B]"
     : isPremium
       ? "border-[#D8B866]/30 bg-[#D8B866]/8 text-[#E8D39A]"
       : "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
-  const quotaTitle = isPremium ? t.chat.fullAccess : `${quotaRemaining ?? quotaLimit} ${t.chat.left}`
+  const quotaTitle = isPremium
+    ? t.chat.fullAccess
+    : quotaRemaining === null
+      ? t.chat.dailyLimit
+      : `${quotaRemaining} ${t.chat.left}/${quotaPeriod === "week" ? t.chat.week : t.chat.day}`
 
   const sendDisabled = !input.trim() || isSending
 
