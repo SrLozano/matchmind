@@ -106,11 +106,21 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
         </div>
       </div>
 
-      <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
-        <StatCell label={t.feed.upcoming} value={sortedMatches.length.toString()} />
-        <StatCell label={isPremium ? t.feed.headline : t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
-        <StatCell label={isPremium ? t.feed.included : t.feed.pro} value={proInsightCount.toString()} accent={isPremium ? "text-[#A8B4D0]" : "text-[#E8D39A]"} />
-      </div>
+      {isPremium ? (
+        <PremiumSummaryBanner
+          eyebrow={t.feed.passActive}
+          title={t.feed.calendarUnlocked}
+          value={sortedMatches.length.toString()}
+          valueLabel={t.feed.matchesAvailable}
+          detail={`${freeInsightCount} ${t.feed.highlighted} · ${proInsightCount} ${t.feed.includedAnalyses}`}
+        />
+      ) : (
+        <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
+          <StatCell label={t.feed.upcoming} value={sortedMatches.length.toString()} />
+          <StatCell label={t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
+          <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#E8D39A]" />
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
         {isLoading ? (
@@ -494,6 +504,37 @@ function StatCell({
     <div className="border-r border-[#1A2845] px-2 py-3 text-center last:border-r-0">
       <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
       <p className={`text-lg font-bold ${accent}`}>{value}</p>
+    </div>
+  )
+}
+
+function PremiumSummaryBanner({
+  eyebrow,
+  title,
+  value,
+  valueLabel,
+  detail,
+}: {
+  eyebrow: string
+  title: string
+  value: string
+  valueLabel: string
+  detail: string
+}) {
+  return (
+    <div className="mx-4 mb-4 flex shrink-0 items-center justify-between gap-4 rounded-xl border border-[#1A2845] bg-[#0F1C35] px-4 py-3.5 sm:mx-5">
+      <div className="min-w-0">
+        <div className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#D8B866]/25 bg-[#D8B866]/8 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#E8D39A]">
+          <Crown className="h-3 w-3" />
+          {eyebrow}
+        </div>
+        <p className="truncate text-sm font-bold text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-[#6A7A9B]">{detail}</p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-3xl font-black leading-none text-[#00FF87]">{value}</p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{valueLabel}</p>
+      </div>
     </div>
   )
 }
