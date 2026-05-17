@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { Activity, AlertCircle, Lock, RefreshCw } from "lucide-react"
+import { Activity, AlertCircle, Crown, RefreshCw } from "lucide-react"
 
 import { getMarketSignals, type MarketSignal } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
@@ -63,8 +63,8 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
 
       <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
         <StatCell label={t.signals.available} value={visibleSignals.length.toString()} />
-        <StatCell label={t.feed.free} value={headlineSignals.length.toString()} accent="text-[#00FF87]" />
-        <StatCell label={t.feed.pro} value={premiumSignals.length.toString()} accent="text-[#FFD600]" />
+        <StatCell label={isPremium ? t.feed.headline : t.feed.free} value={headlineSignals.length.toString()} accent="text-[#00FF87]" />
+        <StatCell label={isPremium ? t.signals.moreSignals : t.feed.pro} value={premiumSignals.length.toString()} accent={isPremium ? "text-[#A8B4D0]" : "text-[#E8D39A]"} />
       </div>
 
       <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
@@ -92,7 +92,7 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
             )}
 
             {premiumSignals.length > 0 && (
-              <SignalGroup title={t.signals.premium} count={premiumSignals.length}>
+              <SignalGroup title={isPremium ? t.signals.moreSignals : t.signals.premium} count={premiumSignals.length}>
                 {premiumSignals.map((signal, index) => (
                   <SignalRow
                     key={signal.slug ?? `${signal.question ?? signal.team}-locked-${index}`}
@@ -140,15 +140,14 @@ function SignalRow({
   locked: boolean
 }) {
   const { t } = useLanguage()
-  const teamLabel = signal.team ?? signal.teams[0]
   const quality = signal.signal_quality_score
-  const displayTitle = locked ? t.signals.lockedSignal : formatSignalTitle(signal, language, t.feed.unknownTeam)
+  const displayTitle = formatSignalTitle(signal, language, t.feed.unknownTeam)
   const metricValue = locked ? t.feed.locked : undefined
-  const signalEmoji = emojiForSignal(signal, { includeTeamFlag: !locked })
+  const signalEmoji = emojiForSignal(signal, { includeTeamFlag: true })
   const shouldShowMarketDetails = !locked && Boolean(signal.question)
 
   return (
-    <article className={`overflow-hidden rounded-xl border bg-card px-3.5 py-3.5 ${locked ? "border-[#FFD600]/25" : "border-[#1A2845]"}`}>
+    <article className={`overflow-hidden rounded-xl border bg-card px-3.5 py-3.5 ${locked ? "border-[#D8B866]/25" : "border-[#1A2845]"}`}>
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -164,9 +163,9 @@ function SignalRow({
           </div>
 
           {locked ? (
-            <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#FFD600]">
-              <Lock className="h-3 w-3" />
-              {t.signals.unlockPremium}
+            <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#D8B866]/30 bg-[#D8B866]/8 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#E8D39A]">
+              <Crown className="h-3 w-3" />
+              {t.feed.pass}
             </div>
           ) : (
             <div className="shrink-0 rounded-lg border border-[#00FF87]/20 bg-[#00FF87]/5 px-2.5 py-1.5 text-right">
@@ -185,7 +184,7 @@ function SignalRow({
           <SignalMetric
             label={t.feed.signalQuality}
             value={metricValue ?? (typeof quality === "number" ? `${quality}/100` : t.feed.noValue)}
-            accent={locked ? "text-[#FFD600]" : getSignalQualityClass(quality)}
+            accent={locked ? "text-[#E8D39A]" : getSignalQualityClass(quality)}
           />
           <SignalMetric label={t.feed.marketType} value={metricValue ?? formatMarketType(signal.market_type, language)} wide />
         </div>

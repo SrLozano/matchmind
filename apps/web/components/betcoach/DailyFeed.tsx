@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertCircle, CalendarDays, ChevronDown, Clock, Lock, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
+import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage } from "@/lib/i18n"
@@ -108,8 +108,8 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
 
       <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
         <StatCell label={t.feed.upcoming} value={sortedMatches.length.toString()} />
-        <StatCell label={t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
-        <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#FFD600]" />
+        <StatCell label={isPremium ? t.feed.headline : t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
+        <StatCell label={isPremium ? t.feed.included : t.feed.pro} value={proInsightCount.toString()} accent={isPremium ? "text-[#A8B4D0]" : "text-[#E8D39A]"} />
       </div>
 
       <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
@@ -125,6 +125,7 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
               key={`${match.id ?? match.match}-${match.kickoff_time ?? index}`}
               match={match}
               access={getMatchAccess(match, index, isPremium)}
+              isPremium={isPremium}
               odds={findOddsForFixture(match, feed.oddsMatches)}
               dateFormatter={dateFormatter}
               timeFormatter={timeFormatter}
@@ -139,12 +140,14 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
 function MatchRow({
   match,
   access,
+  isPremium,
   odds,
   dateFormatter,
   timeFormatter,
 }: {
   match: WorldCupFixture
   access: MatchAccess
+  isPremium: boolean
   odds: OddsMatch | null
   dateFormatter: Intl.DateTimeFormat
   timeFormatter: Intl.DateTimeFormat
@@ -173,7 +176,7 @@ function MatchRow({
               <TeamLine name={homeTeam} />
               <TeamLine name={awayTeam} />
             </div>
-            <InsightBadge access={access} />
+            <InsightBadge access={access} isPremium={isPremium} />
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] leading-snug text-[#6A7A9B]">
@@ -192,7 +195,7 @@ function MatchRow({
           {access === "locked" ? (
             <LockedInsight />
           ) : (
-            <UnlockedInsight match={match} hasPick={hasPick} access={access} />
+            <UnlockedInsight match={match} hasPick={hasPick} access={access} isPremium={isPremium} />
           )}
           <BookmakerPanel odds={odds} homeTeam={homeTeam} awayTeam={awayTeam} access={access} />
         </div>
@@ -215,8 +218,10 @@ function TeamLine({ name }: { name: string }) {
 
 type MatchAccess = "free" | "premium" | "locked"
 
-function InsightBadge({ access }: { access: MatchAccess }) {
+function InsightBadge({ access, isPremium }: { access: MatchAccess; isPremium: boolean }) {
   const { t } = useLanguage()
+
+  if (isPremium) return null
 
   if (access === "free") {
     return (
@@ -229,7 +234,7 @@ function InsightBadge({ access }: { access: MatchAccess }) {
 
   if (access === "premium") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#FFD600]">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#D8B866]/30 bg-[#D8B866]/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#E8D39A]">
         <Sparkles className="h-3 w-3" />
         {t.feed.proUnlocked}
       </span>
@@ -237,9 +242,9 @@ function InsightBadge({ access }: { access: MatchAccess }) {
   }
 
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FFD600]/30 bg-[#FFD600]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#FFD600]">
-      <Lock className="h-3 w-3" />
-      {t.feed.pro}
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#D8B866]/30 bg-[#D8B866]/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#E8D39A]">
+      <Crown className="h-3 w-3" />
+      {t.feed.pass}
     </span>
   )
 }
@@ -248,25 +253,30 @@ function UnlockedInsight({
   match,
   hasPick,
   access,
+  isPremium,
 }: {
   match: WorldCupFixture
   hasPick: boolean
   access: MatchAccess
+  isPremium: boolean
 }) {
   const { t } = useLanguage()
   const isPremiumAccess = access === "premium"
+  const isFullAccess = isPremium && isPremiumAccess
 
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-3">
       <div className="min-w-0">
         <p className="text-xs font-semibold leading-snug text-foreground">
-          {match.pick ?? (isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
+          {match.pick ?? (isFullAccess ? t.feed.fullInsight : isPremiumAccess ? t.feed.proInsightUnlocked : t.feed.freeInsight)}
         </p>
         <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#6A7A9B]">
           {match.coach_summary ??
             (hasPick
               ? t.feed.coachAvailable
-              : isPremiumAccess
+              : isFullAccess
+                ? t.feed.fullFixture
+                : isPremiumAccess
                 ? t.feed.premiumFixture
                 : t.feed.unlockedFixture)}
         </p>
@@ -275,7 +285,7 @@ function UnlockedInsight({
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
           {t.feed.confidence}
         </span>
-        <span className={`text-sm font-bold ${isPremiumAccess ? "text-[#FFD600]" : "text-[#00FF87]"}`}>
+        <span className="text-sm font-bold text-[#00FF87]">
           {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
         </span>
         {typeof match.edge === "number" && (
@@ -309,11 +319,11 @@ function BookmakerPanel({
 
   if (access === "locked") {
     return (
-      <div className="rounded-lg border border-[#FFD600]/25 bg-[#071022] px-3 py-3">
+      <div className="rounded-lg border border-[#D8B866]/25 bg-[#071022] px-3 py-3">
         <div className="flex items-start gap-2">
-          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FFD600]" />
+          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#E8D39A]" />
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#FFD600]">{t.feed.bookmakerOdds}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#E8D39A]">{t.feed.bookmakerOdds}</p>
             <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">{t.feed.lockedCopy}</p>
           </div>
         </div>
@@ -462,7 +472,7 @@ function LockedInsight() {
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
           {t.feed.confidence}
         </span>
-        <span className="inline-flex items-center gap-1 text-sm font-bold text-[#FFD600]">
+        <span className="inline-flex items-center gap-1 text-sm font-bold text-[#E8D39A]">
           <Lock className="h-3.5 w-3.5" />
           {t.feed.locked}
         </span>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Activity, History, Plus, Send, X, Zap } from "lucide-react"
+import { Activity, Crown, History, Plus, Send, X, Zap } from "lucide-react"
 import {
   getConversation,
   getConversations,
@@ -146,7 +146,7 @@ export default function ChatCoach({
   const quotaClass = isLowFreeQuota
     ? "border-[#FF4D4D]/40 bg-[#FF4D4D]/12 text-[#FF6B6B]"
     : isPremium
-      ? "border-[#FFD600]/30 bg-[#FFD600]/10 text-[#FFD600]"
+      ? "border-[#D8B866]/30 bg-[#D8B866]/8 text-[#E8D39A]"
       : "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
   const quotaTitle = isPremium ? t.chat.fullAccess : `${quotaRemaining ?? quotaLimit} ${t.chat.left}`
 
@@ -429,9 +429,10 @@ export default function ChatCoach({
                 {historyOpen ? <X className="h-4 w-4" /> : <History className="h-4 w-4" />}
               </button>
               <span
-                className={`max-w-[92px] truncate rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-normal ${quotaClass}`}
+                className={`inline-flex max-w-[108px] items-center gap-1 truncate rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-normal ${quotaClass}`}
                 title={quotaTitle}
               >
+                {isPremium && <Crown className="h-3 w-3 shrink-0" />}
                 {quotaLabel}
               </span>
             </div>

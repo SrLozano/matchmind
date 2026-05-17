@@ -277,7 +277,7 @@ function StatusRow({
   const toneClass =
     tone === "green"
       ? "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
-      : "border-[#FFD600]/25 bg-[#FFD600]/10 text-[#FFD600]"
+      : "border-[#D8B866]/25 bg-[#D8B866]/8 text-[#E8D39A]"
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
