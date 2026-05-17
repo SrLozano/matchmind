@@ -57,10 +57,13 @@ type LandingCopy = {
   continueWithGoogle: string
   continueWithGoogleSignUp: string
   or: string
+  modeSignUp: string
+  modeSignIn: string
   sendReset: string
   forgotPassword: string
   resetSent: string
   confirmEmail: string
+  accountExistsSwitch: string
   switchToSignUp: string
   switchToSignIn: string
   genericError: string
@@ -103,7 +106,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      setLocalError(error instanceof Error ? error.message : copy.genericError)
+      const message = error instanceof Error ? error.message.toLowerCase() : ""
+      const accountAlreadyExists = mode === "signup" && (message.includes("already registered") || message.includes("already exists"))
+      if (accountAlreadyExists) {
+        setMode("signin")
+        setSuccessMessage(copy.accountExistsSwitch)
+      } else {
+        setLocalError(error instanceof Error ? error.message : copy.genericError)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -205,6 +215,43 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               </div>
 
               {mode !== "forgot" && (
+                <div className="mb-4 grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#0A1426] p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signup")
+                      setLocalError(null)
+                      setSuccessMessage(null)
+                    }}
+                    className={`min-h-10 rounded-lg px-3 text-sm font-black transition-colors ${
+                      mode === "signup"
+                        ? "bg-[#00FF87] text-[#06101D]"
+                        : "text-[#A8B4D0] hover:bg-white/8 hover:text-white"
+                    }`}
+                    aria-pressed={mode === "signup"}
+                  >
+                    {copy.modeSignUp}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signin")
+                      setLocalError(null)
+                      setSuccessMessage(null)
+                    }}
+                    className={`min-h-10 rounded-lg px-3 text-sm font-black transition-colors ${
+                      mode === "signin"
+                        ? "bg-[#00FF87] text-[#06101D]"
+                        : "text-[#A8B4D0] hover:bg-white/8 hover:text-white"
+                    }`}
+                    aria-pressed={mode === "signin"}
+                  >
+                    {copy.modeSignIn}
+                  </button>
+                </div>
+              )}
+
+              {mode !== "forgot" && (
                 <>
                   <button
                     className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#1A2845] bg-[#F8FAFC] px-3 py-3 text-sm font-bold text-[#111827] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
@@ -291,18 +338,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                   {copy.forgotPassword}
                 </button>
               )}
-
-              <button
-                className="mt-4 w-full text-center text-xs font-semibold text-[#00FF87]"
-                type="button"
-                onClick={() => {
-                  setMode(mode === "signin" ? "signup" : "signin")
-                  setLocalError(null)
-                  setSuccessMessage(null)
-                }}
-              >
-                {mode === "signin" ? copy.switchToSignUp : copy.switchToSignIn}
-              </button>
             </div>
           </aside>
         </main>
@@ -471,10 +506,13 @@ const copyEn: LandingCopy = {
   continueWithGoogle: "Continue with Google",
   continueWithGoogleSignUp: "Create account with Google",
   or: "or",
+  modeSignUp: "Create account",
+  modeSignIn: "Sign in",
   sendReset: "Send reset email",
   forgotPassword: "Forgot your password?",
   resetSent: "If that email exists, Supabase will send a password reset link.",
   confirmEmail: "Account created. Check your email to confirm it, then sign in.",
+  accountExistsSwitch: "That email already has an account. I switched you to sign in.",
   switchToSignUp: "New here? Create an account",
   switchToSignIn: "Already have an account? Sign in",
   genericError: "Authentication failed.",
@@ -522,10 +560,13 @@ const copyEs: LandingCopy = {
   continueWithGoogle: "Continuar con Google",
   continueWithGoogleSignUp: "Crear cuenta con Google",
   or: "o",
+  modeSignUp: "Crear cuenta",
+  modeSignIn: "Iniciar sesión",
   sendReset: "Enviar email de recuperación",
   forgotPassword: "¿Has olvidado la contraseña?",
   resetSent: "Si ese email existe, Supabase enviará un enlace para cambiar la contraseña.",
   confirmEmail: "Cuenta creada. Confirma tu email y luego inicia sesión.",
+  accountExistsSwitch: "Ese email ya tiene cuenta. Te he pasado a iniciar sesión.",
   switchToSignUp: "¿Nuevo aquí? Crea una cuenta",
   switchToSignIn: "¿Ya tienes cuenta? Inicia sesión",
   genericError: "No se pudo autenticar.",
