@@ -17,9 +17,9 @@ export type ChatResponse = {
   market_signal: ChatMarketSignal | null
   daily_chats_remaining: number | null
   chat_count: number
-  chat_count_limit: number
-  chat_limit_period: "day" | "week"
-  chats_remaining: number
+  chat_count_limit: number | null
+  chat_limit_period: "day" | "week" | null
+  chats_remaining: number | null
 }
 
 export type ChatMarketSignal = {
@@ -103,11 +103,11 @@ export type CurrentUser = {
   email: string | null
   plan: UserPlan
   daily_chat_count: number
-  daily_chat_count_limit: number
+  daily_chat_count_limit: number | null
   daily_chats_remaining: number | null
-  chat_count_limit: number
-  chat_limit_period: "day" | "week"
-  chats_remaining: number
+  chat_count_limit: number | null
+  chat_limit_period: "day" | "week" | null
+  chats_remaining: number | null
   last_reset_date: string | null
   created_at: string | null
 }

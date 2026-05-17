@@ -46,18 +46,18 @@ class ChatSessionContext:
 
         chat_count = int(self.user.get("daily_chat_count", 0))
         chat_limit = _chat_limit_for_plan(self.user.get("plan", "free"))
-        chats_remaining = max(chat_limit - chat_count, 0)
-        daily_remaining = chats_remaining if self.user.get("plan") == "free" else None
+        plan = self.user.get("plan", "free")
+        chat_usage = _public_chat_usage(plan, chat_count, chat_limit)
 
         return {
             "conversation_id": self.conversation["id"],
             "response": response,
             "confidence_score": confidence_score,
-            "daily_chats_remaining": daily_remaining,
+            "daily_chats_remaining": chat_usage["daily_chats_remaining"],
             "chat_count": chat_count,
-            "chat_count_limit": chat_limit,
-            "chat_limit_period": _chat_limit_period_for_plan(self.user.get("plan", "free")),
-            "chats_remaining": chats_remaining,
+            "chat_count_limit": chat_usage["chat_count_limit"],
+            "chat_limit_period": chat_usage["chat_limit_period"],
+            "chats_remaining": chat_usage["chats_remaining"],
             "conversation": updated_conversation.data[0] if updated_conversation.data else None,
         }
 
@@ -128,19 +128,18 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
     plan = user.get("plan", "free")
     chat_limit = _chat_limit_for_plan(plan)
     chat_count = int(user.get("daily_chat_count", 0))
-    chats_remaining = max(chat_limit - chat_count, 0)
-    daily_chats_remaining = chats_remaining if plan == "free" else None
+    chat_usage = _public_chat_usage(plan, chat_count, chat_limit)
 
     return {
         "id": user["id"],
         "email": user.get("email"),
         "plan": plan,
         "daily_chat_count": chat_count,
-        "daily_chat_count_limit": chat_limit,
-        "daily_chats_remaining": daily_chats_remaining,
-        "chat_count_limit": chat_limit,
-        "chat_limit_period": _chat_limit_period_for_plan(plan),
-        "chats_remaining": chats_remaining,
+        "daily_chat_count_limit": chat_usage["chat_count_limit"],
+        "daily_chats_remaining": chat_usage["daily_chats_remaining"],
+        "chat_count_limit": chat_usage["chat_count_limit"],
+        "chat_limit_period": chat_usage["chat_limit_period"],
+        "chats_remaining": chat_usage["chats_remaining"],
         "last_reset_date": user.get("last_reset_date"),
         "created_at": user.get("created_at"),
     }
@@ -261,6 +260,24 @@ def _chat_limit_for_plan(plan: str) -> int:
 
 def _chat_limit_period_for_plan(plan: str) -> str:
     return "week" if plan == "premium" else "day"
+
+
+def _public_chat_usage(plan: str, chat_count: int, chat_limit: int) -> dict[str, int | str | None]:
+    if plan == "premium":
+        return {
+            "daily_chats_remaining": None,
+            "chat_count_limit": None,
+            "chat_limit_period": None,
+            "chats_remaining": None,
+        }
+
+    chats_remaining = max(chat_limit - chat_count, 0)
+    return {
+        "daily_chats_remaining": chats_remaining,
+        "chat_count_limit": chat_limit,
+        "chat_limit_period": _chat_limit_period_for_plan(plan),
+        "chats_remaining": chats_remaining,
+    }
 
 
 def _current_period_start(plan: str, today: date | None = None) -> date:

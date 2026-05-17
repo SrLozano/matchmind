@@ -66,7 +66,7 @@ export default function ChatCoach({
   const handleSend = async () => {
     const trimmed = input.trim()
     if (!trimmed || isSending) return
-    if (currentUser && currentUser.chats_remaining <= 0) {
+    if (currentUser?.plan === "free" && (currentUser.chats_remaining ?? 0) <= 0) {
       if (currentUser.plan === "free") onShowUpgradePrompt()
       return
     }
@@ -85,7 +85,7 @@ export default function ChatCoach({
       const result = await sendChatMessage(trimmed, language, conversationId)
       setConversationId(result.conversation_id)
       onChatUsageUpdate(result)
-      if (currentUser?.plan === "free" && result.chats_remaining <= 0) {
+      if (currentUser?.plan === "free" && (result.chats_remaining ?? 0) <= 0) {
         onShowUpgradePrompt()
       }
       void loadHistory()
@@ -105,7 +105,11 @@ export default function ChatCoach({
         )
       )
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t.chat.reachError
+      const rawErrorMessage = error instanceof Error ? error.message : t.chat.reachError
+      const errorMessage =
+        currentUser?.plan === "premium" && rawErrorMessage.toLowerCase().includes("limit")
+          ? t.chat.temporaryUnavailable
+          : rawErrorMessage
       if (currentUser?.plan === "free" && errorMessage.toLowerCase().includes("limit")) {
         onShowUpgradePrompt()
       }
@@ -131,16 +135,20 @@ export default function ChatCoach({
   const quotaLimit = currentUser?.chat_count_limit ?? currentUser?.daily_chat_count_limit ?? 5
   const quotaRemaining = currentUser?.chats_remaining ?? currentUser?.daily_chats_remaining ?? null
   const quotaPeriod = currentUser?.chat_limit_period ?? "day"
+  const isPremium = currentUser?.plan === "premium"
   const isLowFreeQuota = currentUser?.plan === "free" && quotaRemaining !== null && quotaRemaining <= 1
   const quotaLabel =
-    quotaRemaining === null
+    isPremium
+      ? t.chat.fullAccess
+      : quotaRemaining === null
       ? t.chat.dailyLimit
       : `${quotaRemaining} ${t.chat.left}/${quotaPeriod === "week" ? t.chat.week : t.chat.day}`
   const quotaClass = isLowFreeQuota
     ? "border-[#FF4D4D]/40 bg-[#FF4D4D]/12 text-[#FF6B6B]"
-    : currentUser?.plan === "premium"
+    : isPremium
       ? "border-[#FFD600]/30 bg-[#FFD600]/10 text-[#FFD600]"
       : "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
+  const quotaTitle = isPremium ? t.chat.fullAccess : `${quotaRemaining ?? quotaLimit} ${t.chat.left}`
 
   const sendDisabled = !input.trim() || isSending
 
@@ -422,7 +430,7 @@ export default function ChatCoach({
               </button>
               <span
                 className={`max-w-[92px] truncate rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-normal ${quotaClass}`}
-                title={`${quotaRemaining ?? quotaLimit} ${t.chat.left}`}
+                title={quotaTitle}
               >
                 {quotaLabel}
               </span>

@@ -41,9 +41,9 @@ class ChatResponse(BaseModel):
     market_signal: ChatMarketSignal | None = None
     daily_chats_remaining: int | None
     chat_count: int
-    chat_count_limit: int
-    chat_limit_period: Literal["day", "week"]
-    chats_remaining: int
+    chat_count_limit: int | None
+    chat_limit_period: Literal["day", "week"] | None
+    chats_remaining: int | None
 
 
 class AIChatResult(BaseModel):

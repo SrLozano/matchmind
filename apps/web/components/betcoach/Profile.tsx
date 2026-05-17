@@ -97,7 +97,7 @@ export default function Profile({
           <StatusRow
             title={t.profile.fairUseChatsTitle}
             description={t.profile.noDailyCap}
-            value={`${Math.max(chatLimit - chatsUsed, 0)}/${chatLimit}`}
+            value={t.profile.unlimited}
             tone="green"
           />
           <StatusRow

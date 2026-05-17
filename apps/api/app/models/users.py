@@ -12,10 +12,10 @@ class UserResponse(BaseModel):
     email: str | None = None
     plan: str = Field(pattern="^(free|premium)$")
     daily_chat_count: int
-    daily_chat_count_limit: int
+    daily_chat_count_limit: int | None
     daily_chats_remaining: int | None
-    chat_count_limit: int
-    chat_limit_period: Literal["day", "week"]
-    chats_remaining: int
+    chat_count_limit: int | None
+    chat_limit_period: Literal["day", "week"] | None
+    chats_remaining: int | None
     last_reset_date: str | None = None
     created_at: str | None = None
