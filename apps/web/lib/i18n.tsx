@@ -87,12 +87,13 @@ export const translations = {
       day: "day",
       week: "week",
       initialCoach:
-        "Tell me the bet you're considering and the odds you found. I'll pressure-test the price, compare it with the data I have, and give you a direct verdict with confidence.",
+        "Tell me a bet, an odds price, or just your budget and risk style. I'll help you avoid bad spots, build a shortlist, and give direct verdicts with confidence.",
       exampleTitle: "Try one of these",
       examplePrompts: [
+        "I have €100 and want World Cup recommendations",
+        "Build me a balanced shortlist for today",
         "Brazil to beat Japan at 1.80",
         "Is Argentina to win the World Cup at 7.50 good value?",
-        "Spain to win Group H at 2.10",
       ],
       pending: "Checking the bet and building a straight answer...",
       requestFailed: "I couldn't complete that request.",
@@ -324,12 +325,13 @@ export const translations = {
       day: "día",
       week: "semana",
       initialCoach:
-        "Dime la apuesta que estás mirando y la cuota que encontraste. Voy a poner el precio a prueba, compararlo con los datos disponibles y darte un veredicto directo con confianza.",
+        "Dime una apuesta, una cuota, o solo tu presupuesto y perfil de riesgo. Te ayudo a evitar malos spots, montar una shortlist y darte veredictos directos con confianza.",
       exampleTitle: "Prueba con una de estas",
       examplePrompts: [
+        "Tengo 100€ y quiero recomendaciones para el Mundial",
+        "Hazme una shortlist equilibrada para hoy",
         "Brasil gana a Japón a cuota 1.80",
         "¿Argentina campeona del Mundial a 7.50 tiene valor?",
-        "España gana el Grupo H a cuota 2.10",
       ],
       pending: "Revisando la apuesta y preparando una respuesta directa...",
       requestFailed: "No pude completar esa petición.",

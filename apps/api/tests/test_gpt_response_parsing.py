@@ -6,6 +6,7 @@ from app.models.chat import AIChatResult
 from app.services.gpt import (
     _build_user_context,
     _chat_response_format,
+    _classify_chat_intent,
     _compact_conversation_memory,
     _extract_json,
     _fallback_result,
@@ -63,6 +64,26 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertIn("Confidence:", result.response)
         self.assertEqual(result.implied_probability, 0.7692)
         self.assertIn(result.stake_posture, {"avoid", "very small", "small", "medium"})
+
+    def test_broad_bankroll_question_gets_coaching_fallback(self) -> None:
+        parsed = parse_bet_message("I have 100€ and I want to bet, give me some recommendations")
+        result = _fallback_result(parsed)
+
+        self.assertEqual(_classify_chat_intent(parsed.original_message, parsed), "discovery_or_bankroll_request")
+        self.assertIn("shortlist", result.response)
+        self.assertIn("risk style", result.response)
+        self.assertEqual(result.verdict, "NOT ENOUGH INFO")
+        self.assertEqual(result.stake_posture, "avoid")
+
+    def test_spanish_bankroll_question_gets_coaching_fallback(self) -> None:
+        parsed = parse_bet_message("Tengo 100€ y quiero recomendaciones para apostar")
+        result = _fallback_result(parsed)
+
+        self.assertEqual(_classify_chat_intent(parsed.original_message, parsed), "discovery_or_bankroll_request")
+        self.assertIn("shortlist", result.response)
+        self.assertIn("perfil de riesgo", result.response)
+        self.assertEqual(result.verdict, "NOT ENOUGH INFO")
+        self.assertEqual(result.stake_posture, "avoid")
 
     def test_spanish_fallback_uses_spanish_response_but_english_metadata(self) -> None:
         parsed = parse_bet_message("Brasil gana a Japón a 1,30")
@@ -144,6 +165,12 @@ class GPTResponseParsingTest(unittest.TestCase):
 
         self.assertEqual(context["conversation_memory"][0]["content"], "Brazil to beat Japan at 1.80")
         self.assertEqual(context["user_message"], "What if I can get 2.10?")
+
+    def test_user_context_includes_chat_intent(self) -> None:
+        parsed = parse_bet_message("Build me a balanced shortlist for today")
+        context = json.loads(_build_user_context("Build me a balanced shortlist for today", parsed))
+
+        self.assertEqual(context["chat_intent"], "discovery_or_bankroll_request")
 
 
 if __name__ == "__main__":

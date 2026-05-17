@@ -19,6 +19,7 @@ Voice:
 - Direct, concise, opinionated, and practical.
 - Sound like a sharp, honest betting friend, not a generic chatbot.
 - Be willing to say "do not take this bet" when the edge is weak.
+- Treat broad beginner questions as a coaching opportunity, not a dead end.
 - Reply in the user's detected language. Use Spanish when detected_language is "es"; use English otherwise.
 - If detected_language is "es", every user-facing sentence and every visible label in response must be Spanish.
 - Keep only JSON metadata enum values in English. The visible response text must still be Spanish for Spanish users.
@@ -41,12 +42,16 @@ The visible response should feel like a sharp friend answering in chat, not a re
 - Mention bookmaker consensus, best cached price, fixture context, or market-signal probability only when those fields are explicitly provided.
 - Include the confidence score naturally at the end, but avoid making every answer look identical.
 - Vary wording across answers. Do not always use the same section labels or the same order.
-- For vague inputs, ask one useful follow-up question and give only a light preliminary read.
+- For vague inputs, ask one useful follow-up question and give a useful preliminary plan.
 - Never recommend a large or aggressive stake. Use stake language as posture, not instruction.
 
 Behavior rules:
 - If no odds are provided, ask for the odds but still give a preliminary football opinion if teams or market are clear.
-- If no teams or bet target are detected, use NOT ENOUGH INFO and ask one concise follow-up question.
+- If no teams or bet target are detected but the user asks for recommendations, a budget plan, what to bet, a shortlist, or says they have money to bet, do not answer with only "I need teams/odds".
+  Give a practical starter plan: say you would not deploy the whole budget blindly, explain what inputs create value, suggest 2-3 safe next actions such as sending bookmaker odds, choosing a risk profile, or asking for tournament/fixture angles, and ask one concise follow-up question.
+  You may describe categories to consider or avoid, but do not invent specific picks without price/data.
+  Use verdict NOT ENOUGH INFO, stake_posture avoid or very small, and confidence 3-5 because no specific bet has been priced yet.
+- If no teams or bet target are detected and the user is not asking for discovery/recommendations, use NOT ENOUGH INFO and ask one concise follow-up question.
 - If the message is vague, do not invent specifics.
 - Do not encourage chasing losses or staking because of emotion, loyalty, narratives, or gut feeling.
 - Include responsible-betting language naturally and briefly.
@@ -306,6 +311,7 @@ def _build_user_context(
     context = {
         "user_message": message,
         "parsed_bet": parsed_bet.model_dump(),
+        "chat_intent": _classify_chat_intent(message, parsed_bet),
         "conversation_memory": _compact_conversation_memory(conversation_memory),
         "response_language": parsed_bet.detected_language,
         "language_instruction": (
@@ -323,6 +329,32 @@ def _build_user_context(
         else None,
     }
     return json.dumps(context, ensure_ascii=False)
+
+
+def _classify_chat_intent(message: str, parsed_bet: ParsedBet) -> str:
+    lowered = message.lower()
+    recommendation_patterns = [
+        r"\brecommend(?:ation|ations)?\b",
+        r"\bsuggest(?:ion|ions)?\b",
+        r"\bwhat\s+should\s+i\s+bet\b",
+        r"\bwhere\s+should\s+i\s+put\b",
+        r"\bgive\s+me\s+(?:some\s+)?(?:bets?|picks?|plays?)\b",
+        r"\bshortlist\b",
+        r"\bbuild\s+me\s+(?:a\s+)?(?:slip|ticket|shortlist)\b",
+        r"\bi\s+have\s+(?:€|\$|£)?\s*\d+",
+        r"\btengo\s+(?:€|\$|£)?\s*\d+",
+        r"\brecomienda\b|\brecomendaciones\b",
+        r"\bsugerencias\b|\bsugi[eé]reme\b",
+        r"\bqu[eé]\s+apuesto\b",
+        r"\bdame\s+(?:algunas\s+)?(?:apuestas|picks|jugadas)\b",
+    ]
+    if not parsed_bet.teams and any(re.search(pattern, lowered, re.IGNORECASE) for pattern in recommendation_patterns):
+        return "discovery_or_bankroll_request"
+    if parsed_bet.teams and parsed_bet.odds is not None:
+        return "specific_bet_analysis"
+    if parsed_bet.teams:
+        return "bet_without_price"
+    return "unclear"
 
 
 def _compact_conversation_memory(messages: list[dict[str, Any]] | None, max_turns: int = 8) -> list[dict[str, str]]:
@@ -381,6 +413,30 @@ def _fallback_result_en(parsed_bet: ParsedBet) -> AIChatResult:
     )
     bet_target = parsed_bet.raw_match_text or "the bet"
 
+    if not parsed_bet.teams and _classify_chat_intent(parsed_bet.original_message, parsed_bet) == "discovery_or_bankroll_request":
+        verdict = "NOT ENOUGH INFO"
+        stake_posture = "avoid"
+        confidence_score = 4.0
+        amount_text = (
+            f"{parsed_bet.stake_amount:g} {parsed_bet.stake_currency}"
+            if parsed_bet.stake_amount and parsed_bet.stake_currency
+            else f"{parsed_bet.stake_amount:g}" if parsed_bet.stake_amount else "budget"
+        )
+        response = f"""I would not spend that {amount_text} blindly. The value is not in me naming random teams; it is in comparing real odds against a realistic probability and then deciding whether the price is worth touching.
+
+Here is the useful way to start: pick a risk style first. Conservative means 1-2 small positions and lots of passing. Balanced means a short list of 3-5 bets to price-check. Aggressive means long shots, but only tiny stakes because World Cup variance is brutal.
+
+Send me either your risk style or 2-3 odds you are seeing, and I will turn it into a proper shortlist with avoid/fair/good-value calls. Until then, keep the stake posture as avoid: do not bet just because the money is available.
+
+Confidence: {confidence_score:g}/10"""
+        return AIChatResult(
+            response=response,
+            confidence_score=confidence_score,
+            verdict=verdict,
+            implied_probability=None,
+            stake_posture=stake_posture,
+        )
+
     if not parsed_bet.teams:
         verdict = "NOT ENOUGH INFO"
         stake_posture = "avoid"
@@ -437,6 +493,26 @@ def _fallback_result_es(parsed_bet: ParsedBet) -> AIChatResult:
         else "no calculable sin cuota"
     )
     bet_target = parsed_bet.raw_match_text or "la apuesta"
+
+    if not parsed_bet.teams and _classify_chat_intent(parsed_bet.original_message, parsed_bet) == "discovery_or_bankroll_request":
+        verdict = "NOT ENOUGH INFO"
+        stake_posture = "avoid"
+        confidence_score = 4.0
+        amount_text = f"{parsed_bet.stake_amount:g} {parsed_bet.stake_currency}" if parsed_bet.stake_amount else "ese dinero"
+        response = f"""Yo no metería {amount_text} a ciegas. El valor no está en soltar nombres al azar; está en comparar cuotas reales contra una probabilidad razonable y decidir si el precio merece tocarse.
+
+La forma útil de empezar es elegir perfil de riesgo. Conservador: 1-2 posiciones pequeñas y muchas apuestas descartadas. Equilibrado: una lista corta de 3-5 apuestas para revisar cuota por cuota. Agresivo: cuotas largas, pero con importes muy pequeños porque el Mundial tiene mucha varianza.
+
+Pásame tu perfil de riesgo o 2-3 cuotas que estés viendo y te lo convierto en una shortlist con veredictos de evitar/justa/buen valor. Hasta entonces, postura de stake: evitar; no apuestes solo porque tienes presupuesto.
+
+Confianza: {confidence_score:g}/10"""
+        return AIChatResult(
+            response=response,
+            confidence_score=confidence_score,
+            verdict=verdict,
+            implied_probability=None,
+            stake_posture=stake_posture,
+        )
 
     if not parsed_bet.teams:
         verdict = "NOT ENOUGH INFO"
