@@ -202,12 +202,24 @@ Frontend public variables:
 
 ```text
 NEXT_PUBLIC_API_URL=https://your-render-api-url.onrender.com
+NEXT_PUBLIC_APP_URL=https://matchmind-web.pages.dev
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 NODE_VERSION=22
 ```
 
-Because this is a static export, `NEXT_PUBLIC_*` values are build-time values. If `NEXT_PUBLIC_API_URL` is wrong or missing during the Cloudflare build, the deployed app can fall back to `http://localhost:8000` and all service calls will fail from the deployed site. Fix the variable in Cloudflare and redeploy.
+Because this is a static export, `NEXT_PUBLIC_*` values are build-time values. If `NEXT_PUBLIC_API_URL` is wrong or missing during the Cloudflare build, the deployed app can fall back to `http://localhost:8000` and all service calls will fail from the deployed site. If `NEXT_PUBLIC_APP_URL` is wrong, Google OAuth can return to the wrong origin. Fix the variables in Cloudflare and redeploy.
+
+Supabase Auth URL settings:
+
+```text
+Site URL: https://matchmind-web.pages.dev
+Redirect URLs:
+https://matchmind-web.pages.dev/auth/callback
+http://localhost:3000/auth/callback
+```
+
+Add the equivalent `/auth/callback` URL for any custom domain or Cloudflare preview domain you actively use.
 
 Never expose:
 

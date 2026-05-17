@@ -22,6 +22,19 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 let supabaseClient: SupabaseClient | null | undefined
 
+function getAppOrigin() {
+  if (typeof window === "undefined") return ""
+
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (!configuredUrl) return window.location.origin
+
+  try {
+    return new URL(configuredUrl).origin
+  } catch {
+    return window.location.origin
+  }
+}
+
 function isStaleRefreshTokenError(error: unknown) {
   if (!(error instanceof Error)) return false
   const message = error.message.toLowerCase()
@@ -133,10 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signInWithGoogle() {
         if (!supabase) return
         setAuthError(null)
+        const redirectTo = `${getAppOrigin()}/auth/callback`
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: window.location.origin,
+            redirectTo,
           },
         })
         if (error) {
