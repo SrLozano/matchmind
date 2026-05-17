@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, MessageCircleMore, RefreshCw, ShieldCheck } from "lucide-react"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, MessageCircleMore, RefreshCw, ShieldCheck, UserRound } from "lucide-react"
 import { type CurrentUser } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
+import SectionHeader from "./SectionHeader"
 
 export default function Profile({
   currentUser,
@@ -39,10 +40,7 @@ export default function Profile({
 
   return (
     <div className="flex h-full flex-col overflow-y-auto pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
-      {/* Header */}
-      <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
-        <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.profile.title}</h1>
-      </div>
+      <SectionHeader icon={UserRound} title={t.profile.title} subtitle={t.profile.subtitle} />
 
       {/* User card */}
       <div className="mx-4 mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-[#1A2845] bg-[#0F1C35] p-4 sm:mx-5 sm:gap-4">

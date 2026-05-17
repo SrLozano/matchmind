@@ -1,7 +1,7 @@
 "use client"
 
 import { FormEvent, useEffect, useMemo, useState } from "react"
-import { CheckCircle2, Clock3, Plus, Trash2, TrendingDown, TrendingUp, XCircle } from "lucide-react"
+import { BarChart3, CheckCircle2, Clock3, Plus, Trash2, TrendingDown, TrendingUp, XCircle } from "lucide-react"
 
 import {
   createTrackedBet,
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import SectionHeader from "./SectionHeader"
 
 const emptyTracker: BetListResponse = {
   bets: [],
@@ -202,20 +203,21 @@ export default function BetTracker() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex flex-shrink-0 items-center justify-between gap-3 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.tracker.title}</h1>
-          <p className="mt-0.5 text-xs text-[#6A7A9B]">{t.tracker.subtitle}</p>
-        </div>
-        <button
-          className="flex items-center gap-1.5 rounded-lg border border-[#00FF87]/30 bg-[#00FF87]/10 px-3 py-2 text-xs font-semibold text-[#00FF87] transition-all hover:bg-[#00FF87]/20 active:scale-95"
-          type="button"
-          onClick={() => setIsDialogOpen(true)}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t.tracker.logBet}
-        </button>
-      </div>
+      <SectionHeader
+        icon={BarChart3}
+        title={t.tracker.title}
+        subtitle={t.tracker.subtitle}
+        action={
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-[#00FF87]/30 bg-[#00FF87]/10 px-3 py-2 text-xs font-semibold text-[#00FF87] transition-all hover:bg-[#00FF87]/20 active:scale-95"
+            type="button"
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t.tracker.logBet}
+          </button>
+        }
+      />
 
       <div className="mx-4 mb-4 flex-shrink-0 rounded-lg border border-[#1A2845] bg-[#0F1C35] p-3.5 sm:mx-5">
         <div className="flex items-center justify-between">

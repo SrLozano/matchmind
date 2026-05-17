@@ -7,6 +7,7 @@ import { Activity, AlertCircle, Crown, RefreshCw } from "lucide-react"
 import { getMarketSignals, type MarketSignal } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage, type Language } from "@/lib/i18n"
+import SectionHeader from "./SectionHeader"
 
 const FREE_SIGNAL_COUNT = 3
 const FULL_SIGNAL_LIMIT = 50
@@ -47,19 +48,7 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]">
-            <Activity className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-normal text-foreground">{t.feed.marketSignals}</h1>
-            <p className="mt-0.5 text-xs leading-relaxed text-[#6A7A9B]">
-              {t.feed.marketSignalsSubtitle}
-            </p>
-          </div>
-        </div>
-      </div>
+      <SectionHeader icon={Activity} title={t.feed.marketSignals} subtitle={t.feed.marketSignalsSubtitle} />
 
       {isPremium ? (
         <PremiumSummaryBanner

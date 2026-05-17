@@ -5,6 +5,7 @@ import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, RefreshCw, 
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage } from "@/lib/i18n"
+import SectionHeader from "./SectionHeader"
 
 type FeedState = {
   matches: WorldCupFixture[]
@@ -91,20 +92,11 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex-shrink-0 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5">
-        <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[#6A7A9B]">
-          {today}
-        </p>
-        <h1 className="text-2xl font-bold tracking-normal text-foreground">
-          {t.feed.title}
-        </h1>
-        <div className="mt-2 flex items-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#00FF87] animate-pulse" />
-          <span className="text-xs text-[#6A7A9B]">
-            {formatUpdatedAt(feed.lastUpdated, timeFormatter, t.feed.updated, t.feed.liveFixtureList)}
-          </span>
-        </div>
-      </div>
+      <SectionHeader
+        icon={CalendarDays}
+        title={t.feed.title}
+        subtitle={`${today} · ${formatUpdatedAt(feed.lastUpdated, timeFormatter, t.feed.updated, t.feed.liveFixtureList)}`}
+      />
 
       {isPremium ? (
         <PremiumSummaryBanner

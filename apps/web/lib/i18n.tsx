@@ -187,6 +187,7 @@ export const translations = {
     },
     profile: {
       title: "Profile",
+      subtitle: "Account, pass, and preferences",
       freePlan: "Free Plan",
       premiumPlan: "Premium Plan",
       loadingPlan: "Loading plan",
@@ -423,6 +424,7 @@ export const translations = {
     },
     profile: {
       title: "Perfil",
+      subtitle: "Cuenta, pase y preferencias",
       freePlan: "Plan Gratis",
       premiumPlan: "Plan Premium",
       loadingPlan: "Cargando plan",
