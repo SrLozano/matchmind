@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { ReactNode } from "react"
+import type { KeyboardEvent, ReactNode } from "react"
 import { Activity, AlertCircle, Crown, RefreshCw } from "lucide-react"
 
 import { getMarketSignals, type MarketSignal } from "@/lib/api"
@@ -13,7 +13,13 @@ const FREE_SIGNAL_COUNT = 3
 const FULL_SIGNAL_LIMIT = 50
 const FALLBACK_SIGNAL_EMOJIS = ["⚽", "🏆", "📈", "🎯", "🌎", "🔥"]
 
-export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
+export default function MarketSignals({
+  isPremium,
+  onShowUpgradePrompt,
+}: {
+  isPremium: boolean
+  onShowUpgradePrompt: () => void
+}) {
   const { language, t } = useLanguage()
   const [signals, setSignals] = useState<MarketSignal[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -62,7 +68,7 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
         <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
           <StatCell label={t.signals.available} value={visibleSignals.length.toString()} />
           <StatCell label={t.feed.free} value={headlineSignals.length.toString()} accent="text-[#00FF87]" />
-          <StatCell label={t.feed.pro} value={premiumSignals.length.toString()} accent="text-[#E8D39A]" />
+          <StatCell label={t.feed.pro} value={premiumSignals.length.toString()} accent="text-[#E8D39A]" onClick={onShowUpgradePrompt} />
         </div>
       )}
 
@@ -83,6 +89,7 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
                     signal={signal}
                     language={language}
                     locked={false}
+                    onShowUpgradePrompt={onShowUpgradePrompt}
                   />
                 ))}
               </SignalGroup>
@@ -98,6 +105,7 @@ export default function MarketSignals({ isPremium }: { isPremium: boolean }) {
                     signal={signal}
                     language={language}
                     locked={!isPremium}
+                    onShowUpgradePrompt={onShowUpgradePrompt}
                   />
                 ))}
               </SignalGroup>
@@ -133,10 +141,12 @@ function SignalRow({
   signal,
   language,
   locked,
+  onShowUpgradePrompt,
 }: {
   signal: MarketSignal
   language: Language
   locked: boolean
+  onShowUpgradePrompt: () => void
 }) {
   const { t } = useLanguage()
   const quality = signal.signal_quality_score
@@ -145,8 +155,24 @@ function SignalRow({
   const signalEmoji = emojiForSignal(signal, { includeTeamFlag: true })
   const shouldShowMarketDetails = !locked && Boolean(signal.question)
 
+  const handleLockedKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!locked) return
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      onShowUpgradePrompt()
+    }
+  }
+
   return (
-    <article className={`overflow-hidden rounded-xl border bg-card px-3.5 py-3.5 ${locked ? "border-[#D8B866]/25" : "border-[#1A2845]"}`}>
+    <article
+      className={`overflow-hidden rounded-xl border bg-card px-3.5 py-3.5 ${
+        locked ? "cursor-pointer border-[#D8B866]/25 transition-colors hover:border-[#D8B866]/45" : "border-[#1A2845]"
+      }`}
+      onClick={locked ? onShowUpgradePrompt : undefined}
+      onKeyDown={handleLockedKeyDown}
+      role={locked ? "button" : undefined}
+      tabIndex={locked ? 0 : undefined}
+    >
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -316,11 +342,26 @@ function StatCell({
   label,
   value,
   accent = "text-foreground",
+  onClick,
 }: {
   label: string
   value: string
   accent?: string
+  onClick?: () => void
 }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="border-r border-[#1A2845] px-2 py-3 text-center transition-colors last:border-r-0 hover:bg-[#D8B866]/5"
+      >
+        <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
+        <p className={`text-lg font-bold ${accent}`}>{value}</p>
+      </button>
+    )
+  }
+
   return (
     <div className="border-r border-[#1A2845] px-2 py-3 text-center last:border-r-0">
       <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>

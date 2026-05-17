@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import type { KeyboardEvent } from "react"
 import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
@@ -13,7 +14,13 @@ type FeedState = {
   lastUpdated: Date | null
 }
 
-export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
+export default function DailyFeed({
+  isPremium,
+  onShowUpgradePrompt,
+}: {
+  isPremium: boolean
+  onShowUpgradePrompt: () => void
+}) {
   const { language, t } = useLanguage()
   const [feed, setFeed] = useState<FeedState>({ matches: [], oddsMatches: [], lastUpdated: null })
   const [isLoading, setIsLoading] = useState(true)
@@ -110,7 +117,7 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
         <div className="mx-4 mb-4 grid flex-shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-[#1A2845] bg-[#0F1C35] sm:mx-5">
           <StatCell label={t.feed.upcoming} value={sortedMatches.length.toString()} />
           <StatCell label={t.feed.free} value={freeInsightCount.toString()} accent="text-[#00FF87]" />
-          <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#E8D39A]" />
+          <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#E8D39A]" onClick={onShowUpgradePrompt} />
         </div>
       )}
 
@@ -128,6 +135,7 @@ export default function DailyFeed({ isPremium }: { isPremium: boolean }) {
               match={match}
               access={getMatchAccess(match, index, isPremium)}
               isPremium={isPremium}
+              onShowUpgradePrompt={onShowUpgradePrompt}
               odds={findOddsForFixture(match, feed.oddsMatches)}
               dateFormatter={dateFormatter}
               timeFormatter={timeFormatter}
@@ -143,6 +151,7 @@ function MatchRow({
   match,
   access,
   isPremium,
+  onShowUpgradePrompt,
   odds,
   dateFormatter,
   timeFormatter,
@@ -150,6 +159,7 @@ function MatchRow({
   match: WorldCupFixture
   access: MatchAccess
   isPremium: boolean
+  onShowUpgradePrompt: () => void
   odds: OddsMatch | null
   dateFormatter: Intl.DateTimeFormat
   timeFormatter: Intl.DateTimeFormat
@@ -160,8 +170,23 @@ function MatchRow({
   const kickoff = parseKickoff(match.kickoff_time)
   const hasPick = Boolean(match.pick || match.confidence_score || match.edge)
 
+  const isLocked = access === "locked"
+  const handleLockedKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!isLocked) return
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      onShowUpgradePrompt()
+    }
+  }
+
   return (
-    <article className="overflow-hidden rounded-xl border border-[#1A2845] bg-card">
+    <article
+      className={`overflow-hidden rounded-xl border border-[#1A2845] bg-card ${isLocked ? "cursor-pointer transition-colors hover:border-[#D8B866]/45" : ""}`}
+      onClick={isLocked ? onShowUpgradePrompt : undefined}
+      onKeyDown={handleLockedKeyDown}
+      role={isLocked ? "button" : undefined}
+      tabIndex={isLocked ? 0 : undefined}
+    >
       <div className="flex items-start gap-3 px-3.5 py-3.5">
         <div className="flex w-[68px] shrink-0 flex-col items-center rounded-lg border border-[#1A2845] bg-[#0A1325] px-2 py-2 text-center">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
@@ -487,11 +512,26 @@ function StatCell({
   label,
   value,
   accent = "text-foreground",
+  onClick,
 }: {
   label: string
   value: string
   accent?: string
+  onClick?: () => void
 }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="border-r border-[#1A2845] px-2 py-3 text-center transition-colors last:border-r-0 hover:bg-[#D8B866]/5"
+      >
+        <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
+        <p className={`text-lg font-bold ${accent}`}>{value}</p>
+      </button>
+    )
+  }
+
   return (
     <div className="border-r border-[#1A2845] px-2 py-3 text-center last:border-r-0">
       <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>

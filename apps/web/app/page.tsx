@@ -132,10 +132,10 @@ function MatchmindShell() {
           <main className="relative min-h-0 flex-1 overflow-hidden bg-background">
             <div className="relative h-full overflow-hidden">
               <div className={activeTab === "feed" ? "h-full" : "hidden"}>
-                <DailyFeed isPremium={isPremium} />
+                <DailyFeed isPremium={isPremium} onShowUpgradePrompt={() => setUpgradePromptOpen(true)} />
               </div>
               <div className={activeTab === "signals" ? "h-full" : "hidden"}>
-                <MarketSignals isPremium={isPremium} />
+                <MarketSignals isPremium={isPremium} onShowUpgradePrompt={() => setUpgradePromptOpen(true)} />
               </div>
               <div className={activeTab === "chat" ? "h-full" : "hidden"}>
                 <ChatCoach
