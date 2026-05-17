@@ -150,9 +150,9 @@ function SignalRow({
 }) {
   const { t } = useLanguage()
   const quality = signal.signal_quality_score
-  const displayTitle = formatSignalTitle(signal, language, t.feed.unknownTeam)
+  const displayTitle = locked ? t.signals.lockedSignal : formatSignalTitle(signal, language, t.feed.unknownTeam)
   const metricValue = locked ? t.feed.locked : undefined
-  const signalEmoji = emojiForSignal(signal, { includeTeamFlag: true })
+  const signalEmoji = emojiForSignal(signal, { includeTeamFlag: !locked })
   const shouldShowMarketDetails = !locked && Boolean(signal.question)
 
   const handleLockedKeyDown = (event: KeyboardEvent<HTMLElement>) => {
