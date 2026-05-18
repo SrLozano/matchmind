@@ -212,6 +212,8 @@ Because this is a static export, `NEXT_PUBLIC_*` values are build-time values. I
 
 The web build validates these variables before `next build`. If any are missing or still set to placeholder values, the Cloudflare deployment should fail instead of publishing a broken login experience.
 
+This project uses `wrangler.toml`, so Cloudflare treats that file as the source of truth for Pages configuration. Public frontend build variables are also defined in `[vars]` there so the static build receives them reliably. If these values change, update `wrangler.toml`, commit, and redeploy.
+
 Supabase Auth URL settings:
 
 ```text

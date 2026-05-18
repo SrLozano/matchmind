@@ -1,2 +1,9 @@
 name = "matchmind-web"
 pages_build_output_dir = "apps/web/out"
+
+[vars]
+NEXT_PUBLIC_API_URL = "https://matchmind-api-ny5t.onrender.com"
+NEXT_PUBLIC_APP_URL = "https://matchmind-web.pages.dev"
+NEXT_PUBLIC_SUPABASE_URL = "https://szzwlhvsfzufpqknebpx.supabase.co"
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_s-fy26Jq0XD5_kxSZpZ1lw_fg6C1guc"
+NEXT_PUBLIC_DEV_USER_ID = ""
