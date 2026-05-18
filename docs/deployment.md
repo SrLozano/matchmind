@@ -210,6 +210,8 @@ NODE_VERSION=22
 
 Because this is a static export, `NEXT_PUBLIC_*` values are build-time values. If `NEXT_PUBLIC_API_URL` is wrong or missing during the Cloudflare build, the deployed app can fall back to `http://localhost:8000` and all service calls will fail from the deployed site. If `NEXT_PUBLIC_APP_URL` is wrong, Google OAuth can return to the wrong origin. Fix the variables in Cloudflare and redeploy.
 
+The web build validates these variables before `next build`. If any are missing or still set to placeholder values, the Cloudflare deployment should fail instead of publishing a broken login experience.
+
 Supabase Auth URL settings:
 
 ```text
