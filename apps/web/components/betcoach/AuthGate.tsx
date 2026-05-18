@@ -3,6 +3,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import {
   ArrowRight,
+  AlertTriangle,
   CheckCircle2,
   LineChart,
   Loader2,
@@ -68,6 +69,8 @@ type LandingCopy = {
   switchToSignIn: string
   genericError: string
   languageLabel: string
+  authUnavailableTitle: string
+  authUnavailableCopy: string
 }
 
 export default function AuthGate({ children }: { children: ReactNode }) {
@@ -81,7 +84,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const copy = language === "es" ? copyEs : copyEn
 
-  if (!isConfigured) return <>{children}</>
+  if (!isConfigured) return <AuthUnavailable copy={copy} language={language} onLanguageChange={setLanguage} />
 
   if (session) return <>{children}</>
 
@@ -346,6 +349,44 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   )
 }
 
+function AuthUnavailable({
+  copy,
+  language,
+  onLanguageChange,
+}: {
+  copy: LandingCopy
+  language: Language
+  onLanguageChange: (language: Language) => void
+}) {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#040810] px-4 py-8 text-foreground">
+      <div className="w-full max-w-[430px] rounded-2xl border border-[#FFB020]/30 bg-[#070D1A] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.58)]">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#00FF87]/30 bg-[#00FF87]/15">
+              <Sparkles className="h-5 w-5 text-[#00FF87]" />
+            </div>
+            <span className="text-lg font-black tracking-tight text-white">Matchmind</span>
+          </div>
+          <LanguageSwitcher
+            language={language}
+            languageLabel={copy.languageLabel}
+            onLanguageChange={onLanguageChange}
+          />
+        </div>
+
+        <div className="flex items-start gap-3 rounded-xl border border-[#FFB020]/30 bg-[#FFB020]/10 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#FFB020]" />
+          <div>
+            <h1 className="text-lg font-black text-white">{copy.authUnavailableTitle}</h1>
+            <p className="mt-2 text-sm leading-6 text-[#D7E1F5]">{copy.authUnavailableCopy}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ProductPreview({ copy }: { copy: LandingCopy }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-white/12 bg-[#071222]/84 shadow-[0_22px_80px_rgba(0,0,0,0.38)] backdrop-blur">
@@ -517,6 +558,9 @@ const copyEn: LandingCopy = {
   switchToSignIn: "Already have an account? Sign in",
   genericError: "Authentication failed.",
   languageLabel: "Select language",
+  authUnavailableTitle: "Sign-in is temporarily unavailable",
+  authUnavailableCopy:
+    "Matchmind could not load its authentication settings, so the protected app is locked instead of opening a broken session. Please try again in a moment.",
 }
 
 const copyEs: LandingCopy = {
@@ -571,4 +615,7 @@ const copyEs: LandingCopy = {
   switchToSignIn: "¿Ya tienes cuenta? Inicia sesión",
   genericError: "No se pudo autenticar.",
   languageLabel: "Seleccionar idioma",
+  authUnavailableTitle: "El acceso no está disponible ahora",
+  authUnavailableCopy:
+    "Matchmind no pudo cargar la configuración de autenticación, así que la app protegida queda bloqueada en vez de abrir una sesión rota. Inténtalo de nuevo en un momento.",
 }
