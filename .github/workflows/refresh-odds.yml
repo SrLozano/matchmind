@@ -1,0 +1,58 @@
+name: Refresh bookmaker odds
+
+on:
+  schedule:
+    - cron: "23 7,19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    name: Call /odds/refresh
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MATCHMIND_API_URL: ${{ secrets.MATCHMIND_API_URL }}
+      MATCHMIND_INTERNAL_API_TOKEN: ${{ secrets.MATCHMIND_INTERNAL_API_TOKEN }}
+      REFRESH_ENDPOINT: /odds/refresh
+    steps:
+      - name: Refresh cached bookmaker odds
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${MATCHMIND_API_URL}" ]]; then
+            echo "MATCHMIND_API_URL secret is not configured."
+            exit 1
+          fi
+
+          if [[ -z "${MATCHMIND_INTERNAL_API_TOKEN}" ]]; then
+            echo "MATCHMIND_INTERNAL_API_TOKEN secret is not configured."
+            exit 1
+          fi
+
+          api_url="${MATCHMIND_API_URL%/}"
+          url="${api_url}${REFRESH_ENDPOINT}"
+          body_file="$(mktemp)"
+
+          echo "Calling endpoint: ${REFRESH_ENDPOINT}"
+          status="$(
+            curl --silent --show-error \
+              --request POST \
+              --header "X-Internal-Token: ${MATCHMIND_INTERNAL_API_TOKEN}" \
+              --output "${body_file}" \
+              --write-out "%{http_code}" \
+              "${url}"
+          )"
+
+          echo "HTTP status: ${status}"
+          echo "Response body preview:"
+          head -c 1000 "${body_file}"
+          echo
+
+          if [[ "${status}" -lt 200 || "${status}" -ge 300 ]]; then
+            echo "Refresh failed for ${REFRESH_ENDPOINT}."
+            exit 1
+          fi

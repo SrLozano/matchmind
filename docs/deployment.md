@@ -324,11 +324,48 @@ Conservative schedules:
 | Source | Before Tournament | Tournament Days |
 |---|---:|---:|
 | API-Football fixtures | every 12h | every 1-3h |
-| Odds | every 6-12h | every 60m |
+| Odds | every 12h | every 60m |
 | Odds near kickoff | off initially | every 15-30m only if quota allows |
 | Polymarket | every 2h | every 30-60m |
 
 Do not make high-frequency odds polling the default. The Odds API quota is one of the main cost risks.
+
+### GitHub Actions Setup
+
+The repo includes three scheduled workflows under `.github/workflows/`:
+
+```text
+refresh-world-cup-fixtures.yml -> POST /world-cup/refresh every 12 hours
+refresh-odds.yml -> POST /odds/refresh twice daily
+refresh-polymarket.yml -> POST /polymarket/refresh every 2 hours
+```
+
+Configure these repository secrets in GitHub before enabling production refreshes:
+
+```text
+MATCHMIND_API_URL=https://your-render-api-url
+MATCHMIND_INTERNAL_API_TOKEN=<same value as Render INTERNAL_API_TOKEN>
+```
+
+Only the Matchmind backend URL and internal refresh token belong in GitHub Actions. Provider API keys stay in the Render backend environment, and the scheduled workflows must not call API-Football, The Odds API, or Polymarket directly.
+
+To run a refresh manually, open GitHub Actions, choose the relevant refresh workflow, select **Run workflow**, and run it from the production branch. The workflow logs show the endpoint path, HTTP status, and a short response body preview. Any non-2xx response fails the job.
+
+### Provider Quota Notes
+
+API-Football currently has a 7,500-request/day paid allowance, but pre-tournament fixture/stat context does not need aggressive polling. Keep the default fixture refresh at every 12 hours for now. During the tournament, API-Football can support a future live updates layer for active matches, but do not add that until the product UI needs it.
+
+The Odds API is the tight quota. With the current settings, `POST /odds/refresh` makes:
+
+```text
+GET /v4/sports/soccer_fifa_world_cup/events
+GET /v4/sports/soccer_fifa_world_cup/odds?markets=h2h,spreads,totals&regions=eu
+GET /v4/sports/soccer_fifa_world_cup_winner/odds?markets=outrights&regions=eu
+```
+
+That is roughly 4-5 credits per full refresh depending on provider accounting. At 500 credits/month, two daily pre-tournament refreshes should use roughly 240-300 credits/month, leaving room for manual checks and testing. The current GitHub Actions schedule runs at 07:23 and 19:23 UTC, which lands around Spain morning and evening. Do not schedule `POST /odds/refresh/events` separately unless the app needs to update event ids without refreshing prices; `POST /odds/refresh` already refreshes event metadata as part of the full odds refresh.
+
+Polymarket is free for our current public market-data use, but it still has rate limits. The documented public limits are high enough for a 2-hour refresh cadence; avoid per-user Polymarket polling from frontend or chat requests.
 
 ## Cost Guardrails
 

@@ -82,6 +82,7 @@ The frontend currently uses this data in Match Radar. The expandable label is in
 ## TODO
 
 - Now / local beta: keep Supabase email confirmation off to avoid built-in email sender rate limits and reduce signup friction.
+- During tournament: consider using the generous API-Football allowance for live match updates, but keep it behind cached backend refreshes and only build it once the UI has a real live-match surface.
 - Before bigger public launch: configure a custom SMTP provider for Supabase Auth emails.
 - After custom SMTP is stable: reconsider turning email confirmation back on. The frontend already handles confirmation-required signups by telling users to check their email.
 
