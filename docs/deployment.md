@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 This document records the current MVP deployment decisions for Matchmind. The goal is to keep production reliable enough for real users while keeping fixed costs low and predictable.
 
@@ -27,12 +27,13 @@ Vercel Pro remains the fallback if Cloudflare becomes a source of launch frictio
 
 ## Current Deployed State
 
-As of 2026-05-16:
+As of 2026-05-23:
 
 ```text
 Backend: Render Web Service
 Frontend: Cloudflare Pages
 Frontend URL: https://matchmind-web.pages.dev
+Custom domain: https://trymatchmind.com
 Database/Auth: Supabase
 Payments: Stripe test-mode backend integration
 Scheduled refreshes: not configured yet
@@ -203,7 +204,7 @@ Frontend public variables:
 
 ```text
 NEXT_PUBLIC_API_URL=https://your-render-api-url.onrender.com
-NEXT_PUBLIC_APP_URL=https://matchmind-web.pages.dev
+NEXT_PUBLIC_APP_URL=https://trymatchmind.com
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 NODE_VERSION=22
@@ -218,8 +219,9 @@ This project uses `wrangler.toml`, so Cloudflare treats that file as the source 
 Supabase Auth URL settings:
 
 ```text
-Site URL: https://matchmind-web.pages.dev
+Site URL: https://trymatchmind.com
 Redirect URLs:
+https://trymatchmind.com/auth/callback
 https://matchmind-web.pages.dev/auth/callback
 http://localhost:3000/auth/callback
 ```
@@ -244,7 +246,31 @@ Current Cloudflare default URL:
 https://matchmind-web.pages.dev
 ```
 
-This URL is acceptable for testing. Before beta users, prefer a custom domain such as `trymatchmind.com` or `matchmind.app` and then update Render `APP_URL`, Render `CORS_ALLOWED_ORIGINS`, Supabase redirect URLs, and Stripe settings as needed.
+Current production custom domain:
+
+```text
+https://trymatchmind.com
+```
+
+Cloudflare DNS records:
+
+```text
+trymatchmind.com      CNAME   matchmind-web.pages.dev   Proxied
+www                   CNAME   matchmind-web.pages.dev   Proxied
+```
+
+Cloudflare redirect rule:
+
+```text
+Rule name: Redirect www to root
+Match type: Wildcard pattern
+Request URL: https://www.trymatchmind.com/*
+Target URL: https://trymatchmind.com/${1}
+Status code: 301 - Permanent Redirect
+Preserve query string: enabled
+```
+
+After any frontend domain change, update Render `APP_URL`, Render `CORS_ALLOWED_ORIGINS`, Supabase redirect URLs, Stripe settings, and `NEXT_PUBLIC_APP_URL`, then redeploy the static frontend so the compiled bundle uses the new origin.
 
 ## Stripe Webhook
 
