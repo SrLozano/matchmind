@@ -36,11 +36,24 @@ app = FastAPI(
 )
 
 settings = get_settings()
-allowed_origins = [
-    origin.strip()
-    for origin in settings.cors_allowed_origins.split(",")
-    if origin.strip()
-]
+
+
+def normalize_origin(origin: str | None) -> str | None:
+    if not origin:
+        return None
+    return origin.strip().rstrip("/") or None
+
+
+allowed_origins = sorted(
+    {
+        origin
+        for origin in [
+            *(normalize_origin(origin) for origin in settings.cors_allowed_origins.split(",")),
+            normalize_origin(settings.app_url),
+        ]
+        if origin
+    }
+)
 
 app.add_middleware(
     CORSMiddleware,
