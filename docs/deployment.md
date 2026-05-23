@@ -367,6 +367,8 @@ That is roughly 4-5 credits per full refresh depending on provider accounting. A
 
 Polymarket is free for our current public market-data use, but it still has rate limits. The documented public limits are high enough for a 2-hour refresh cadence; avoid per-user Polymarket polling from frontend or chat requests.
 
+Keep `POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=0` in production unless we explicitly need CLOB order-book enrichment. The Gamma market payload usually provides enough prices for v1 Market Signals, while CLOB enrichment can add three extra requests per token (`/midpoint`, `/spread`, and `/book`) and may push a Render refresh request past the practical timeout.
+
 ## Cost Guardrails
 
 Hosting is not the main cost risk. The largest variable costs are:

@@ -177,7 +177,7 @@ POLYMARKET_DISCOVERY_PATH=tmp/polymarket_world_cup_discovery.json
 POLYMARKET_GAMMA_BASE_URL=https://gamma-api.polymarket.com
 POLYMARKET_CLOB_BASE_URL=https://clob.polymarket.com
 POLYMARKET_CACHE_TTL_SECONDS=600
-POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=40
+POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=0
 POLYMARKET_MIN_MATCH_CONFIDENCE=0.7
 POLYMARKET_MIN_SIGNAL_QUALITY=40
 ```
@@ -197,6 +197,8 @@ curl -X POST http://localhost:8000/polymarket/refresh \
 ```
 
 The live refresh endpoint should be run from an environment that can access Polymarket. If a local/company network blocks Polymarket, use the seed endpoint for development. Runtime reads prefer Supabase, then fall back to the local discovery JSON if the table is empty or unavailable.
+
+Keep `POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT=0` for production cron refreshes unless CLOB order-book enrichment is needed. With the default disabled, refreshes rely on Gamma market prices and avoid up to three extra CLOB requests per token.
 
 ## Code Pointers
 

@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     polymarket_gamma_base_url: str = Field(default="https://gamma-api.polymarket.com", alias="POLYMARKET_GAMMA_BASE_URL")
     polymarket_clob_base_url: str = Field(default="https://clob.polymarket.com", alias="POLYMARKET_CLOB_BASE_URL")
     polymarket_cache_ttl_seconds: int = Field(default=600, alias="POLYMARKET_CACHE_TTL_SECONDS")
-    polymarket_refresh_clob_token_limit: int = Field(default=40, alias="POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT")
+    polymarket_refresh_clob_token_limit: int = Field(default=0, alias="POLYMARKET_REFRESH_CLOB_TOKEN_LIMIT")
     polymarket_min_match_confidence: float = Field(default=0.7, alias="POLYMARKET_MIN_MATCH_CONFIDENCE")
     polymarket_min_signal_quality: int = Field(default=40, alias="POLYMARKET_MIN_SIGNAL_QUALITY")
     match_detection_fallback_enabled: bool = Field(default=True, alias="MATCH_DETECTION_FALLBACK_ENABLED")

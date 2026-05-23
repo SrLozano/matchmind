@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 POLYMARKET_MARKETS_TABLE = "polymarket_markets"
 POLYMARKET_SNAPSHOTS_TABLE = "polymarket_market_snapshots"
+POLYMARKET_WRITE_BATCH_SIZE = 25
 
 SEARCH_TERMS = (
     "World Cup",
@@ -299,11 +300,13 @@ async def persist_polymarket_markets(markets: list[dict[str, Any]], source: str)
         }
 
     client = await get_supabase()
-    await client.table(POLYMARKET_MARKETS_TABLE).upsert(rows, on_conflict="polymarket_market_id").execute()
+    for batch in batched(rows, POLYMARKET_WRITE_BATCH_SIZE):
+        await client.table(POLYMARKET_MARKETS_TABLE).upsert(batch, on_conflict="polymarket_market_id").execute()
 
     snapshots = [polymarket_market_to_snapshot_row(market) for market in markets if market.get("polymarket_market_id") and market.get("yes_price") is not None]
     if snapshots:
-        await client.table(POLYMARKET_SNAPSHOTS_TABLE).insert(snapshots).execute()
+        for batch in batched(snapshots, POLYMARKET_WRITE_BATCH_SIZE):
+            await client.table(POLYMARKET_SNAPSHOTS_TABLE).insert(batch).execute()
 
     clear_polymarket_memory_cache()
     return {
@@ -832,6 +835,10 @@ def count_by_key(items: list[dict[str, Any]], key: str) -> dict[str, int]:
         value = str(item.get(key) or "unknown")
         counts[value] = counts.get(value, 0) + 1
     return counts
+
+
+def batched(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:
+    return [items[index : index + size] for index in range(0, len(items), size)]
 
 
 async def search_gamma(client: httpx.AsyncClient, attempts: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
