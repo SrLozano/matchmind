@@ -110,6 +110,14 @@ pnpm web:start
 pnpm web:lint
 ```
 
+Release checks:
+
+```bash
+pnpm --filter @matchmind/web exec tsc --noEmit
+pnpm --filter @matchmind/web lint
+pnpm --filter @matchmind/web build
+```
+
 From `apps/web`:
 
 ```bash
