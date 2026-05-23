@@ -1,0 +1,58 @@
+import type { MetadataRoute } from "next"
+
+const fallbackBaseUrl = "https://trymatchmind.com"
+
+export const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_APP_URL)
+
+export const siteConfig = {
+  name: "Matchmind",
+  shortName: "Matchmind",
+  url: siteUrl,
+  locale: "en_US",
+  alternateLocale: "es_ES",
+  title: "Matchmind - World Cup 2026 Betting Coach",
+  description:
+    "Get a direct AI second opinion before you bet on the 2026 FIFA World Cup, combining match context, bookmaker odds, market signals, and your bet history.",
+  spanishDescription:
+    "Recibe una segunda opinión directa antes de apostar en el Mundial 2026, combinando contexto de partidos, cuotas, señales de mercado y tu historial.",
+  keywords: [
+    "Matchmind",
+    "World Cup 2026",
+    "FIFA World Cup betting analysis",
+    "AI betting coach",
+    "football odds analyzer",
+    "prediction market signals",
+    "Polymarket World Cup",
+    "bet tracker",
+  ],
+  creator: "Matchmind",
+  themeColor: "#00FF87",
+  backgroundColor: "#070D1A",
+  ogImage: "/og-image.png",
+  ogImageAlt: "Matchmind AI betting coach preview for the 2026 FIFA World Cup",
+  twitterImage: "/twitter-image.png",
+}
+
+export const publicRoutes: MetadataRoute.Sitemap = [
+  {
+    url: siteConfig.url,
+    lastModified: new Date("2026-05-23"),
+    changeFrequency: "daily",
+    priority: 1,
+  },
+]
+
+export function absoluteUrl(path = "/") {
+  return new URL(path, siteConfig.url).toString()
+}
+
+export function normalizeSiteUrl(value?: string) {
+  if (!value?.trim()) return fallbackBaseUrl
+
+  try {
+    const url = new URL(value)
+    return url.origin
+  } catch {
+    return fallbackBaseUrl
+  }
+}

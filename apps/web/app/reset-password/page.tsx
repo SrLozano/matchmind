@@ -48,7 +48,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#040810] px-5">
+    <main id="main-content" className="flex min-h-screen items-center justify-center bg-[#040810] px-5">
       <div className="w-full max-w-[430px] rounded-2xl border border-[#1A2845] bg-[#070D1A] p-5 shadow-[0_0_60px_rgba(0,255,135,0.08)]">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/10">
@@ -121,7 +121,7 @@ function ResetPasswordForm() {
           </form>
         )}
       </div>
-    </div>
+    </main>
   )
 }
 

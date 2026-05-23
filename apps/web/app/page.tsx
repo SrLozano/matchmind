@@ -135,7 +135,7 @@ function MatchmindShell() {
           onFocusCapture={handleFocusCapture}
           onBlurCapture={handleBlurCapture}
         >
-          <main className="relative min-h-0 flex-1 overflow-hidden bg-background">
+          <main id="main-content" className="relative min-h-0 flex-1 overflow-hidden bg-background">
             <div className="relative h-full overflow-hidden">
               <div className={activeTab === "feed" ? "h-full" : "hidden"}>
                 <DailyFeed

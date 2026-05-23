@@ -34,7 +34,7 @@ function AuthCallbackContent() {
   }, [isLoading, session])
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#040810] px-4 text-[#A8B4D0]">
+    <main id="main-content" className="flex min-h-[100dvh] items-center justify-center bg-[#040810] px-4 text-[#A8B4D0]">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <Loader2 className="h-4 w-4 animate-spin text-[#00FF87]" />
         {copy.finishing}

@@ -146,7 +146,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,8,16,0.98)_0%,rgba(4,8,16,0.88)_42%,rgba(4,8,16,0.52)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(0,255,135,0.2),transparent_32%),linear-gradient(180deg,transparent_0%,#040810_100%)]" />
 
-        <main className="relative mx-auto grid min-h-[100dvh] w-full max-w-7xl grid-cols-1 gap-8 px-4 py-[calc(1.25rem+env(safe-area-inset-top))] sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-12 lg:px-8">
+        <main id="main-content" className="relative mx-auto grid min-h-[100dvh] w-full max-w-7xl grid-cols-1 gap-8 px-4 py-[calc(1.25rem+env(safe-area-inset-top))] sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-12 lg:px-8">
           <section className="flex min-h-0 flex-col justify-center pb-2 pt-2 lg:pb-10">
             <nav className="mb-8 flex items-center justify-between gap-4 lg:mb-14">
               <div className="flex items-center gap-3">
