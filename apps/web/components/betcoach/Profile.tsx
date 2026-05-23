@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, Globe2, MessageCircleMore, RefreshCw, ShieldCheck, UserRound } from "lucide-react"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, HelpCircle, LockKeyhole, MessageCircleMore, RefreshCw, ShieldCheck, UserRound } from "lucide-react"
 import { type CurrentUser } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
@@ -23,6 +23,7 @@ export default function Profile({
   const { language, setLanguage, t } = useLanguage()
   const { isConfigured, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [openInfoSection, setOpenInfoSection] = useState<string | null>(null)
   const isPremium = currentUser?.plan === "premium"
   const chatLimit = currentUser?.chat_count_limit ?? currentUser?.daily_chat_count_limit ?? 5
   const chatsUsed = currentUser?.daily_chat_count ?? 0
@@ -33,9 +34,23 @@ export default function Profile({
   const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
   const accountLabel = currentUser?.email ?? t.profile.matchmindUser
   const menuItems = [
-    { label: t.profile.responsibleGambling, description: t.profile.responsibleCopy, icon: ShieldCheck },
-    { label: t.profile.help, description: t.profile.helpCopy, icon: ChevronRight },
-    { label: t.profile.privacy, description: t.profile.privacyCopy, icon: ChevronRight },
+    {
+      id: "responsible",
+      label: t.profile.responsibleGambling,
+      description: t.profile.responsibleCopy,
+      details: t.profile.responsibleDetails,
+      icon: ShieldCheck,
+      link: { href: "https://www.ordenacionjuego.es/participantes-juego/juego-seguro/rgiaj", label: t.profile.responsibleSpain },
+    },
+    { id: "help", label: t.profile.help, description: t.profile.helpCopy, details: t.profile.helpDetails, icon: HelpCircle },
+    { id: "privacy", label: t.profile.privacy, description: t.profile.privacyCopy, details: t.profile.privacyDetails, icon: LockKeyhole },
+    {
+      id: "terms",
+      label: t.profile.termsDisclaimer,
+      description: t.profile.termsDisclaimerCopy,
+      details: t.profile.termsDisclaimerDetails,
+      icon: FileText,
+    },
   ]
 
   return (
@@ -162,6 +177,9 @@ export default function Profile({
             <p className="mt-3 text-xs leading-relaxed text-[#A8B4D0]">
               {t.profile.upgradeCopy}
             </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-[#6A7A9B]">
+              {t.profile.upgradeDisclaimer}
+            </p>
 
             <div className="mt-4">
               <ul className="mb-4 flex flex-col gap-2.5">
@@ -230,22 +248,46 @@ export default function Profile({
             <p className="text-xs leading-relaxed text-[#6A7A9B]">{t.profile.notificationCopy}</p>
           </div>
         )}
-        {menuItems.map(({ label, description, icon: Icon }, index) => (
-          <button
-            key={label}
-            className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35] ${
-              index < menuItems.length - 1 ? "border-b border-[#1A2845]" : ""
-            }`}
+        {menuItems.map(({ id, label, description, details, icon: Icon, link }, index) => (
+          <div
+            key={id}
+            className={index < menuItems.length - 1 ? "border-b border-[#1A2845]" : ""}
           >
-            <span className="min-w-0">
-              <span className="flex items-center gap-2 text-sm font-semibold text-[#A8B4D0]">
-                {Icon === ShieldCheck && <Icon className="h-4 w-4 shrink-0 text-[#00FF87]" />}
-                {label}
+            <button
+              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35]"
+              type="button"
+              onClick={() => setOpenInfoSection((open) => (open === id ? null : id))}
+              aria-expanded={openInfoSection === id}
+            >
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-sm font-semibold text-[#A8B4D0]">
+                  <Icon className={`h-4 w-4 shrink-0 ${id === "responsible" ? "text-[#00FF87]" : "text-[#6A7A9B]"}`} />
+                  {label}
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-[#6A7A9B]">{description}</span>
               </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-[#6A7A9B]">{description}</span>
-            </span>
-            <ChevronRight className="w-4 h-4 shrink-0 text-[#6A7A9B]" />
-          </button>
+              {openInfoSection === id ? (
+                <ChevronDown className="w-4 h-4 shrink-0 text-[#6A7A9B]" />
+              ) : (
+                <ChevronRight className="w-4 h-4 shrink-0 text-[#6A7A9B]" />
+              )}
+            </button>
+            {openInfoSection === id && (
+              <div className="bg-[#0A1325]/70 px-4 pb-4">
+                <p className="text-xs leading-relaxed text-[#A8B4D0]">{details}</p>
+                {link && (
+                  <a
+                    className="mt-2 inline-flex text-xs font-semibold text-[#00FF87] transition-colors hover:text-[#8DFFC2]"
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {link.label}
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
         ))}
       </div>
       {isConfigured && (

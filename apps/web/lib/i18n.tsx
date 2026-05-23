@@ -78,6 +78,7 @@ export const translations = {
       marketType: "Market type",
       unknownTeam: "Tournament market",
       noValue: "—",
+      disclaimer: "Odds and fixtures may be cached and can change.",
     },
     chat: {
       title: "Matchmind AI",
@@ -108,7 +109,7 @@ export const translations = {
       loadingHistory: "Loading history...",
       emptyHistory: "No conversations yet.",
       historyError: "Unable to load conversation history.",
-      disclaimer: "For entertainment purposes only. Always bet responsibly.",
+      disclaimer: "Analysis only. No guarantees. Matchmind never places bets.",
       marketSignal: "Market signal",
       noMarketSignal: "No useful market signal was found for this bet.",
       crowdProbability: "Crowd prob.",
@@ -139,6 +140,7 @@ export const translations = {
       spread: "Spread",
       lastUpdated: "Last updated",
       marketCloses: "Market closes",
+      disclaimer: "Market signals are crowd probabilities, not certainties.",
     },
     tracker: {
       title: "Bet Tracker",
@@ -185,6 +187,7 @@ export const translations = {
         jun16: "Jun 16",
         jun17: "Jun 17",
       },
+      disclaimer: "Manual tracker only. Bets are not placed through Matchmind.",
     },
     profile: {
       title: "Profile",
@@ -215,6 +218,7 @@ export const translations = {
       oneTime: "one time",
       unlock: "Upgrade for the whole World Cup",
       upgradeCopy: "Get full coach access, complete market signals, and value checks from group stage to the final. One payment, no subscription.",
+      upgradeDisclaimer: "Tournament pass unlocks analysis features, not betting services.",
       premiumActive: "World Cup Pass paid and active",
       premiumCopy: "Full coach access, market signals, and tournament tools are unlocked for the entire World Cup.",
       paidBadge: "Paid",
@@ -230,13 +234,23 @@ export const translations = {
       spanish: "Español",
       responsibleGambling: "Responsible Gambling",
       responsibleCopy: "Matchmind is an analysis tool, not a betting platform. Use it to slow down decisions and avoid impulsive bets.",
+      responsibleDetails:
+        "Matchmind provides analysis only. It does not place bets, hold funds, or guarantee any prediction. Only bet what you can afford to lose, do not chase losses, and take a break if betting stops feeling fun.",
+      responsibleSpain: "Spain self-exclusion and safer gambling resource: DGOJ RGIAJ.",
       responsibleReminderTitle: "Play within limits",
       responsibleReminder: "Only bet money you can afford to lose. If betting stops feeling recreational, take a break and use your local support resources.",
       responsibleLearnMore: "Responsible gambling resources",
       help: "Help & Support",
       helpCopy: "Contact, FAQs, and account issues",
+      helpDetails: "For account, billing, or product issues, contact Matchmind support. For urgent betting-related harm, use local professional support or emergency resources.",
       privacy: "Privacy Policy",
       privacyCopy: "How your betting notes and account data are handled",
+      privacyDetails:
+        "Matchmind uses your account data, chat messages, and manually logged bets to provide the app experience. We do not place bets for you or sell betting services.",
+      termsDisclaimer: "Terms & Disclaimer",
+      termsDisclaimerCopy: "Analysis only. No outcomes are promised.",
+      termsDisclaimerDetails:
+        "Matchmind is a coaching and analysis tool for the World Cup. It is not a sportsbook, does not accept wagers, and does not guarantee results or profits.",
       features: [
         "Full AI Coach access",
         "Full market divergence feed",
@@ -316,6 +330,7 @@ export const translations = {
       marketType: "Tipo de mercado",
       unknownTeam: "Mercado del torneo",
       noValue: "—",
+      disclaimer: "Las cuotas y partidos pueden venir de caché y cambiar.",
     },
     chat: {
       title: "Matchmind AI",
@@ -346,7 +361,7 @@ export const translations = {
       loadingHistory: "Cargando historial...",
       emptyHistory: "Todavía no hay conversaciones.",
       historyError: "No se pudo cargar el historial.",
-      disclaimer: "Solo con fines de entretenimiento. Apuesta siempre con responsabilidad.",
+      disclaimer: "Solo análisis. Sin garantías. Matchmind nunca coloca apuestas.",
       marketSignal: "Señal de mercado",
       noMarketSignal: "No se encontró una señal útil de mercado para esta apuesta.",
       crowdProbability: "Prob. mercado",
@@ -377,6 +392,7 @@ export const translations = {
       spread: "Spread",
       lastUpdated: "Actualizado",
       marketCloses: "Cierre del mercado",
+      disclaimer: "Las señales de mercado son probabilidades colectivas, no certezas.",
     },
     tracker: {
       title: "Registro de Apuestas",
@@ -423,6 +439,7 @@ export const translations = {
         jun16: "16 jun",
         jun17: "17 jun",
       },
+      disclaimer: "Registro manual. Las apuestas no se colocan desde Matchmind.",
     },
     profile: {
       title: "Perfil",
@@ -453,6 +470,7 @@ export const translations = {
       oneTime: "pago único",
       unlock: "Desbloquea todo el Mundial",
       upgradeCopy: "Consigue acceso completo al coach, señales completas de mercado y análisis de valor desde la fase de grupos hasta la final. Un pago, sin suscripción.",
+      upgradeDisclaimer: "El Pase Mundial desbloquea análisis, no servicios de apuestas.",
       premiumActive: "Pase Mundial pagado y activo",
       premiumCopy: "Tienes desbloqueados el coach completo, las señales de mercado y las herramientas del torneo para todo el Mundial.",
       paidBadge: "Pagado",
@@ -468,13 +486,23 @@ export const translations = {
       spanish: "Español",
       responsibleGambling: "Juego responsable",
       responsibleCopy: "Matchmind es una herramienta de análisis, no una casa de apuestas. Úsala para frenar decisiones y evitar apuestas impulsivas.",
+      responsibleDetails:
+        "Matchmind solo ofrece análisis. No coloca apuestas, no custodia fondos ni garantiza ninguna predicción. Apuesta solo lo que puedas permitirte perder, no persigas pérdidas y haz una pausa si apostar deja de ser divertido.",
+      responsibleSpain: "Recurso en España para autoprohibición y juego seguro: DGOJ RGIAJ.",
       responsibleReminderTitle: "Juega con límites",
       responsibleReminder: "Apuesta solo dinero que puedas permitirte perder. Si deja de ser algo recreativo, haz una pausa y busca recursos de ayuda locales.",
       responsibleLearnMore: "Recursos de juego responsable",
       help: "Ayuda y soporte",
       helpCopy: "Contacto, preguntas frecuentes y problemas de cuenta",
+      helpDetails: "Para cuenta, pagos o problemas del producto, contacta con soporte de Matchmind. Si el juego te está causando daño urgente, usa recursos profesionales locales o de emergencia.",
       privacy: "Política de privacidad",
       privacyCopy: "Cómo tratamos tus notas de apuestas y datos de cuenta",
+      privacyDetails:
+        "Matchmind usa tus datos de cuenta, mensajes del chat y apuestas registradas manualmente para ofrecer la experiencia de la app. No colocamos apuestas por ti ni vendemos servicios de apuestas.",
+      termsDisclaimer: "Términos y aviso",
+      termsDisclaimerCopy: "Solo análisis. No se promete ningún resultado.",
+      termsDisclaimerDetails:
+        "Matchmind es una herramienta de análisis y acompañamiento para el Mundial. No es una casa de apuestas, no acepta apuestas y no garantiza resultados ni beneficios.",
       features: [
         "Acceso completo al coach IA",
         "Panel completo de divergencias de mercado",

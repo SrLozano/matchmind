@@ -246,6 +246,9 @@ export default function BetTracker() {
           </div>
         </div>
       </div>
+      <p className="mx-4 mb-3 flex-shrink-0 text-[10px] leading-snug text-[#6A7A9B] sm:mx-5">
+        {t.tracker.disclaimer}
+      </p>
 
       {error ? (
         <div className="mx-5 mb-4 rounded-lg border border-[#FF4D4D]/25 bg-[#FF4D4D]/10 px-4 py-3 text-xs text-[#FF8A8A]">

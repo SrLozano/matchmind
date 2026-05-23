@@ -122,6 +122,9 @@ export default function DailyFeed({
           <StatCell label={t.feed.pro} value={proInsightCount.toString()} accent="text-[#E8D39A]" onClick={onShowUpgradePrompt} />
         </div>
       )}
+      <p className="mx-4 mb-3 flex-shrink-0 text-[10px] leading-snug text-[#6A7A9B] sm:mx-5">
+        {t.feed.disclaimer}
+      </p>
 
       <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
         {isLoading ? (

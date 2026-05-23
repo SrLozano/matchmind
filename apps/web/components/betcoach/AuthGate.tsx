@@ -64,6 +64,7 @@ type LandingCopy = {
   forgotPassword: string
   resetSent: string
   confirmEmail: string
+  ageConfirmation: string
   accountExistsSwitch: string
   switchToSignUp: string
   switchToSignIn: string
@@ -78,6 +79,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const { language, setLanguage } = useLanguage()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signup")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -91,6 +93,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isLoading) return
+    if (mode === "signup" && !ageConfirmed) return
     setIsSubmitting(true)
     setLocalError(null)
     setSuccessMessage(null)
@@ -105,6 +108,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         if (result.needsConfirmation) {
           setSuccessMessage(copy.confirmEmail)
           setPassword("")
+          setAgeConfirmed(false)
           setMode("signin")
         }
       }
@@ -123,6 +127,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   const handleGoogleSignIn = async () => {
+    if (mode === "signup" && !ageConfirmed) return
     setIsSubmitting(true)
     setLocalError(null)
     setSuccessMessage(null)
@@ -260,7 +265,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                     className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#1A2845] bg-[#F8FAFC] px-3 py-3 text-sm font-bold text-[#111827] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
                     type="button"
                     onClick={() => void handleGoogleSignIn()}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isSubmitting || isLoading || (mode === "signup" && !ageConfirmed)}
                   >
                     <GoogleMark />
                     {mode === "signup" ? copy.continueWithGoogleSignUp : copy.continueWithGoogle}
@@ -307,6 +312,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                   </label>
                 )}
 
+                {mode === "signup" && (
+                  <label className="flex items-start gap-2.5 rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3 text-xs leading-relaxed text-[#A8B4D0]">
+                    <input
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-[#00FF87]"
+                      type="checkbox"
+                      checked={ageConfirmed}
+                      onChange={(event) => setAgeConfirmed(event.target.checked)}
+                      required
+                    />
+                    <span>{copy.ageConfirmation}</span>
+                  </label>
+                )}
+
                 {(localError || authError) && (
                   <div className="rounded-xl border border-[#FF5A7A]/30 bg-[#FF5A7A]/10 px-3 py-2 text-xs text-[#FF9AAF]">
                     {localError ?? authError}
@@ -321,7 +339,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <button
                   className="flex w-full items-center justify-center rounded-xl bg-[#00FF87] py-3 text-sm font-bold text-[#070D1A] transition-colors hover:bg-[#00e87a] disabled:cursor-not-allowed disabled:opacity-70"
                   type="submit"
-                  disabled={isSubmitting || isLoading}
+                  disabled={isSubmitting || isLoading || (mode === "signup" && !ageConfirmed)}
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {mode === "forgot" ? copy.sendReset : mode === "signin" ? copy.signIn : copy.signUp}
@@ -553,6 +571,7 @@ const copyEn: LandingCopy = {
   forgotPassword: "Forgot your password?",
   resetSent: "If that email exists, Supabase will send a password reset link.",
   confirmEmail: "Account created. Check your email to confirm it, then sign in.",
+  ageConfirmation: "I confirm I am 18 or older.",
   accountExistsSwitch: "That email already has an account. I switched you to sign in.",
   switchToSignUp: "New here? Create an account",
   switchToSignIn: "Already have an account? Sign in",
@@ -610,6 +629,7 @@ const copyEs: LandingCopy = {
   forgotPassword: "¿Has olvidado la contraseña?",
   resetSent: "Si ese email existe, Supabase enviará un enlace para cambiar la contraseña.",
   confirmEmail: "Cuenta creada. Confirma tu email y luego inicia sesión.",
+  ageConfirmation: "Confirmo que tengo 18 años o más.",
   accountExistsSwitch: "Ese email ya tiene cuenta. Te he pasado a iniciar sesión.",
   switchToSignUp: "¿Nuevo aquí? Crea una cuenta",
   switchToSignIn: "¿Ya tienes cuenta? Inicia sesión",

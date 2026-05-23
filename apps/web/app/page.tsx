@@ -235,6 +235,7 @@ function UpgradePrompt({ onClose }: { onClose: () => void }) {
           {isStartingCheckout ? (language === "es" ? "Abriendo Stripe..." : "Opening Stripe...") : t.profile.upgrade}
         </button>
         {checkoutError && <p className="mt-2.5 text-center text-[11px] font-semibold text-[#FF4D4D]">{checkoutError}</p>}
+        <p className="mt-2.5 text-center text-[10px] leading-snug text-[#6A7A9B]">{t.profile.upgradeDisclaimer}</p>
         <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">{t.profile.stripe}</p>
       </div>
     </div>
