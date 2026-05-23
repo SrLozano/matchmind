@@ -3,11 +3,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from app.models.users import DEFAULT_DEV_USER_ID
-
 
 class ChatRequest(BaseModel):
-    user_id: UUID = DEFAULT_DEV_USER_ID
+    user_id: UUID | None = None
     message: str = Field(..., min_length=1, max_length=4000)
     preferred_language: str | None = Field(default=None, pattern="^(en|es)$")
     conversation_id: UUID | None = None

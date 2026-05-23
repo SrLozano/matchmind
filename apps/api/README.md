@@ -69,7 +69,7 @@ make api-test
 ## Endpoints
 
 - `GET /health` checks API and Supabase connectivity.
-- `GET /users/me?user_id=...` returns the current dev user's plan and chat usage.
+- `GET /users/me` returns the authenticated user's plan and chat usage. Requires a Supabase bearer token unless `ALLOW_DEV_AUTH_FALLBACK=true`.
 - `GET /world-cup/fixtures` returns cached 2026 World Cup fixture context from Supabase/memory.
 - `POST /world-cup/refresh` refreshes fixtures from API-Football. This is internal and requires `X-Internal-Token` matching `INTERNAL_API_TOKEN`.
 - `GET /polymarket/signals` returns compact active World Cup 2026 prediction-market signals from Supabase/memory.
@@ -82,17 +82,16 @@ make api-test
 - `POST /odds/refresh` refreshes featured World Cup match and outright bookmaker odds. This is internal and requires `X-Internal-Token`.
 - `POST /payments/create-checkout-session` creates a Stripe Checkout Session for the one-time tournament pass. This requires a Supabase bearer token.
 - `POST /payments/webhook` receives Stripe webhooks, verifies `Stripe-Signature`, and upgrades users to `plan = 'premium'` on `checkout.session.completed`.
-- `POST /bets` logs a manual bet in the tracker.
-- `GET /bets?user_id=...` returns bet history plus tracker summary metrics.
-- `PATCH /bets/{bet_id}` updates a tracked bet and recalculates P&L.
-- `DELETE /bets/{bet_id}?user_id=...` deletes a tracked bet.
-- `GET /conversations?user_id=...&limit=20` returns conversation summaries derived from `conversations.messages`.
-- `GET /conversations/{conversation_id}?user_id=...` returns one conversation and its stored messages.
+- `POST /bets` logs a manual bet for the authenticated user.
+- `GET /bets` returns the authenticated user's bet history plus tracker summary metrics.
+- `PATCH /bets/{bet_id}` updates one of the authenticated user's tracked bets and recalculates P&L.
+- `DELETE /bets/{bet_id}` deletes one of the authenticated user's tracked bets.
+- `GET /conversations?limit=20` returns the authenticated user's conversation summaries derived from `conversations.messages`.
+- `GET /conversations/{conversation_id}` returns one authenticated-user-scoped conversation and its stored messages.
 - `POST /chat` accepts:
 
 ```json
 {
-  "user_id": "00000000-0000-0000-0000-000000000000",
   "message": "Thinking of betting €20 on Spain to beat Germany at 2.10",
   "preferred_language": "en",
   "conversation_id": null
@@ -118,7 +117,7 @@ Returns:
 }
 ```
 
-`preferred_language` can be `"en"` or `"es"`. If omitted, the backend detects language from the message and asks the coach to answer in that language. `conversation_id` is optional; omit it to start a new conversation, or send a previous ID to append a follow-up and give the coach recent conversation memory.
+`POST /chat` requires a Supabase bearer token unless `ALLOW_DEV_AUTH_FALLBACK=true`. The backend derives the user id from the authenticated Supabase user and ignores any deprecated client-supplied `user_id`. `preferred_language` can be `"en"` or `"es"`. If omitted, the backend detects language from the message and asks the coach to answer in that language. `conversation_id` is optional; omit it to start a new conversation, or send a previous ID to append a follow-up and give the coach recent conversation memory.
 
 The OpenAI call uses a strict JSON schema for `response`, `confidence_score`, `verdict`, `implied_probability`, and `stake_posture`. The visible `response` is allowed to be conversational and varied, while these metadata fields stay stable for UI rendering.
 
@@ -131,20 +130,20 @@ Conversation history uses the existing `conversations.messages` JSONB field; no 
 List summaries:
 
 ```bash
-curl "http://localhost:8000/conversations?user_id=a87d09e8-7e10-46b8-9927-c9500c9559cf&limit=20"
+curl -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "http://localhost:8000/conversations?limit=20"
 ```
 
 Fetch one conversation:
 
 ```bash
-curl "http://localhost:8000/conversations/{conversation_id}?user_id=a87d09e8-7e10-46b8-9927-c9500c9559cf"
+curl -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "http://localhost:8000/conversations/{conversation_id}"
 ```
 
 Summaries derive `title` from the first user message, `last_message_preview` from the latest valid message, and `updated_at` from the latest message timestamp when available. A future explicit `updated_at` column would make this faster and cleaner, but it is not required for v1.
 
 ### Bet Tracker
 
-Create a bet. During local development, `user_id` defaults to `a87d09e8-7e10-46b8-9927-c9500c9559cf` when omitted:
+Create a bet. User ownership comes from the Supabase bearer token:
 
 ```json
 {

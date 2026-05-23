@@ -79,10 +79,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
-NEXT_PUBLIC_DEV_USER_ID=
 ```
 
-The frontend calls the FastAPI backend on `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_APP_URL` is the public web origin used for OAuth redirects; set it to the deployed Cloudflare Pages/custom-domain URL in production. When `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are present, the app shows a Supabase auth gate with email/password and Google OAuth, then sends the access token to the API. If those auth values are absent, the protected app stays locked instead of opening a broken unauthenticated session. `NEXT_PUBLIC_DEV_USER_ID` is only an explicit local-development escape hatch; leave it empty in deployed environments.
+The frontend calls the FastAPI backend on `NEXT_PUBLIC_API_URL`. `NEXT_PUBLIC_APP_URL` is the public web origin used for OAuth redirects; set it to the deployed Cloudflare Pages/custom-domain URL in production. When `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are present, the app shows a Supabase auth gate with email/password and Google OAuth, then sends the access token to the API. If those auth values are absent, the protected app stays locked instead of opening a broken unauthenticated session.
 
 Do not put private backend secrets in the frontend. Keep `OPENAI_API_KEY`, Supabase service-role keys, Stripe secrets, and provider API keys in the root/backend `.env`.
 

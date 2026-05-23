@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
     stripe_tournament_pass_price_id: str | None = Field(default=None, alias="STRIPE_TOURNAMENT_PASS_PRICE_ID")
     app_url: str = Field(default="http://localhost:3000", alias="APP_URL")
+    allow_dev_auth_fallback: bool = Field(default=False, alias="ALLOW_DEV_AUTH_FALLBACK")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     free_daily_chat_limit: int = Field(default=5, alias="FREE_DAILY_CHAT_LIMIT")
     premium_weekly_chat_limit: int = Field(default=200, alias="PREMIUM_WEEKLY_CHAT_LIMIT")

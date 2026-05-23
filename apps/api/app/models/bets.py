@@ -4,14 +4,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.models.users import DEFAULT_DEV_USER_ID
-
 
 BetOutcome = Literal["win", "loss", "pending"]
 
 
 class BetCreateRequest(BaseModel):
-    user_id: UUID = DEFAULT_DEV_USER_ID
+    user_id: UUID | None = None
     match: str = Field(..., min_length=1, max_length=200)
     amount: float = Field(..., gt=0)
     odds: float = Field(..., gt=1)
@@ -27,7 +25,7 @@ class BetCreateRequest(BaseModel):
 
 
 class BetUpdateRequest(BaseModel):
-    user_id: UUID = DEFAULT_DEV_USER_ID
+    user_id: UUID | None = None
     match: str | None = Field(default=None, min_length=1, max_length=200)
     amount: float | None = Field(default=None, gt=0)
     odds: float | None = Field(default=None, gt=1)

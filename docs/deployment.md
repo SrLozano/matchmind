@@ -105,6 +105,7 @@ PREMIUM_WEEKLY_CHAT_LIMIT
 INTERNAL_API_TOKEN
 APP_URL
 CORS_ALLOWED_ORIGINS
+ALLOW_DEV_AUTH_FALLBACK=false
 ```
 
 Stripe variables:
@@ -344,16 +345,7 @@ Immediate production posture:
 
 `/docs`, `/redoc`, and `/openapi.json` are useful during setup, but they expose endpoint structure. They do not expose secret values, but they make the API easier to inspect. Disable them before real public launch or gate them behind a production flag.
 
-Known security gap to fix before public sharing:
-
-Some user-facing endpoints still support local-development fallback behavior by accepting a client-supplied `user_id` or using the default dev user when no bearer token is present. That is convenient locally but not appropriate for production. Before broader access, production routes should require Supabase bearer auth and derive the user id from the token.
-
-Affected surfaces include:
-
-- `/chat`
-- `/users/me`
-- `/bets`
-- `/conversations`
+User-specific routes must require Supabase bearer auth in production. Keep `ALLOW_DEV_AUTH_FALLBACK` false or unset in deployed environments; it exists only to let local backend development use the fixed dev user when explicitly enabled.
 
 Public cache/read endpoints such as fixture, odds, and signal reads can stay public if they expose only non-user-specific data.
 

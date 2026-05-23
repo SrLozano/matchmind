@@ -3,7 +3,6 @@ import unittest
 from pydantic import ValidationError
 
 from app.models.bets import BetCreateRequest, BetUpdateRequest
-from app.models.users import DEFAULT_DEV_USER_ID
 from app.services.bets import build_bet_summary, calculate_profit_loss
 
 
@@ -47,10 +46,10 @@ class BetTrackerTest(unittest.TestCase):
                 odds=2.10,
             )
 
-    def test_create_payload_defaults_to_dev_user(self) -> None:
+    def test_create_payload_does_not_default_to_dev_user(self) -> None:
         payload = BetCreateRequest(match="Spain vs Germany", amount=20, odds=2.10)
 
-        self.assertEqual(payload.user_id, DEFAULT_DEV_USER_ID)
+        self.assertIsNone(payload.user_id)
 
 
 if __name__ == "__main__":

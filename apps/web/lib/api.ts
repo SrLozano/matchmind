@@ -216,26 +216,6 @@ function getApiUrl() {
   return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
 }
 
-function getDevUserId() {
-  const devUserId = process.env.NEXT_PUBLIC_DEV_USER_ID?.trim()
-  return devUserId || null
-}
-
-function devUserSearchParams(extra?: Record<string, string>) {
-  const params = new URLSearchParams(extra)
-  const devUserId = getDevUserId()
-  if (devUserId) params.set("user_id", devUserId)
-  return params
-}
-
-function withDevUserId<T extends object>(payload: T): T & { user_id?: string } {
-  const devUserId = getDevUserId()
-  return {
-    ...(devUserId ? { user_id: devUserId } : {}),
-    ...payload,
-  }
-}
-
 async function readApiError(response: Response, fallback: string) {
   try {
     const errorBody = (await response.json()) as { detail?: string }
@@ -272,11 +252,11 @@ export async function sendChatMessage(
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(withDevUserId({
+    body: JSON.stringify({
       message,
       preferred_language: preferredLanguage,
       conversation_id: conversationId,
-    })),
+    }),
   })
 
   if (!response.ok) {
@@ -295,7 +275,7 @@ function normalizeChatResponse(payload: ChatResponse): ChatResponse {
 
 export async function getConversations(limit = 20): Promise<ConversationListResponse> {
   const apiUrl = getApiUrl()
-  const params = devUserSearchParams({ limit: limit.toString() })
+  const params = new URLSearchParams({ limit: limit.toString() })
   const response = await apiFetch(`${apiUrl}/conversations?${params.toString()}`)
 
   if (!response.ok) {
@@ -307,9 +287,7 @@ export async function getConversations(limit = 20): Promise<ConversationListResp
 
 export async function getConversation(conversationId: string): Promise<ConversationDetailResponse> {
   const apiUrl = getApiUrl()
-  const params = devUserSearchParams()
-  const query = params.size > 0 ? `?${params.toString()}` : ""
-  const response = await apiFetch(`${apiUrl}/conversations/${conversationId}${query}`)
+  const response = await apiFetch(`${apiUrl}/conversations/${conversationId}`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load this conversation."))
@@ -377,9 +355,7 @@ export async function getMarketSignals({ limit = 16 }: { limit?: number } = {}):
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
-  const params = devUserSearchParams()
-  const query = params.size > 0 ? `?${params.toString()}` : ""
-  const response = await apiFetch(`${getApiUrl()}/users/me${query}`)
+  const response = await apiFetch(`${getApiUrl()}/users/me`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load your profile. Try again in a moment."))
@@ -389,9 +365,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 }
 
 export async function getTrackedBets(): Promise<BetListResponse> {
-  const params = devUserSearchParams()
-  const query = params.size > 0 ? `?${params.toString()}` : ""
-  const response = await apiFetch(`${getApiUrl()}/bets${query}`)
+  const response = await apiFetch(`${getApiUrl()}/bets`)
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load your bet tracker. Try again in a moment."))
@@ -406,9 +380,9 @@ export async function createTrackedBet(payload: CreateBetPayload): Promise<Track
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(withDevUserId({
+    body: JSON.stringify({
       ...payload,
-    })),
+    }),
   })
 
   if (!response.ok) {
@@ -424,9 +398,9 @@ export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(withDevUserId({
+    body: JSON.stringify({
       outcome,
-    })),
+    }),
   })
 
   if (!response.ok) {
@@ -437,9 +411,7 @@ export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome
 }
 
 export async function deleteTrackedBet(betId: string): Promise<void> {
-  const params = devUserSearchParams()
-  const query = params.size > 0 ? `?${params.toString()}` : ""
-  const response = await apiFetch(`${getApiUrl()}/bets/${betId}${query}`, {
+  const response = await apiFetch(`${getApiUrl()}/bets/${betId}`, {
     method: "DELETE",
   })
 

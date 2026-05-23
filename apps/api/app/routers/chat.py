@@ -7,7 +7,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 
 from app.models.chat import ChatMarketSignal, ChatRequest, ChatResponse
 from app.services.api_football import build_match_context_for_chat
-from app.services.auth import get_authenticated_user
+from app.services.auth import require_authenticated_user
 from app.services.bet_parser import parse_bet_message
 from app.services.gpt import generate_chat_reply
 from app.services.odds_api import build_bookmaker_context_for_chat
@@ -22,10 +22,10 @@ T = TypeVar("T")
 @router.post("/chat", response_model=ChatResponse)
 async def chat(payload: ChatRequest, authorization: str | None = Header(default=None)) -> ChatResponse:
     user_context = None
-    user_id = payload.user_id
+    user_id = None
     try:
-        authenticated_user = await get_authenticated_user(authorization)
-        user_id = authenticated_user.id if authenticated_user else user_id
+        authenticated_user = await require_authenticated_user(authorization)
+        user_id = authenticated_user.id
         user_context = await enforce_daily_limit_and_store(
             user_id,
             payload.message,

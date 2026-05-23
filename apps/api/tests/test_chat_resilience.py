@@ -1,7 +1,9 @@
 import unittest
 from unittest.mock import AsyncMock, patch
+from uuid import UUID
 
 from app.models.chat import AIChatResult, ChatRequest
+from app.services.auth import AuthenticatedUser
 from app.routers import chat as chat_router
 
 
@@ -79,6 +81,11 @@ class ChatResilienceTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with (
+            patch.object(
+                chat_router,
+                "require_authenticated_user",
+                AsyncMock(return_value=AuthenticatedUser(id=UUID(DummyChatSessionContext.user["id"]))),
+            ),
             patch.object(
                 chat_router,
                 "enforce_daily_limit_and_store",
