@@ -863,9 +863,6 @@ function ReferralCodeApply({
       {appliedReferral ? (
         <div className="rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
           <p className="text-sm font-bold text-[#00FF87]">Codigo aplicado: {appliedReferral.code}</p>
-          <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">
-            Veras tu precio actualizado en el World Pass. Por ahora no se puede cambiar el codigo aplicado.
-          </p>
         </div>
       ) : (
         <>
