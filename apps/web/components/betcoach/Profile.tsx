@@ -967,12 +967,12 @@ function UserReferralPanel({
         <ReferralMetric label={copy.currentTier} value={currentStatus} />
       </div>
       <div className="mt-4 rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-normal text-[#6A7A9B]">{copy.currentPerk}</p>
-            <p className="mt-1 text-sm font-bold text-foreground">{currentPerkValue}</p>
+            <p className="mt-1 text-sm font-bold leading-snug text-foreground">{currentPerkValue}</p>
           </div>
-          <div className="rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/10 px-3 py-2 text-right">
+          <div className="min-w-[112px] rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/10 px-3 py-2 text-right">
             <p className="text-[10px] font-semibold text-[#6A7A9B]">{copy.unlockedPrice}</p>
             <p className="text-sm font-black text-[#00FF87]">{unlockedPrice}</p>
           </div>
