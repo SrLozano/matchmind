@@ -52,6 +52,7 @@ export default function Profile({
   const hasAppliedReferral = Boolean(appliedReferral)
   const standardPassPrice = 9.99
   const referralPassPrice = Math.max(standardPassPrice - (appliedReferral?.discount_amount ?? 0), 0)
+  const referralLoadError = t.profile.referrals.loadError
   const displayName = displayUserName({
     name: currentUser?.name,
     email: currentUser?.email,
@@ -97,7 +98,7 @@ export default function Profile({
         if (isMounted) setReferralDashboard(dashboard)
       })
       .catch((error) => {
-        if (isMounted) setReferralError(error instanceof Error ? error.message : "No pudimos cargar tus referidos.")
+        if (isMounted) setReferralError(error instanceof Error ? error.message : referralLoadError)
       })
       .finally(() => {
         if (isMounted) setIsLoadingReferrals(false)
@@ -106,7 +107,7 @@ export default function Profile({
     return () => {
       isMounted = false
     }
-  }, [currentUser, referralRefreshKey])
+  }, [currentUser, referralRefreshKey, referralLoadError])
 
   const refreshReferrals = () => setReferralRefreshKey((key) => key + 1)
 
@@ -534,6 +535,8 @@ function ReferralsSection({
   error: string | null
   onRefresh: () => void
 }) {
+  const { t } = useLanguage()
+  const copy = t.profile.referrals
   const [activeTab, setActiveTab] = useState<"bars" | "users">("bars")
   const [form, setForm] = useState({
     business_name: "",
@@ -560,15 +563,15 @@ function ReferralsSection({
   const createPartner = async () => {
     const missingField = !form.business_name.trim() || !form.location.trim() || !form.responsible_name.trim() || !form.phone.trim()
     if (missingField) {
-      setFormError("Completa todos los campos para crear el codigo del bar.")
+      setFormError(copy.missingFields)
       return
     }
     if (form.phone.trim().length < 6) {
-      setFormError("Introduce un telefono o Bizum valido.")
+      setFormError(copy.invalidPhone)
       return
     }
     if (!form.terms_accepted) {
-      setFormError("Debes aceptar las condiciones para crear el codigo.")
+      setFormError(copy.termsRequired)
       return
     }
 
@@ -584,7 +587,7 @@ function ReferralsSection({
       })
       onRefresh()
     } catch (requestError) {
-      setFormError(requestError instanceof Error ? requestError.message : "No pudimos crear el codigo del bar.")
+      setFormError(translateReferralApiError(requestError, copy, copy.createError))
     } finally {
       setIsCreating(false)
     }
@@ -593,7 +596,7 @@ function ReferralsSection({
   const applyCode = async () => {
     const normalizedCode = codeDraft.trim().toUpperCase()
     if (!normalizedCode) {
-      setApplyError("Introduce un codigo.")
+      setApplyError(copy.applyMissingCode)
       return
     }
 
@@ -602,11 +605,11 @@ function ReferralsSection({
     setApplyStatus(null)
     try {
       const response = await applyReferralCode(normalizedCode)
-      setApplyStatus(`Codigo aplicado: ${response.code}. Veras tu precio actualizado en el World Pass.`)
+      setApplyStatus(copy.applySuccess.replace("{code}", response.code))
       setCodeDraft("")
       onRefresh()
     } catch (requestError) {
-      setApplyError(requestError instanceof Error ? requestError.message : "No pudimos aplicar este codigo.")
+      setApplyError(translateReferralApiError(requestError, copy, copy.applyError))
     } finally {
       setIsApplying(false)
     }
@@ -627,13 +630,13 @@ function ReferralsSection({
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Handshake className="h-4 w-4 shrink-0 text-[#00FF87]" />
-            <h2 className="text-sm font-bold text-foreground">Referidos</h2>
+            <h2 className="text-sm font-bold text-foreground">{copy.title}</h2>
           </div>
           <button
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#1A2845] text-[#6A7A9B] transition-colors hover:border-[#00FF87]/50 hover:text-[#00FF87]"
             type="button"
             onClick={onRefresh}
-            aria-label="Actualizar referrals"
+            aria-label={copy.refresh}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </button>
@@ -673,10 +676,10 @@ function ReferralsSection({
             <span className="min-w-0">
               <span className="flex items-center gap-2 text-sm font-bold text-foreground">
                 <Store className="h-4 w-4 shrink-0 text-[#00FF87]" />
-                ¿Quieres tu propio codigo de referidos?
+                {copy.ownCodeTitle}
               </span>
               <span className="mt-1 block text-xs leading-relaxed text-[#6A7A9B]">
-                Da de alta un bar o prepara tu codigo personal para compartir Matchmind durante el Mundial.
+                {copy.ownCodeSubtitle}
               </span>
             </span>
             {isPartnerSignupOpen ? (
@@ -689,21 +692,21 @@ function ReferralsSection({
           {isPartnerSignupOpen && (
             <div className="border-t border-[#1A2845] px-4 py-4">
               <div className="mb-4 grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
-                <ReferralTabButton active={activeTab === "bars"} label="Bars" icon={Store} onClick={() => setActiveTab("bars")} />
-                <ReferralTabButton active={activeTab === "users"} label="Users" icon={UsersRound} onClick={() => setActiveTab("users")} />
+                <ReferralTabButton active={activeTab === "bars"} label={copy.barsTab} icon={Store} onClick={() => setActiveTab("bars")} />
+                <ReferralTabButton active={activeTab === "users"} label={copy.usersTab} icon={UsersRound} onClick={() => setActiveTab("users")} />
               </div>
 
               {activeTab === "users" ? (
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Invita amigos pronto</p>
+                  <p className="text-sm font-semibold text-foreground">{copy.usersSoonTitle}</p>
                   <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">
-                    Soon you will be able to invite friends and get perks on Matchmind.
+                    {copy.usersSoonCopy}
                   </p>
                 </div>
               ) : isLoading && !dashboard ? (
                 <div className="flex items-center gap-2 text-sm text-[#A8B4D0]">
                   <RefreshCw className="h-4 w-4 animate-spin text-[#00FF87]" />
-                  Cargando referrals...
+                  {copy.loading}
                 </div>
               ) : hasPartner ? (
                 <BarPartnerDashboard dashboard={dashboard} onCopyCode={copyCode} />
@@ -743,21 +746,18 @@ function BarPartnerForm({
   onUpdateField: (field: keyof typeof form, value: string | boolean) => void
   onSubmit: () => void
 }) {
+  const { t } = useLanguage()
+  const copy = t.profile.referrals
+
   return (
     <div>
-      <p className="text-sm font-semibold text-foreground">Colabora con Matchmind durante el Mundial</p>
+      <p className="text-sm font-semibold text-foreground">{copy.barIntroTitle}</p>
       <p className="mt-2 text-xs leading-relaxed text-[#A8B4D0]">
-        Si tienes un bar y compartes tu codigo con tus clientes, ellos tendran descuento en el World Pass y tu acumularas una comision por cada cliente que venga de tu bar y compre. El pago se hara al final del torneo.
+        {copy.barIntroCopy}
       </p>
 
       <ul className="mt-4 space-y-2 text-xs leading-relaxed text-[#A8B4D0]">
-        {[
-          "Tus clientes reciben descuento usando tu codigo.",
-          "Ganas €2 por cada cliente referido que compre el World Pass.",
-          "El pago se hara al final del Mundial.",
-          "Matchmind no acepta ni coloca apuestas.",
-          "Solo usamos tu telefono para contacto y pagos manuales.",
-        ].map((item) => (
+        {copy.barConditions.map((item) => (
           <li key={item} className="flex gap-2">
             <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#00FF87]" />
             <span>{item}</span>
@@ -766,10 +766,10 @@ function BarPartnerForm({
       </ul>
 
       <div className="mt-4 grid gap-3">
-        <ReferralInput label="Nombre del bar" value={form.business_name} onChange={(value) => onUpdateField("business_name", value)} />
-        <ReferralInput label="Ubicacion" value={form.location} onChange={(value) => onUpdateField("location", value)} />
-        <ReferralInput label="Persona responsable" value={form.responsible_name} onChange={(value) => onUpdateField("responsible_name", value)} />
-        <ReferralInput label="Telefono / Bizum" value={form.phone} onChange={(value) => onUpdateField("phone", value)} inputMode="tel" />
+        <ReferralInput label={copy.businessName} value={form.business_name} onChange={(value) => onUpdateField("business_name", value)} />
+        <ReferralInput label={copy.location} value={form.location} onChange={(value) => onUpdateField("location", value)} />
+        <ReferralInput label={copy.responsibleName} value={form.responsible_name} onChange={(value) => onUpdateField("responsible_name", value)} />
+        <ReferralInput label={copy.phone} value={form.phone} onChange={(value) => onUpdateField("phone", value)} inputMode="tel" />
       </div>
 
       <label className="mt-4 flex items-start gap-3 rounded-xl border border-[#1A2845] bg-[#070D1A] p-3 text-xs leading-relaxed text-[#A8B4D0]">
@@ -780,7 +780,7 @@ function BarPartnerForm({
           onChange={(event) => onUpdateField("terms_accepted", event.target.checked)}
         />
         <span>
-          Acepto que Matchmind use estos datos para gestionar mi codigo de partner, contactarme y procesar el pago manual de comisiones al final del torneo.
+          {copy.terms}
         </span>
       </label>
 
@@ -792,7 +792,7 @@ function BarPartnerForm({
         disabled={isCreating}
       >
         {isCreating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
-        Create bar code
+        {copy.createButton}
       </button>
     </div>
   )
@@ -805,11 +805,14 @@ function BarPartnerDashboard({
   dashboard: ReferralDashboardResponse | null
   onCopyCode: () => void
 }) {
+  const { t } = useLanguage()
+  const copy = t.profile.referrals
+
   if (!dashboard) return null
 
   return (
     <div>
-      <p className="text-sm font-semibold text-foreground">Tu codigo de bar</p>
+      <p className="text-sm font-semibold text-foreground">{copy.barCodeTitle}</p>
       <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/10 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-3xl font-black tracking-normal text-[#00FF87]">{dashboard.code}</p>
@@ -819,19 +822,19 @@ function BarPartnerDashboard({
             onClick={onCopyCode}
           >
             <Copy className="h-3.5 w-3.5" />
-            Copiar
+            {copy.copy}
           </button>
         </div>
-        <p className="text-xs leading-relaxed text-[#A8B4D0]">Comparte este codigo con tus clientes. Precio con codigo: €8.99 ({formatEuro(dashboard.discount_amount)} discount).</p>
+        <p className="text-xs leading-relaxed text-[#A8B4D0]">{copy.shareCode}</p>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <ReferralMetric label="Usuarios registrados" value={dashboard.registered_referrals.toString()} />
-        <ReferralMetric label="Usuarios que compraron" value={dashboard.paid_referrals.toString()} />
-        <ReferralMetric label="Comision estimada" value={formatEuro(dashboard.estimated_payout)} />
-        <ReferralMetric label="Pago esperado" value="Fin del Mundial" />
+        <ReferralMetric label={copy.registeredUsers} value={dashboard.registered_referrals.toString()} />
+        <ReferralMetric label={copy.paidUsers} value={dashboard.paid_referrals.toString()} />
+        <ReferralMetric label={copy.estimatedCommission} value={formatEuro(dashboard.estimated_payout)} />
+        <ReferralMetric label={copy.expectedPayment} value={copy.endOfWorldCup} />
       </div>
       <p className="mt-3 text-xs leading-relaxed text-[#6A7A9B]">
-        Las comisiones se revisaran y pagaran manualmente al final del torneo.
+        {copy.manualReview}
       </p>
     </div>
   )
@@ -854,15 +857,18 @@ function ReferralCodeApply({
   onCodeChange: (value: string) => void
   onApply: () => void
 }) {
+  const { t } = useLanguage()
+  const copy = t.profile.referrals
+
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">
         <Clipboard className="h-4 w-4 text-[#00FF87]" />
-        <p className="text-sm font-semibold text-foreground">Tengo un codigo de referido</p>
+        <p className="text-sm font-semibold text-foreground">{copy.applyTitle}</p>
       </div>
       {appliedReferral ? (
         <div className="rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
-          <p className="text-sm font-bold text-[#00FF87]">Codigo aplicado: {appliedReferral.code}</p>
+          <p className="text-sm font-bold text-[#00FF87]">{copy.appliedCode.replace("{code}", appliedReferral.code)}</p>
         </div>
       ) : (
         <>
@@ -871,7 +877,7 @@ function ReferralCodeApply({
               className="min-w-0 flex-1 rounded-xl border border-[#1A2845] bg-[#070D1A] px-3 py-2.5 text-sm font-semibold uppercase tracking-normal text-foreground outline-none focus:border-[#00FF87]/60"
               value={codeDraft}
               onChange={(event) => onCodeChange(event.target.value)}
-              placeholder="BAR"
+              placeholder={copy.applyPlaceholder}
               maxLength={80}
             />
             <button
@@ -880,7 +886,7 @@ function ReferralCodeApply({
               onClick={onApply}
               disabled={isApplying}
             >
-              {isApplying ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Aplicar"}
+              {isApplying ? <RefreshCw className="h-4 w-4 animate-spin" /> : copy.applyButton}
             </button>
           </div>
           {applyStatus && <p className="mt-2 text-xs font-semibold text-[#00FF87]">{applyStatus}</p>}
@@ -951,6 +957,21 @@ function ReferralTabButton({
 
 function formatEuro(value: number) {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
+}
+
+function translateReferralApiError(
+  error: unknown,
+  copy: ReturnType<typeof useLanguage>["t"]["profile"]["referrals"],
+  fallback: string,
+) {
+  if (!(error instanceof Error)) return fallback
+
+  const message = error.message
+  if (message === "This code does not exist.") return copy.codeNotFound
+  if (message === "You have already applied a code.") return copy.alreadyApplied
+  if (message === "You cannot apply your own referral code.") return copy.selfReferral
+  if (message === "This user already has a bar partner code.") return copy.alreadyHasPartner
+  return message || fallback
 }
 
 function StatusRow({
