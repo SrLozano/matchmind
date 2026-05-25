@@ -88,10 +88,12 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
         }
 
         with patch("app.services.payments.update_user_plan", new_callable=AsyncMock) as update_user_plan:
-            result = await handle_webhook_event(event)
+            with patch("app.services.payments.mark_referral_conversion", new_callable=AsyncMock) as mark_conversion:
+                result = await handle_webhook_event(event)
 
         self.assertEqual(result, {"received": True, "processed": True})
         update_user_plan.assert_awaited_once_with(USER_ID, "premium")
+        mark_conversion.assert_awaited_once_with(USER_ID, gross_amount=None)
 
 
 if __name__ == "__main__":

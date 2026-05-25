@@ -15,6 +15,7 @@ apps/api/
 │   │   ├── conversations.py
 │   │   ├── odds.py
 │   │   ├── polymarket.py
+│   │   ├── referrals.py
 │   │   ├── users.py
 │   │   └── world_cup.py
 │   ├── services/
@@ -24,12 +25,14 @@ apps/api/
 │   │   ├── gpt.py
 │   │   ├── odds_api.py
 │   │   ├── polymarket.py
+│   │   ├── referrals.py
 │   │   ├── supabase.py
 │   │   └── world_cup_teams.py
 │   └── models/
 │       ├── bets.py
 │       ├── chat.py
 │       ├── conversations.py
+│       ├── referrals.py
 │       └── users.py
 ├── tests/
 ├── .env.example
@@ -83,6 +86,10 @@ make api-test
 - `POST /odds/refresh` refreshes featured World Cup match and outright bookmaker odds. This is internal and requires `X-Internal-Token`.
 - `POST /payments/create-checkout-session` creates a Stripe Checkout Session for the one-time tournament pass. This requires a Supabase bearer token.
 - `POST /payments/webhook` receives Stripe webhooks, verifies `Stripe-Signature`, and upgrades users to `plan = 'premium'` on `checkout.session.completed`.
+- `POST /referrals/bar-partner` registers the authenticated user as a partner bar and generates a readable unique code.
+- `GET /referrals/me` returns the authenticated user's partner-bar dashboard plus any code they have applied.
+- `GET /referrals/validate/{code}` validates a public referral code and returns only the public partner name and discount.
+- `POST /referrals/apply` applies one referral code to the authenticated user.
 - `POST /bets` logs a manual bet for the authenticated user.
 - `GET /bets` returns the authenticated user's bet history plus tracker summary metrics.
 - `PATCH /bets/{bet_id}` updates one of the authenticated user's tracked bets and recalculates P&L.
@@ -389,6 +396,61 @@ create table if not exists public.bookmaker_market_consensus (
 create index if not exists idx_bookmaker_consensus_event_market
     on public.bookmaker_market_consensus(odds_api_event_id, market_key);
 
+create table if not exists public.referral_partners (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references public.users(id) on delete cascade,
+    partner_type text not null default 'bar' check (partner_type in ('bar')),
+    business_name text not null,
+    location text not null,
+    responsible_name text not null,
+    phone text not null,
+    status text not null default 'active' check (status in ('active', 'pending', 'paused')),
+    terms_accepted_at timestamptz not null,
+    created_at timestamptz not null default timezone('utc', now()),
+    updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_referral_partners_user_id
+    on public.referral_partners(user_id);
+
+create table if not exists public.referral_codes (
+    id uuid primary key default gen_random_uuid(),
+    code text unique not null check (code ~ '^[A-Z0-9]+$'),
+    owner_type text not null default 'bar_partner' check (owner_type in ('bar_partner')),
+    partner_id uuid not null references public.referral_partners(id) on delete cascade,
+    discount_type text not null default 'fixed_amount' check (discount_type in ('fixed_amount')),
+    discount_amount numeric(10, 2) not null default 1.00 check (discount_amount >= 0),
+    commission_amount numeric(10, 2) not null default 2.00 check (commission_amount >= 0),
+    active boolean not null default true,
+    starts_at timestamptz,
+    ends_at timestamptz,
+    created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_referral_codes_partner_id
+    on public.referral_codes(partner_id);
+
+create table if not exists public.referral_attributions (
+    id uuid primary key default gen_random_uuid(),
+    referred_user_id uuid not null references public.users(id) on delete cascade,
+    referral_code_id uuid not null references public.referral_codes(id) on delete restrict,
+    partner_id uuid not null references public.referral_partners(id) on delete restrict,
+    applied_at timestamptz not null default timezone('utc', now()),
+    converted_at timestamptz,
+    gross_amount numeric(10, 2),
+    discount_amount numeric(10, 2),
+    commission_amount numeric(10, 2),
+    payout_status text not null default 'pending' check (payout_status in ('pending', 'approved', 'paid', 'cancelled')),
+    created_at timestamptz not null default timezone('utc', now()),
+    unique (referred_user_id)
+);
+
+create index if not exists idx_referral_attributions_partner_id
+    on public.referral_attributions(partner_id);
+
+create index if not exists idx_referral_attributions_code_id
+    on public.referral_attributions(referral_code_id);
+
 grant usage on schema public to service_role;
 grant select, insert, update on public.users to service_role;
 grant select, insert, update on public.conversations to service_role;
@@ -400,6 +462,9 @@ grant select, insert, update on public.bookmaker_events to service_role;
 grant select, insert, update on public.bookmaker_odds to service_role;
 grant select, insert on public.bookmaker_odds_snapshots to service_role;
 grant select, insert, update on public.bookmaker_market_consensus to service_role;
+grant select, insert, update on public.referral_partners to service_role;
+grant select, insert, update on public.referral_codes to service_role;
+grant select, insert, update on public.referral_attributions to service_role;
 ```
 
 Seed a local dev user if you are using the default frontend env:

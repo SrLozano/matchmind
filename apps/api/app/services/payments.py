@@ -6,6 +6,7 @@ import stripe
 from fastapi import HTTPException, status
 
 from app.config import get_settings
+from app.services.referrals import mark_referral_conversion
 from app.services.supabase import update_user_plan
 
 
@@ -80,6 +81,9 @@ async def handle_checkout_session_completed(session: dict) -> bool:
         return False
 
     await update_user_plan(user_id, "premium")
+    amount_total = session.get("amount_total")
+    gross_amount = round(float(amount_total) / 100, 2) if isinstance(amount_total, int | float) else None
+    await mark_referral_conversion(user_id, gross_amount=gross_amount)
     return True
 
 

@@ -214,6 +214,68 @@ export type CheckoutSessionResponse = {
   url: string
 }
 
+export type ReferralPartner = {
+  id: string
+  user_id: string
+  partner_type: "bar"
+  business_name: string
+  location: string
+  responsible_name: string
+  status: string
+  terms_accepted_at: string
+  created_at: string
+  updated_at: string | null
+}
+
+export type AppliedReferral = {
+  code: string
+  partner_name: string
+  discount_amount: number
+  applied_at: string | null
+}
+
+export type ReferralDashboardResponse = {
+  has_bar_partner: boolean
+  partner: ReferralPartner | null
+  code: string | null
+  registered_referrals: number
+  paid_referrals: number
+  estimated_payout: number
+  commission_amount: number
+  discount_amount: number
+  applied_referral: AppliedReferral | null
+}
+
+export type CreateBarReferralPartnerPayload = {
+  business_name: string
+  location: string
+  responsible_name: string
+  phone: string
+  terms_accepted: boolean
+}
+
+export type CreateBarReferralPartnerResponse = {
+  partner_id: string
+  code: string
+  business_name: string
+  status: string
+}
+
+export type ValidateReferralCodeResponse = {
+  valid: boolean
+  code: string | null
+  partner_name: string | null
+  discount_amount: number | null
+  discount_label: string | null
+}
+
+export type ApplyReferralCodeResponse = {
+  applied: boolean
+  code: string
+  partner_name: string
+  discount_amount: number
+}
+
 function getApiUrl() {
   return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
 }
@@ -449,6 +511,60 @@ export async function createTournamentPassCheckoutSession(): Promise<CheckoutSes
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to start checkout. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function createBarReferralPartner(
+  payload: CreateBarReferralPartnerPayload,
+): Promise<CreateBarReferralPartnerResponse> {
+  const response = await apiFetch(`${getApiUrl()}/referrals/bar-partner`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to create your bar code. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function getMyReferralDashboard(): Promise<ReferralDashboardResponse> {
+  const response = await apiFetch(`${getApiUrl()}/referrals/me`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to load referrals. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function validateReferralCode(code: string): Promise<ValidateReferralCodeResponse> {
+  const response = await fetch(`${getApiUrl()}/referrals/validate/${encodeURIComponent(code)}`)
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to validate this code. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function applyReferralCode(code: string): Promise<ApplyReferralCodeResponse> {
+  const response = await apiFetch(`${getApiUrl()}/referrals/apply`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to apply this code. Try again in a moment."))
   }
 
   return response.json()

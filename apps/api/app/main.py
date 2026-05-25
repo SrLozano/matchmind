@@ -12,6 +12,7 @@ from app.routers.conversations import router as conversations_router
 from app.routers.odds import router as odds_router
 from app.routers.payments import router as payments_router
 from app.routers.polymarket import router as polymarket_router
+from app.routers.referrals import router as referrals_router
 from app.routers.users import router as users_router
 from app.routers.world_cup import router as world_cup_router
 from app.services.supabase import close_supabase, get_supabase, supabase_healthcheck
@@ -70,6 +71,7 @@ app.include_router(polymarket_router)
 app.include_router(odds_router)
 app.include_router(payments_router)
 app.include_router(bets_router)
+app.include_router(referrals_router)
 app.include_router(users_router)
 
 
