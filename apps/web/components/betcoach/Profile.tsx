@@ -48,6 +48,10 @@ export default function Profile({
   const usagePercent = isPremium ? 100 : Math.min((chatsUsed / chatLimit) * 100, 100)
   const isLowFreeQuota = !isPremium && visibleChatsRemaining <= 1
   const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
+  const appliedReferral = referralDashboard?.applied_referral ?? null
+  const hasAppliedReferral = Boolean(appliedReferral)
+  const standardPassPrice = 9.99
+  const referralPassPrice = Math.max(standardPassPrice - (appliedReferral?.discount_amount ?? 0), 0)
   const displayName = displayUserName({
     name: currentUser?.name,
     email: currentUser?.email,
@@ -333,7 +337,7 @@ export default function Profile({
           </div>
 
           {/* Upgrade card */}
-          <div className="mx-4 mb-3 shrink-0 rounded-2xl border border-[#00FF87]/30 bg-card p-4 sm:mx-5">
+          <div className={`mx-4 mb-3 shrink-0 rounded-2xl bg-card p-4 sm:mx-5 ${hasAppliedReferral ? "referral-banner-glow border border-[#00FF87]/50" : "border border-[#00FF87]/30"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-[190px] flex-1">
                 <div className="mb-2 flex items-center gap-2">
@@ -346,9 +350,22 @@ export default function Profile({
                   {t.profile.unlock}
                 </p>
               </div>
-              <div className="shrink-0 text-right">
-                <p className="text-xl font-black leading-none text-foreground">€9.99</p>
-                <p className="mt-1 text-[10px] text-[#6A7A9B]">{t.profile.oneTime}</p>
+              <div className="shrink-0 text-right" aria-live="polite">
+                {hasAppliedReferral ? (
+                  <div className="referral-price-pop">
+                    <p className="text-[11px] font-bold uppercase text-[#00FF87]">Codigo {appliedReferral?.code}</p>
+                    <div className="mt-1 flex items-end justify-end gap-2">
+                      <span className="text-sm font-bold leading-none text-[#6A7A9B] line-through">{formatEuro(standardPassPrice)}</span>
+                      <span className="text-2xl font-black leading-none text-[#00FF87]">{formatEuro(referralPassPrice)}</span>
+                    </div>
+                    <p className="mt-1 text-[10px] text-[#A8B4D0]">{formatEuro(appliedReferral?.discount_amount ?? 0)} de descuento</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xl font-black leading-none text-foreground">{formatEuro(standardPassPrice)}</p>
+                    <p className="mt-1 text-[10px] text-[#6A7A9B]">{t.profile.oneTime}</p>
+                  </>
+                )}
               </div>
             </div>
 
