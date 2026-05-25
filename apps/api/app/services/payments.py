@@ -36,10 +36,14 @@ async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
         metadata.update(
             {
                 "referral_code": str(referral["code"]),
-                "referral_partner_id": str(referral["partner_id"]),
                 "referral_attribution_id": str(referral["attribution_id"]),
+                "referral_owner_type": str(referral.get("owner_type") or ""),
             }
         )
+        if referral.get("partner_id"):
+            metadata["referral_partner_id"] = str(referral["partner_id"])
+        if referral.get("referrer_user_id"):
+            metadata["referral_referrer_user_id"] = str(referral["referrer_user_id"])
     app_url = settings.app_url.rstrip("/")
 
     session = stripe.checkout.Session.create(

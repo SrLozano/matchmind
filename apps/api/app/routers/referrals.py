@@ -6,12 +6,14 @@ from app.models.referrals import (
     BarPartnerCreate,
     BarPartnerCreateResponse,
     ReferralDashboardResponse,
+    UserReferralCodeCreateResponse,
     ValidateReferralCodeResponse,
 )
 from app.services.auth import require_authenticated_user
 from app.services.referrals import (
     apply_referral_code,
     create_bar_partner,
+    create_user_referral_code,
     get_referral_dashboard,
     validate_referral_code,
 )
@@ -26,6 +28,14 @@ async def create_bar_partner_endpoint(
 ) -> dict:
     authenticated_user = await require_authenticated_user(authorization)
     return await create_bar_partner(authenticated_user.id, payload)
+
+
+@router.post("/user-code", response_model=UserReferralCodeCreateResponse, status_code=status.HTTP_201_CREATED)
+async def create_user_referral_code_endpoint(
+    authorization: str | None = Header(default=None),
+) -> dict:
+    authenticated_user = await require_authenticated_user(authorization)
+    return await create_user_referral_code(authenticated_user.id)
 
 
 @router.get("/me", response_model=ReferralDashboardResponse)

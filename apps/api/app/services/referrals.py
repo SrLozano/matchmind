@@ -14,6 +14,7 @@ from app.services.supabase import get_supabase
 
 DEFAULT_DISCOUNT_AMOUNT = 1.0
 DEFAULT_COMMISSION_AMOUNT = 2.0
+USER_REFERRAL_COMMISSION_AMOUNT = 0.0
 LEADING_BUSINESS_WORDS = {
     "BAR",
     "CAFE",
@@ -45,6 +46,24 @@ def base_code_from_business_name(business_name: str) -> str:
     return base_code or "MATCHMIND"
 
 
+def base_code_from_user(user: dict[str, Any]) -> str:
+    raw_name = str(user.get("name") or "").strip()
+    raw_email = str(user.get("email") or "").strip()
+    if raw_name:
+        first_name = raw_name.split()[0]
+        return normalize_referral_code(first_name) or "MATCHMIND"
+    if raw_email and "@" in raw_email:
+        return normalize_referral_code(raw_email.split("@", 1)[0]) or "MATCHMIND"
+    return "MATCHMIND"
+
+
+def public_user_referrer_name(user: dict[str, Any] | None) -> str:
+    if not user:
+        return "Matchmind user"
+    name = " ".join(str(user.get("name") or "").strip().split())
+    return name or "Matchmind user"
+
+
 def discount_label(discount_amount: float) -> str:
     if float(discount_amount).is_integer():
         return f"€{int(discount_amount)} discount"
@@ -52,15 +71,20 @@ def discount_label(discount_amount: float) -> str:
 
 
 async def _ensure_user_exists(user_id: UUID) -> None:
+    await _get_user(user_id)
+
+
+async def _get_user(user_id: UUID) -> dict[str, Any]:
     client = await get_supabase()
-    response = await client.table("users").select("id").eq("id", str(user_id)).limit(1).execute()
+    response = await client.table("users").select("id, email, name").eq("id", str(user_id)).limit(1).execute()
     if not response.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not found.")
+    return response.data[0]
 
 
-async def generate_unique_code(business_name: str) -> str:
+async def generate_unique_code_from_base(base_code: str) -> str:
     client = await get_supabase()
-    base_code = base_code_from_business_name(business_name)
+    base_code = normalize_referral_code(base_code) or "MATCHMIND"
     for suffix in range(1, 1000):
         candidate = base_code if suffix == 1 else f"{base_code}{suffix}"
         existing = await client.table("referral_codes").select("id").eq("code", candidate).limit(1).execute()
@@ -71,6 +95,10 @@ async def generate_unique_code(business_name: str) -> str:
         status_code=status.HTTP_409_CONFLICT,
         detail="Unable to generate a unique referral code.",
     )
+
+
+async def generate_unique_code(business_name: str) -> str:
+    return await generate_unique_code_from_base(base_code_from_business_name(business_name))
 
 
 async def create_bar_partner(user_id: UUID, payload: BarPartnerCreate) -> dict[str, Any]:
@@ -139,7 +167,91 @@ async def create_bar_partner(user_id: UUID, payload: BarPartnerCreate) -> dict[s
     }
 
 
-async def _get_active_code(normalized_code: str) -> tuple[dict[str, Any], dict[str, Any]] | None:
+async def create_user_referral_code(user_id: UUID) -> dict[str, Any]:
+    user = await _get_user(user_id)
+    client = await get_supabase()
+    existing = (
+        await client.table("referral_codes")
+        .select("*")
+        .eq("owner_type", "user")
+        .eq("owner_user_id", str(user_id))
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        summary = await get_user_referral_summary(user_id)
+        return {
+            "code": existing.data[0]["code"],
+            "registered_referrals": summary["registered_referrals"],
+            "paid_referrals": summary["paid_referrals"],
+            "status_label": "Tracked",
+        }
+
+    code = await generate_unique_code_from_base(base_code_from_user(user))
+    code_response = (
+        await client.table("referral_codes")
+        .insert(
+            {
+                "code": code,
+                "owner_type": "user",
+                "owner_user_id": str(user_id),
+                "partner_id": None,
+                "discount_type": "fixed_amount",
+                "discount_amount": DEFAULT_DISCOUNT_AMOUNT,
+                "commission_amount": USER_REFERRAL_COMMISSION_AMOUNT,
+                "active": True,
+            }
+        )
+        .execute()
+    )
+    if not code_response.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create referral code.")
+
+    return {
+        "code": code_response.data[0]["code"],
+        "registered_referrals": 0,
+        "paid_referrals": 0,
+        "status_label": "Tracked",
+    }
+
+
+async def get_user_referral_summary(user_id: UUID) -> dict[str, Any]:
+    client = await get_supabase()
+    code_response = (
+        await client.table("referral_codes")
+        .select("*")
+        .eq("owner_type", "user")
+        .eq("owner_user_id", str(user_id))
+        .limit(1)
+        .execute()
+    )
+    if not code_response.data:
+        return {
+            "has_code": False,
+            "code": None,
+            "registered_referrals": 0,
+            "paid_referrals": 0,
+            "status_label": "Coming soon",
+        }
+
+    referral_code = code_response.data[0]
+    attributions_response = (
+        await client.table("referral_attributions")
+        .select("*")
+        .eq("referrer_user_id", str(user_id))
+        .execute()
+    )
+    attributions = attributions_response.data or []
+    return {
+        "has_code": True,
+        "code": referral_code["code"],
+        "registered_referrals": len(attributions),
+        "paid_referrals": sum(1 for attribution in attributions if attribution.get("converted_at")),
+        "status_label": "Tracked",
+    }
+
+
+async def _get_active_code(normalized_code: str) -> dict[str, Any] | None:
     client = await get_supabase()
     code_response = (
         await client.table("referral_codes")
@@ -153,17 +265,56 @@ async def _get_active_code(normalized_code: str) -> tuple[dict[str, Any], dict[s
         return None
 
     code = code_response.data[0]
-    partner_response = (
-        await client.table("referral_partners")
-        .select("*")
-        .eq("id", code["partner_id"])
-        .eq("status", "active")
-        .limit(1)
-        .execute()
-    )
-    if not partner_response.data:
-        return None
-    return code, partner_response.data[0]
+    if code.get("owner_type") == "bar_partner":
+        partner_id = code.get("partner_id")
+        if not partner_id:
+            return None
+        partner_response = (
+            await client.table("referral_partners")
+            .select("*")
+            .eq("id", partner_id)
+            .eq("status", "active")
+            .limit(1)
+            .execute()
+        )
+        if not partner_response.data:
+            return None
+        partner = partner_response.data[0]
+        return {
+            "code": code,
+            "owner_type": "bar_partner",
+            "partner": partner,
+            "partner_id": partner["id"],
+            "referrer_user_id": None,
+            "owner_name": partner["business_name"],
+            "owner_user_id": partner["user_id"],
+        }
+
+    if code.get("owner_type") == "user":
+        owner_user_id = code.get("owner_user_id")
+        if not owner_user_id:
+            return None
+        user_response = (
+            await client.table("users")
+            .select("id, email, name")
+            .eq("id", owner_user_id)
+            .limit(1)
+            .execute()
+        )
+        if not user_response.data:
+            return None
+        user = user_response.data[0]
+        return {
+            "code": code,
+            "owner_type": "user",
+            "partner": None,
+            "partner_id": None,
+            "referrer_user_id": user["id"],
+            "owner_name": public_user_referrer_name(user),
+            "owner_user_id": user["id"],
+        }
+
+    return None
 
 
 async def validate_referral_code(code: str) -> dict[str, Any]:
@@ -171,30 +322,31 @@ async def validate_referral_code(code: str) -> dict[str, Any]:
     if not normalized_code:
         return {"valid": False}
 
-    match = await _get_active_code(normalized_code)
-    if match is None:
+    context = await _get_active_code(normalized_code)
+    if context is None:
         return {"valid": False}
 
-    referral_code, partner = match
+    referral_code = context["code"]
     discount_amount = float(referral_code["discount_amount"])
     return {
         "valid": True,
         "code": referral_code["code"],
-        "partner_name": partner["business_name"],
+        "partner_name": context["owner_name"],
         "discount_amount": discount_amount,
         "discount_label": discount_label(discount_amount),
+        "owner_type": context["owner_type"],
     }
 
 
 async def apply_referral_code(user_id: UUID, code: str) -> dict[str, Any]:
     await _ensure_user_exists(user_id)
     normalized_code = normalize_referral_code(code)
-    match = await _get_active_code(normalized_code)
-    if match is None:
+    context = await _get_active_code(normalized_code)
+    if context is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This code does not exist.")
 
-    referral_code, partner = match
-    if str(partner["user_id"]) == str(user_id):
+    referral_code = context["code"]
+    if str(context["owner_user_id"]) == str(user_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot apply your own referral code.")
 
     client = await get_supabase()
@@ -214,7 +366,8 @@ async def apply_referral_code(user_id: UUID, code: str) -> dict[str, Any]:
             {
                 "referred_user_id": str(user_id),
                 "referral_code_id": referral_code["id"],
-                "partner_id": partner["id"],
+                "partner_id": context["partner_id"],
+                "referrer_user_id": context["referrer_user_id"],
                 "discount_amount": float(referral_code["discount_amount"]),
                 "commission_amount": float(referral_code["commission_amount"]),
                 "payout_status": "pending",
@@ -228,8 +381,9 @@ async def apply_referral_code(user_id: UUID, code: str) -> dict[str, Any]:
     return {
         "applied": True,
         "code": referral_code["code"],
-        "partner_name": partner["business_name"],
+        "partner_name": context["owner_name"],
         "discount_amount": float(referral_code["discount_amount"]),
+        "owner_type": context["owner_type"],
     }
 
 
@@ -246,6 +400,7 @@ async def get_referral_dashboard(user_id: UUID) -> dict[str, Any]:
     )
 
     applied_referral = await _get_applied_referral(user_id)
+    user_referral = await get_user_referral_summary(user_id)
     if not partners_response.data:
         return {
             "has_bar_partner": False,
@@ -257,6 +412,7 @@ async def get_referral_dashboard(user_id: UUID) -> dict[str, Any]:
             "commission_amount": DEFAULT_COMMISSION_AMOUNT,
             "discount_amount": DEFAULT_DISCOUNT_AMOUNT,
             "applied_referral": applied_referral,
+            "user_referral": user_referral,
         }
 
     partner = partners_response.data[0]
@@ -290,6 +446,7 @@ async def get_referral_dashboard(user_id: UUID) -> dict[str, Any]:
         "commission_amount": commission_amount,
         "discount_amount": discount_amount,
         "applied_referral": applied_referral,
+        "user_referral": user_referral,
     }
 
 
@@ -313,21 +470,39 @@ async def _get_applied_referral(user_id: UUID) -> dict[str, Any] | None:
         .limit(1)
         .execute()
     )
-    partner_response = (
-        await client.table("referral_partners")
-        .select("business_name")
-        .eq("id", attribution["partner_id"])
-        .limit(1)
-        .execute()
-    )
-    if not code_response.data or not partner_response.data:
+    if not code_response.data:
         return None
 
+    referral_code = code_response.data[0]
+    owner_name = "Matchmind"
+    owner_type = referral_code.get("owner_type")
+    if owner_type == "bar_partner" and attribution.get("partner_id"):
+        partner_response = (
+            await client.table("referral_partners")
+            .select("business_name")
+            .eq("id", attribution["partner_id"])
+            .limit(1)
+            .execute()
+        )
+        if not partner_response.data:
+            return None
+        owner_name = partner_response.data[0]["business_name"]
+    elif owner_type == "user" and attribution.get("referrer_user_id"):
+        user_response = (
+            await client.table("users")
+            .select("id, email, name")
+            .eq("id", attribution["referrer_user_id"])
+            .limit(1)
+            .execute()
+        )
+        owner_name = public_user_referrer_name(user_response.data[0] if user_response.data else None)
+
     return {
-        "code": code_response.data[0]["code"],
-        "partner_name": partner_response.data[0]["business_name"],
-        "discount_amount": float(attribution.get("discount_amount") or code_response.data[0]["discount_amount"]),
+        "code": referral_code["code"],
+        "partner_name": owner_name,
+        "discount_amount": float(attribution.get("discount_amount") or referral_code["discount_amount"]),
         "applied_at": attribution.get("applied_at"),
+        "owner_type": owner_type,
     }
 
 
@@ -335,7 +510,7 @@ async def get_applied_referral_for_checkout(user_id: UUID) -> dict[str, Any] | N
     client = await get_supabase()
     attribution_response = (
         await client.table("referral_attributions")
-        .select("id, referral_code_id, partner_id, discount_amount")
+        .select("id, referral_code_id, partner_id, referrer_user_id, discount_amount")
         .eq("referred_user_id", str(user_id))
         .limit(1)
         .execute()
@@ -346,7 +521,7 @@ async def get_applied_referral_for_checkout(user_id: UUID) -> dict[str, Any] | N
     attribution = attribution_response.data[0]
     code_response = (
         await client.table("referral_codes")
-        .select("code, discount_amount, active")
+        .select("code, discount_amount, active, owner_type, partner_id, owner_user_id")
         .eq("id", attribution["referral_code_id"])
         .limit(1)
         .execute()
@@ -358,7 +533,9 @@ async def get_applied_referral_for_checkout(user_id: UUID) -> dict[str, Any] | N
     return {
         "attribution_id": attribution["id"],
         "code": referral_code["code"],
-        "partner_id": attribution["partner_id"],
+        "owner_type": referral_code.get("owner_type"),
+        "partner_id": attribution.get("partner_id"),
+        "referrer_user_id": attribution.get("referrer_user_id"),
         "discount_amount": float(attribution.get("discount_amount") or referral_code["discount_amount"]),
     }
 

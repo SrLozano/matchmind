@@ -74,7 +74,9 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
         referral = {
             "attribution_id": "attr_123",
             "code": "CERVANTES",
+            "owner_type": "bar_partner",
             "partner_id": "partner_123",
+            "referrer_user_id": None,
             "discount_amount": 1.0,
         }
         with patch("app.services.payments.get_settings", return_value=payment_settings()):
@@ -86,8 +88,39 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(created_kwargs["line_items"], [{"price": "price_tournament_pass_referral", "quantity": 1}])
         self.assertEqual(created_kwargs["metadata"]["checkout_price_type"], "referral")
         self.assertEqual(created_kwargs["metadata"]["referral_code"], "CERVANTES")
+        self.assertEqual(created_kwargs["metadata"]["referral_owner_type"], "bar_partner")
         self.assertEqual(created_kwargs["metadata"]["referral_partner_id"], "partner_123")
         self.assertEqual(created_kwargs["metadata"]["referral_attribution_id"], "attr_123")
+        self.assertNotIn("referral_referrer_user_id", created_kwargs["metadata"])
+
+    async def test_checkout_session_uses_referral_price_for_user_owned_applied_code(self) -> None:
+        created_kwargs = {}
+
+        def fake_create(**kwargs):
+            created_kwargs.update(kwargs)
+            return SimpleNamespace(url="https://checkout.stripe.com/c/test")
+
+        referral = {
+            "attribution_id": "attr_user_123",
+            "code": "MARIO",
+            "owner_type": "user",
+            "partner_id": None,
+            "referrer_user_id": "referrer_123",
+            "discount_amount": 1.0,
+        }
+        with patch("app.services.payments.get_settings", return_value=payment_settings()):
+            with patch("app.services.payments.get_applied_referral_for_checkout", new_callable=AsyncMock, return_value=referral):
+                with patch("app.services.payments.stripe.checkout.Session.create", side_effect=fake_create):
+                    checkout_url = await create_tournament_pass_checkout_session(USER_ID)
+
+        self.assertEqual(checkout_url, "https://checkout.stripe.com/c/test")
+        self.assertEqual(created_kwargs["line_items"], [{"price": "price_tournament_pass_referral", "quantity": 1}])
+        self.assertEqual(created_kwargs["metadata"]["checkout_price_type"], "referral")
+        self.assertEqual(created_kwargs["metadata"]["referral_code"], "MARIO")
+        self.assertEqual(created_kwargs["metadata"]["referral_owner_type"], "user")
+        self.assertEqual(created_kwargs["metadata"]["referral_referrer_user_id"], "referrer_123")
+        self.assertEqual(created_kwargs["metadata"]["referral_attribution_id"], "attr_user_123")
+        self.assertNotIn("referral_partner_id", created_kwargs["metadata"])
 
     async def test_create_checkout_endpoint_uses_authenticated_user(self) -> None:
         with patch(

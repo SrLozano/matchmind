@@ -87,7 +87,8 @@ make api-test
 - `POST /payments/create-checkout-session` creates a Stripe Checkout Session for the one-time tournament pass. This requires a Supabase bearer token.
 - `POST /payments/webhook` receives Stripe webhooks, verifies `Stripe-Signature`, and upgrades users to `plan = 'premium'` on `checkout.session.completed`.
 - `POST /referrals/bar-partner` registers the authenticated user as a partner bar and generates a readable unique code.
-- `GET /referrals/me` returns the authenticated user's partner-bar dashboard plus any code they have applied.
+- `POST /referrals/user-code` creates or returns the authenticated user's personal referral code.
+- `GET /referrals/me` returns the authenticated user's partner-bar dashboard, personal referral metrics, plus any code they have applied.
 - `GET /referrals/validate/{code}` validates a public referral code and returns only the public partner name and discount.
 - `POST /referrals/apply` applies one referral code to the authenticated user.
 - `POST /bets` logs a manual bet for the authenticated user.
@@ -416,25 +417,35 @@ create index if not exists idx_referral_partners_user_id
 create table if not exists public.referral_codes (
     id uuid primary key default gen_random_uuid(),
     code text unique not null check (code ~ '^[A-Z0-9]+$'),
-    owner_type text not null default 'bar_partner' check (owner_type in ('bar_partner')),
-    partner_id uuid not null references public.referral_partners(id) on delete cascade,
+    owner_type text not null default 'bar_partner' check (owner_type in ('bar_partner', 'user')),
+    partner_id uuid references public.referral_partners(id) on delete cascade,
+    owner_user_id uuid references public.users(id) on delete cascade,
     discount_type text not null default 'fixed_amount' check (discount_type in ('fixed_amount')),
     discount_amount numeric(10, 2) not null default 1.00 check (discount_amount >= 0),
     commission_amount numeric(10, 2) not null default 2.00 check (commission_amount >= 0),
     active boolean not null default true,
     starts_at timestamptz,
     ends_at timestamptz,
-    created_at timestamptz not null default timezone('utc', now())
+    created_at timestamptz not null default timezone('utc', now()),
+    check (
+        (owner_type = 'bar_partner' and partner_id is not null and owner_user_id is null)
+        or
+        (owner_type = 'user' and owner_user_id is not null and partner_id is null)
+    )
 );
 
 create index if not exists idx_referral_codes_partner_id
     on public.referral_codes(partner_id);
 
+create index if not exists idx_referral_codes_owner_user_id
+    on public.referral_codes(owner_user_id);
+
 create table if not exists public.referral_attributions (
     id uuid primary key default gen_random_uuid(),
     referred_user_id uuid not null references public.users(id) on delete cascade,
     referral_code_id uuid not null references public.referral_codes(id) on delete restrict,
-    partner_id uuid not null references public.referral_partners(id) on delete restrict,
+    partner_id uuid references public.referral_partners(id) on delete restrict,
+    referrer_user_id uuid references public.users(id) on delete restrict,
     applied_at timestamptz not null default timezone('utc', now()),
     converted_at timestamptz,
     gross_amount numeric(10, 2),
@@ -442,7 +453,12 @@ create table if not exists public.referral_attributions (
     commission_amount numeric(10, 2),
     payout_status text not null default 'pending' check (payout_status in ('pending', 'approved', 'paid', 'cancelled')),
     created_at timestamptz not null default timezone('utc', now()),
-    unique (referred_user_id)
+    unique (referred_user_id),
+    check (
+        (partner_id is not null and referrer_user_id is null)
+        or
+        (partner_id is null and referrer_user_id is not null)
+    )
 );
 
 create index if not exists idx_referral_attributions_partner_id
@@ -450,6 +466,9 @@ create index if not exists idx_referral_attributions_partner_id
 
 create index if not exists idx_referral_attributions_code_id
     on public.referral_attributions(referral_code_id);
+
+create index if not exists idx_referral_attributions_referrer_user_id
+    on public.referral_attributions(referrer_user_id);
 
 grant usage on schema public to service_role;
 grant select, insert, update on public.users to service_role;

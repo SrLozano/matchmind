@@ -10,8 +10,11 @@ from app.models.referrals import BarPartnerCreate
 from app.services.referrals import (
     apply_referral_code,
     base_code_from_business_name,
+    base_code_from_user,
     create_bar_partner,
+    create_user_referral_code,
     get_referral_dashboard,
+    mark_referral_conversion,
     normalize_referral_code,
     validate_referral_code,
 )
@@ -97,9 +100,9 @@ def seeded_client() -> FakeSupabase:
     return FakeSupabase(
         {
             "users": [
-                {"id": str(PARTNER_USER_ID)},
-                {"id": str(REFERRED_USER_ID)},
-                {"id": str(OTHER_USER_ID)},
+                {"id": str(PARTNER_USER_ID), "name": "Carlos Garcia", "email": "carlos@example.com"},
+                {"id": str(REFERRED_USER_ID), "name": "Mario Lozano", "email": "mario@example.com"},
+                {"id": str(OTHER_USER_ID), "name": "Alex Perez", "email": "alex@example.com"},
             ],
             "referral_partners": [
                 {
@@ -122,6 +125,7 @@ def seeded_client() -> FakeSupabase:
                     "code": "CERVANTES",
                     "owner_type": "bar_partner",
                     "partner_id": partner_id,
+                    "owner_user_id": None,
                     "discount_type": "fixed_amount",
                     "discount_amount": 1.0,
                     "commission_amount": 2.0,
@@ -139,6 +143,11 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(base_code_from_business_name("Bar Cervantes"), "CERVANTES")
         self.assertEqual(normalize_referral_code(" cervantes "), "CERVANTES")
         self.assertEqual(normalize_referral_code("Cervantes 20%"), "CERVANTES20")
+
+    def test_personal_code_base_uses_name_or_email_and_normalizes(self) -> None:
+        self.assertEqual(base_code_from_user({"name": "Marío Lozano", "email": "mario@example.com"}), "MARIO")
+        self.assertEqual(base_code_from_user({"name": "", "email": "ana.soto@example.com"}), "ANASOTO")
+        self.assertEqual(base_code_from_user({"name": "", "email": ""}), "MATCHMIND")
 
     async def test_creates_bar_partner_and_generates_correct_code(self) -> None:
         client = FakeSupabase({"users": [{"id": str(PARTNER_USER_ID)}]})
@@ -207,6 +216,105 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.status_code, 400)
         self.assertEqual(raised.exception.detail, "You cannot apply your own referral code.")
 
+    async def test_creates_personal_user_referral_code(self) -> None:
+        client = FakeSupabase({"users": [{"id": str(REFERRED_USER_ID), "name": "Mario Lozano", "email": "mario@example.com"}]})
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            response = await create_user_referral_code(REFERRED_USER_ID)
+
+        self.assertEqual(response["code"], "MARIO")
+        self.assertEqual(response["registered_referrals"], 0)
+        self.assertEqual(client.tables["referral_codes"][0]["owner_type"], "user")
+        self.assertEqual(client.tables["referral_codes"][0]["owner_user_id"], str(REFERRED_USER_ID))
+        self.assertIsNone(client.tables["referral_codes"][0]["partner_id"])
+        self.assertEqual(client.tables["referral_codes"][0]["commission_amount"], 0.0)
+
+    async def test_duplicate_personal_code_gets_numeric_suffix(self) -> None:
+        client = FakeSupabase(
+            {
+                "users": [{"id": str(REFERRED_USER_ID), "name": "Mario Lozano", "email": "mario@example.com"}],
+                "referral_codes": [{"id": str(uuid4()), "code": "MARIO"}],
+            }
+        )
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            response = await create_user_referral_code(REFERRED_USER_ID)
+
+        self.assertEqual(response["code"], "MARIO2")
+
+    async def test_validates_user_owned_code(self) -> None:
+        client = seeded_client()
+        user_code_id = str(uuid4())
+        client.tables["referral_codes"].append(
+            {
+                "id": user_code_id,
+                "code": "MARIO",
+                "owner_type": "user",
+                "partner_id": None,
+                "owner_user_id": str(REFERRED_USER_ID),
+                "discount_type": "fixed_amount",
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+                "active": True,
+            }
+        )
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            response = await validate_referral_code("mario")
+
+        self.assertTrue(response["valid"])
+        self.assertEqual(response["code"], "MARIO")
+        self.assertEqual(response["partner_name"], "Mario Lozano")
+        self.assertEqual(response["owner_type"], "user")
+
+    async def test_applies_user_owned_code_to_another_user(self) -> None:
+        client = seeded_client()
+        code_id = str(uuid4())
+        client.tables["referral_codes"].append(
+            {
+                "id": code_id,
+                "code": "MARIO",
+                "owner_type": "user",
+                "partner_id": None,
+                "owner_user_id": str(REFERRED_USER_ID),
+                "discount_type": "fixed_amount",
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+                "active": True,
+            }
+        )
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            response = await apply_referral_code(OTHER_USER_ID, "MARIO")
+
+        self.assertTrue(response["applied"])
+        self.assertEqual(response["owner_type"], "user")
+        self.assertEqual(client.tables["referral_attributions"][0]["referrer_user_id"], str(REFERRED_USER_ID))
+        self.assertIsNone(client.tables["referral_attributions"][0]["partner_id"])
+
+    async def test_blocks_self_referral_for_user_owned_code(self) -> None:
+        client = seeded_client()
+        client.tables["referral_codes"].append(
+            {
+                "id": str(uuid4()),
+                "code": "MARIO",
+                "owner_type": "user",
+                "partner_id": None,
+                "owner_user_id": str(REFERRED_USER_ID),
+                "discount_type": "fixed_amount",
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+                "active": True,
+            }
+        )
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            with self.assertRaises(HTTPException) as raised:
+                await apply_referral_code(REFERRED_USER_ID, "MARIO")
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertEqual(raised.exception.detail, "You cannot apply your own referral code.")
+
     async def test_calculates_basic_dashboard_metrics(self) -> None:
         client = seeded_client()
         partner = client.tables["referral_partners"][0]
@@ -217,6 +325,7 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
                 "referred_user_id": str(REFERRED_USER_ID),
                 "referral_code_id": code["id"],
                 "partner_id": partner["id"],
+                "referrer_user_id": None,
                 "converted_at": "2026-06-12T10:00:00+00:00",
                 "discount_amount": 1.0,
                 "commission_amount": 2.0,
@@ -226,6 +335,7 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
                 "referred_user_id": str(OTHER_USER_ID),
                 "referral_code_id": code["id"],
                 "partner_id": partner["id"],
+                "referrer_user_id": None,
                 "converted_at": None,
                 "discount_amount": 1.0,
                 "commission_amount": 2.0,
@@ -240,6 +350,89 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(dashboard["registered_referrals"], 2)
         self.assertEqual(dashboard["paid_referrals"], 1)
         self.assertEqual(dashboard["estimated_payout"], 2.0)
+
+    async def test_dashboard_includes_user_referral_metrics(self) -> None:
+        client = seeded_client()
+        user_code_id = str(uuid4())
+        client.tables["referral_codes"].append(
+            {
+                "id": user_code_id,
+                "code": "MARIO",
+                "owner_type": "user",
+                "partner_id": None,
+                "owner_user_id": str(REFERRED_USER_ID),
+                "discount_type": "fixed_amount",
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+                "active": True,
+            }
+        )
+        client.tables["referral_attributions"] = [
+            {
+                "id": str(uuid4()),
+                "referred_user_id": str(PARTNER_USER_ID),
+                "referral_code_id": user_code_id,
+                "partner_id": None,
+                "referrer_user_id": str(REFERRED_USER_ID),
+                "converted_at": "2026-06-12T10:00:00+00:00",
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+            },
+            {
+                "id": str(uuid4()),
+                "referred_user_id": str(OTHER_USER_ID),
+                "referral_code_id": user_code_id,
+                "partner_id": None,
+                "referrer_user_id": str(REFERRED_USER_ID),
+                "converted_at": None,
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+            },
+        ]
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            dashboard = await get_referral_dashboard(REFERRED_USER_ID)
+
+        self.assertEqual(dashboard["user_referral"]["code"], "MARIO")
+        self.assertEqual(dashboard["user_referral"]["registered_referrals"], 2)
+        self.assertEqual(dashboard["user_referral"]["paid_referrals"], 1)
+        self.assertEqual(dashboard["user_referral"]["status_label"], "Tracked")
+
+    async def test_referral_conversion_appears_in_user_referral_paid_metrics(self) -> None:
+        client = seeded_client()
+        user_code_id = str(uuid4())
+        client.tables["referral_codes"].append(
+            {
+                "id": user_code_id,
+                "code": "MARIO",
+                "owner_type": "user",
+                "partner_id": None,
+                "owner_user_id": str(REFERRED_USER_ID),
+                "discount_type": "fixed_amount",
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+                "active": True,
+            }
+        )
+        client.tables["referral_attributions"] = [
+            {
+                "id": str(uuid4()),
+                "referred_user_id": str(OTHER_USER_ID),
+                "referral_code_id": user_code_id,
+                "partner_id": None,
+                "referrer_user_id": str(REFERRED_USER_ID),
+                "converted_at": None,
+                "discount_amount": 1.0,
+                "commission_amount": 0.0,
+            }
+        ]
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            converted = await mark_referral_conversion(OTHER_USER_ID, gross_amount=8.99)
+            dashboard = await get_referral_dashboard(REFERRED_USER_ID)
+
+        self.assertTrue(converted)
+        self.assertEqual(dashboard["user_referral"]["paid_referrals"], 1)
 
 
 if __name__ == "__main__":

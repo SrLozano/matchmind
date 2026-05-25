@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AlertCircle, Check, ChevronDown, ChevronRight, Clipboard, Copy, Crown, FileText, Globe2, GraduationCap, Handshake, LockKeyhole, MessageCircleMore, Pencil, PlayCircle, RefreshCw, Save, ShieldCheck, Store, UserRound, UsersRound, X } from "lucide-react"
-import { applyReferralCode, createBarReferralPartner, getMyReferralDashboard, type CurrentUser, type ReferralDashboardResponse, updateCurrentUserName, updateCurrentUserProfile } from "@/lib/api"
+import { applyReferralCode, createBarReferralPartner, createUserReferralCode, getMyReferralDashboard, type CurrentUser, type ReferralDashboardResponse, updateCurrentUserName, updateCurrentUserProfile } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
@@ -547,6 +547,8 @@ function ReferralsSection({
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isCreatingUserCode, setIsCreatingUserCode] = useState(false)
+  const [userCodeError, setUserCodeError] = useState<string | null>(null)
   const [codeDraft, setCodeDraft] = useState("")
   const [applyStatus, setApplyStatus] = useState<string | null>(null)
   const [applyError, setApplyError] = useState<string | null>(null)
@@ -554,6 +556,7 @@ function ReferralsSection({
   const [isPartnerSignupOpen, setIsPartnerSignupOpen] = useState(false)
   const hasPartner = Boolean(dashboard?.has_bar_partner)
   const appliedReferral = dashboard?.applied_referral ?? null
+  const userReferral = dashboard?.user_referral ?? null
 
   const updateField = (field: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -593,6 +596,19 @@ function ReferralsSection({
     }
   }
 
+  const createPersonalCode = async () => {
+    setIsCreatingUserCode(true)
+    setUserCodeError(null)
+    try {
+      await createUserReferralCode()
+      onRefresh()
+    } catch (requestError) {
+      setUserCodeError(translateReferralApiError(requestError, copy, copy.userCreateError))
+    } finally {
+      setIsCreatingUserCode(false)
+    }
+  }
+
   const applyCode = async () => {
     const normalizedCode = codeDraft.trim().toUpperCase()
     if (!normalizedCode) {
@@ -615,10 +631,10 @@ function ReferralsSection({
     }
   }
 
-  const copyCode = async () => {
-    if (!dashboard?.code) return
+  const copyCode = async (code: string | null | undefined) => {
+    if (!code) return
     try {
-      await navigator.clipboard.writeText(dashboard.code)
+      await navigator.clipboard.writeText(code)
     } catch {
       return
     }
@@ -697,19 +713,21 @@ function ReferralsSection({
               </div>
 
               {activeTab === "users" ? (
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{copy.usersSoonTitle}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">
-                    {copy.usersSoonCopy}
-                  </p>
-                </div>
+                <UserReferralPanel
+                  userReferral={userReferral}
+                  isLoading={isLoading}
+                  isCreating={isCreatingUserCode}
+                  error={userCodeError}
+                  onCreate={createPersonalCode}
+                  onCopyCode={() => copyCode(userReferral?.code)}
+                />
               ) : isLoading && !dashboard ? (
                 <div className="flex items-center gap-2 text-sm text-[#A8B4D0]">
                   <RefreshCw className="h-4 w-4 animate-spin text-[#00FF87]" />
                   {copy.loading}
                 </div>
               ) : hasPartner ? (
-                <BarPartnerDashboard dashboard={dashboard} onCopyCode={copyCode} />
+                <BarPartnerDashboard dashboard={dashboard} onCopyCode={() => copyCode(dashboard?.code)} />
               ) : (
                 <BarPartnerForm
                   form={form}
@@ -836,6 +854,91 @@ function BarPartnerDashboard({
       <p className="mt-3 text-xs leading-relaxed text-[#6A7A9B]">
         {copy.manualReview}
       </p>
+    </div>
+  )
+}
+
+function UserReferralPanel({
+  userReferral,
+  isLoading,
+  isCreating,
+  error,
+  onCreate,
+  onCopyCode,
+}: {
+  userReferral: ReferralDashboardResponse["user_referral"] | null
+  isLoading: boolean
+  isCreating: boolean
+  error: string | null
+  onCreate: () => void
+  onCopyCode: () => void
+}) {
+  const { t } = useLanguage()
+  const copy = t.profile.referrals
+  const hasCode = Boolean(userReferral?.has_code && userReferral.code)
+
+  if (isLoading && !userReferral) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-[#A8B4D0]">
+        <RefreshCw className="h-4 w-4 animate-spin text-[#00FF87]" />
+        {copy.loading}
+      </div>
+    )
+  }
+
+  if (!hasCode) {
+    return (
+      <div>
+        <p className="text-sm font-semibold text-foreground">{copy.userInviteTitle}</p>
+        <p className="mt-2 text-xs leading-relaxed text-[#A8B4D0]">
+          {copy.userInviteCopy}
+        </p>
+
+        <ul className="mt-4 space-y-2 text-xs leading-relaxed text-[#A8B4D0]">
+          {copy.userInviteBullets.map((item) => (
+            <li key={item} className="flex gap-2">
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#00FF87]" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+
+        {error && <p className="mt-3 text-xs font-semibold text-[#FF6B6B]">{error}</p>}
+        <button
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#00FF87] py-3 text-sm font-bold text-[#070D1A] transition-colors hover:bg-[#00e87a] disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          onClick={onCreate}
+          disabled={isCreating}
+        >
+          {isCreating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <UsersRound className="h-4 w-4" />}
+          {copy.userCreateButton}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-foreground">{copy.userCodeTitle}</p>
+      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-3xl font-black tracking-normal text-[#00FF87]">{userReferral?.code}</p>
+          <button
+            className="inline-flex items-center gap-2 rounded-lg border border-[#00FF87]/30 bg-[#070D1A] px-3 py-2 text-xs font-bold text-[#00FF87] transition-colors hover:bg-[#0F1C35]"
+            type="button"
+            onClick={onCopyCode}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {copy.copy}
+          </button>
+        </div>
+        <p className="text-xs leading-relaxed text-[#A8B4D0]">{copy.userShareCode}</p>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <ReferralMetric label={copy.friendsRegistered} value={(userReferral?.registered_referrals ?? 0).toString()} />
+        <ReferralMetric label={copy.friendsPurchased} value={(userReferral?.paid_referrals ?? 0).toString()} />
+        <ReferralMetric label={copy.perks} value={copy.perksComingSoon} />
+      </div>
     </div>
   )
 }

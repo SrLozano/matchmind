@@ -232,6 +232,15 @@ export type AppliedReferral = {
   partner_name: string
   discount_amount: number
   applied_at: string | null
+  owner_type: "bar_partner" | "user" | null
+}
+
+export type UserReferralSummary = {
+  has_code: boolean
+  code: string | null
+  registered_referrals: number
+  paid_referrals: number
+  status_label: string
 }
 
 export type ReferralDashboardResponse = {
@@ -244,6 +253,7 @@ export type ReferralDashboardResponse = {
   commission_amount: number
   discount_amount: number
   applied_referral: AppliedReferral | null
+  user_referral: UserReferralSummary
 }
 
 export type CreateBarReferralPartnerPayload = {
@@ -261,12 +271,20 @@ export type CreateBarReferralPartnerResponse = {
   status: string
 }
 
+export type CreateUserReferralCodeResponse = {
+  code: string
+  registered_referrals: number
+  paid_referrals: number
+  status_label: string
+}
+
 export type ValidateReferralCodeResponse = {
   valid: boolean
   code: string | null
   partner_name: string | null
   discount_amount: number | null
   discount_label: string | null
+  owner_type: "bar_partner" | "user" | null
 }
 
 export type ApplyReferralCodeResponse = {
@@ -274,6 +292,7 @@ export type ApplyReferralCodeResponse = {
   code: string
   partner_name: string
   discount_amount: number
+  owner_type: "bar_partner" | "user" | null
 }
 
 function getApiUrl() {
@@ -529,6 +548,18 @@ export async function createBarReferralPartner(
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to create your bar code. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function createUserReferralCode(): Promise<CreateUserReferralCodeResponse> {
+  const response = await apiFetch(`${getApiUrl()}/referrals/user-code`, {
+    method: "POST",
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to create your referral code. Try again in a moment."))
   }
 
   return response.json()

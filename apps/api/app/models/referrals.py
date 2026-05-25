@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+ReferralOwnerType = Literal["bar_partner", "user"]
+
 
 class BarPartnerCreate(BaseModel):
     user_id: UUID | None = None
@@ -40,8 +42,9 @@ class ReferralPartnerResponse(BaseModel):
 class ReferralCodeResponse(BaseModel):
     id: UUID
     code: str
-    owner_type: Literal["bar_partner"]
-    partner_id: UUID
+    owner_type: ReferralOwnerType
+    partner_id: UUID | None = None
+    owner_user_id: UUID | None = None
     discount_type: Literal["fixed_amount"]
     discount_amount: float
     commission_amount: float
@@ -58,6 +61,21 @@ class BarPartnerCreateResponse(BaseModel):
     status: str
 
 
+class UserReferralSummary(BaseModel):
+    has_code: bool
+    code: str | None = None
+    registered_referrals: int = 0
+    paid_referrals: int = 0
+    status_label: str = "Coming soon"
+
+
+class UserReferralCodeCreateResponse(BaseModel):
+    code: str
+    registered_referrals: int = 0
+    paid_referrals: int = 0
+    status_label: str = "Tracked"
+
+
 class ApplyReferralCodeRequest(BaseModel):
     user_id: UUID | None = None
     code: str = Field(..., min_length=1, max_length=80)
@@ -68,6 +86,7 @@ class ApplyReferralCodeResponse(BaseModel):
     code: str
     partner_name: str
     discount_amount: float
+    owner_type: ReferralOwnerType | None = None
 
 
 class ValidateReferralCodeResponse(BaseModel):
@@ -76,6 +95,7 @@ class ValidateReferralCodeResponse(BaseModel):
     partner_name: str | None = None
     discount_amount: float | None = None
     discount_label: str | None = None
+    owner_type: ReferralOwnerType | None = None
 
 
 class AppliedReferralResponse(BaseModel):
@@ -83,6 +103,7 @@ class AppliedReferralResponse(BaseModel):
     partner_name: str
     discount_amount: float
     applied_at: datetime | None = None
+    owner_type: ReferralOwnerType | None = None
 
 
 class ReferralDashboardResponse(BaseModel):
@@ -95,3 +116,4 @@ class ReferralDashboardResponse(BaseModel):
     commission_amount: float = 2.0
     discount_amount: float = 1.0
     applied_referral: AppliedReferralResponse | None = None
+    user_referral: UserReferralSummary = Field(default_factory=UserReferralSummary)
