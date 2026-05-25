@@ -92,13 +92,28 @@ async def _get_user(user_id: UUID) -> dict[str, Any]:
     return response.data[0]
 
 
-async def ensure_user_profile(user_id: UUID, email: str | None = None) -> dict[str, Any]:
+def _normalize_user_name(name: str | None) -> str | None:
+    if name is None:
+        return None
+    normalized = " ".join(str(name).strip().split())
+    if not normalized:
+        return None
+    return normalized[:80]
+
+
+async def ensure_user_profile(user_id: UUID, email: str | None = None, name: str | None = None) -> dict[str, Any]:
     client = await get_supabase()
     existing = await client.table("users").select("*").eq("id", str(user_id)).limit(1).execute()
+    normalized_name = _normalize_user_name(name)
     if existing.data:
         user = existing.data[0]
+        updates = {}
         if email and user.get("email") != email:
-            updated = await client.table("users").update({"email": email}).eq("id", str(user_id)).execute()
+            updates["email"] = email
+        if normalized_name and not user.get("name"):
+            updates["name"] = normalized_name
+        if updates:
+            updated = await client.table("users").update(updates).eq("id", str(user_id)).execute()
             return updated.data[0] if updated.data else user
         return user
 
@@ -108,6 +123,7 @@ async def ensure_user_profile(user_id: UUID, email: str | None = None) -> dict[s
             {
                 "id": str(user_id),
                 "email": email,
+                "name": normalized_name,
                 "plan": "free",
                 "daily_chat_count": 0,
                 "last_reset_date": date.today().isoformat(),
@@ -133,6 +149,7 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
     return {
         "id": user["id"],
         "email": user.get("email"),
+        "name": user.get("name"),
         "plan": plan,
         "daily_chat_count": chat_count,
         "daily_chat_count_limit": chat_usage["chat_count_limit"],
@@ -143,6 +160,23 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
         "last_reset_date": user.get("last_reset_date"),
         "created_at": user.get("created_at"),
     }
+
+
+async def update_user_profile(user_id: UUID, name: str) -> dict[str, Any]:
+    normalized_name = _normalize_user_name(name)
+    if normalized_name is None:
+        raise ValueError("Name is required.")
+
+    client = await get_supabase()
+    response = (
+        await client.table("users")
+        .update({"name": normalized_name})
+        .eq("id", str(user_id))
+        .execute()
+    )
+    if not response.data:
+        raise ValueError("User not found.")
+    return await get_user_profile(user_id)
 
 
 async def update_user_plan(user_id: UUID, plan: str) -> dict[str, Any]:

@@ -15,6 +15,7 @@ from app.services.supabase import ensure_user_profile
 class AuthenticatedUser:
     id: UUID
     email: str | None = None
+    name: str | None = None
 
 
 def bearer_token(authorization: str | None) -> str | None:
@@ -54,8 +55,10 @@ async def get_authenticated_user(authorization: str | None) -> AuthenticatedUser
     payload = response.json()
     user_id = UUID(str(payload["id"]))
     email = payload.get("email")
-    await ensure_user_profile(user_id, email=email)
-    return AuthenticatedUser(id=user_id, email=email)
+    metadata = payload.get("user_metadata") if isinstance(payload.get("user_metadata"), dict) else {}
+    name = metadata.get("name") or metadata.get("full_name")
+    await ensure_user_profile(user_id, email=email, name=name)
+    return AuthenticatedUser(id=user_id, email=email, name=name)
 
 
 async def require_authenticated_user(authorization: str | None) -> AuthenticatedUser:

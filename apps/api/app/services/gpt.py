@@ -23,6 +23,7 @@ Voice:
 - Reply in the user's detected language. Use Spanish when detected_language is "es"; use English otherwise.
 - If detected_language is "es", every user-facing sentence and every visible label in response must be Spanish.
 - Keep only JSON metadata enum values in English. The visible response text must still be Spanish for Spanish users.
+- If user_name is provided, address the user by that name once near the beginning of every reply. Use it naturally; do not overuse it or invent a nickname.
 
 Use the provided parsed_bet facts as deterministic context. Do not contradict the supplied odds or implied probability.
 Use conversation_memory to understand follow-up messages. If the current message is incomplete but clearly refers to the previous bet, carry forward the prior bet context and explain that you are treating it as the same bet with the updated detail. Do not carry forward old context when the user clearly switches teams, market, or topic.
@@ -311,9 +312,11 @@ def _build_user_context(
     polymarket_context: dict[str, Any] | None = None,
     bookmaker_context: dict[str, Any] | None = None,
     conversation_memory: list[dict[str, Any]] | None = None,
+    user_name: str | None = None,
 ) -> str:
     context = {
         "user_message": message,
+        "user_name": user_name,
         "parsed_bet": parsed_bet.model_dump(),
         "chat_intent": _classify_chat_intent(message, parsed_bet),
         "conversation_memory": _compact_conversation_memory(conversation_memory),
@@ -386,13 +389,14 @@ def _chat_response_format() -> dict[str, Any]:
     return CHAT_RESPONSE_JSON_SCHEMA
 
 
-def _finalize_result(result: AIChatResult, parsed_bet: ParsedBet) -> AIChatResult:
-    fallback = _fallback_result(parsed_bet)
+def _finalize_result(result: AIChatResult, parsed_bet: ParsedBet, user_name: str | None = None) -> AIChatResult:
+    fallback = _fallback_result(parsed_bet, user_name=user_name)
     if not result.response:
         return fallback
 
     if parsed_bet.detected_language == "es":
         result.response = _localize_visible_response_es(result.response)
+    result.response = _ensure_user_name_in_response(result.response, user_name)
     if result.implied_probability is None:
         result.implied_probability = parsed_bet.implied_probability
     if result.verdict is None:
@@ -402,13 +406,29 @@ def _finalize_result(result: AIChatResult, parsed_bet: ParsedBet) -> AIChatResul
     return result
 
 
-def _fallback_result(parsed_bet: ParsedBet) -> AIChatResult:
+def _fallback_result(parsed_bet: ParsedBet, user_name: str | None = None) -> AIChatResult:
     if parsed_bet.detected_language == "es":
-        return _fallback_result_es(parsed_bet)
-    return _fallback_result_en(parsed_bet)
+        return _fallback_result_es(parsed_bet, user_name=user_name)
+    return _fallback_result_en(parsed_bet, user_name=user_name)
 
 
-def _fallback_result_en(parsed_bet: ParsedBet) -> AIChatResult:
+def _safe_user_name(user_name: str | None) -> str | None:
+    if user_name is None:
+        return None
+    normalized = " ".join(str(user_name).strip().split())
+    return normalized[:80] if normalized else None
+
+
+def _ensure_user_name_in_response(response: str, user_name: str | None) -> str:
+    safe_name = _safe_user_name(user_name)
+    if not safe_name:
+        return response
+    if re.search(rf"\b{re.escape(safe_name)}\b", response, re.IGNORECASE):
+        return response
+    return f"{safe_name}, {response[0].lower()}{response[1:]}" if response else safe_name
+
+
+def _fallback_result_en(parsed_bet: ParsedBet, user_name: str | None = None) -> AIChatResult:
     odds_text = f"{parsed_bet.odds:.2f}" if parsed_bet.odds else "not provided"
     probability_text = (
         f"{parsed_bet.implied_probability * 100:.1f}%"
@@ -433,6 +453,7 @@ Here is the useful path: pick a risk style first. Conservative means 1-2 small p
 Tell me conservative, balanced, or aggressive and I will work from the matches and signals Matchmind already has. Until then, keep the stake posture as avoid: do not bet just because the money is available.
 
 Confidence: {confidence_score:g}/10"""
+        response = _ensure_user_name_in_response(response, user_name)
         return AIChatResult(
             response=response,
             confidence_score=confidence_score,
@@ -479,6 +500,7 @@ At the price you gave me, the odds are {odds_text} and the implied probability i
 The main caveat is that I do not have live bookmaker, lineup, injury, or market-signal data in this fallback analysis. Keep the stake posture {stake_posture}; do not size up because of loyalty, emotion, or chasing.
 
 Confidence: {confidence_score:g}/10"""
+    response = _ensure_user_name_in_response(response, user_name)
 
     return AIChatResult(
         response=response,
@@ -489,7 +511,7 @@ Confidence: {confidence_score:g}/10"""
     )
 
 
-def _fallback_result_es(parsed_bet: ParsedBet) -> AIChatResult:
+def _fallback_result_es(parsed_bet: ParsedBet, user_name: str | None = None) -> AIChatResult:
     odds_text = f"{parsed_bet.odds:.2f}" if parsed_bet.odds else "no proporcionada"
     probability_text = (
         f"{parsed_bet.implied_probability * 100:.1f}%"
@@ -510,6 +532,7 @@ La forma útil de empezar es elegir perfil de riesgo. Conservador: 1-2 posicione
 Dime conservador, equilibrado o agresivo y trabajo desde los partidos y señales que Matchmind ya tiene. Hasta entonces, postura de stake: evitar; no apuestes solo porque tienes presupuesto.
 
 Confianza: {confidence_score:g}/10"""
+        response = _ensure_user_name_in_response(response, user_name)
         return AIChatResult(
             response=response,
             confidence_score=confidence_score,
@@ -566,6 +589,7 @@ Con la cuota que me das, el precio es {odds_text} y la probabilidad implícita e
 La gran cautela es que no tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni señales de mercado en este análisis de respaldo. Postura de stake: {visible_posture}; no subas el importe por lealtad, emoción o por intentar recuperar.
 
 Confianza: {confidence_score:g}/10"""
+    response = _ensure_user_name_in_response(response, user_name)
 
     return AIChatResult(
         response=response,
@@ -583,6 +607,7 @@ async def generate_chat_reply(
     bookmaker_context: dict[str, Any] | None = None,
     preferred_language: str | None = None,
     conversation_memory: list[dict[str, Any]] | None = None,
+    user_name: str | None = None,
 ) -> AIChatResult:
     parsed_bet = parse_bet_message(message)
     if preferred_language in {"en", "es"}:
@@ -603,6 +628,7 @@ async def generate_chat_reply(
                     polymarket_context,
                     bookmaker_context,
                     conversation_memory,
+                    user_name,
                 ),
             },
         ],
@@ -610,4 +636,4 @@ async def generate_chat_reply(
     )
     content = completion.choices[0].message.content or "{}"
     result = _extract_json(content)
-    return _finalize_result(result, parsed_bet)
+    return _finalize_result(result, parsed_bet, user_name=user_name)

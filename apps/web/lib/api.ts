@@ -100,6 +100,7 @@ export type UserPlan = "free" | "premium"
 export type CurrentUser = {
   id: string
   email: string | null
+  name: string | null
   plan: UserPlan
   daily_chat_count: number
   daily_chat_count_limit: number | null
@@ -359,6 +360,22 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Unable to load your profile. Try again in a moment."))
+  }
+
+  return response.json()
+}
+
+export async function updateCurrentUserName(name: string): Promise<CurrentUser> {
+  const response = await apiFetch(`${getApiUrl()}/users/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Unable to update your profile. Try again in a moment."))
   }
 
   return response.json()

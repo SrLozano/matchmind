@@ -49,6 +49,7 @@ async def chat(payload: ChatRequest, authorization: str | None = Header(default=
             bookmaker_context,
             preferred_language=payload.preferred_language,
             conversation_memory=user_context.previous_messages,
+            user_name=user_context.user.get("name"),
         )
         saved_turn = await user_context.save_assistant_turn(
             ai_result.response,

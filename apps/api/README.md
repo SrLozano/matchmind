@@ -69,7 +69,8 @@ make api-test
 ## Endpoints
 
 - `GET /health` checks API and Supabase connectivity.
-- `GET /users/me` returns the authenticated user's plan and chat usage. Requires a Supabase bearer token unless `ALLOW_DEV_AUTH_FALLBACK=true`.
+- `GET /users/me` returns the authenticated user's name, plan, and chat usage. Requires a Supabase bearer token unless `ALLOW_DEV_AUTH_FALLBACK=true`.
+- `PATCH /users/me` updates the authenticated user's display name.
 - `GET /world-cup/fixtures` returns cached 2026 World Cup fixture context from Supabase/memory.
 - `POST /world-cup/refresh` refreshes fixtures from API-Football. This is internal and requires `X-Internal-Token` matching `INTERNAL_API_TOKEN`.
 - `GET /polymarket/signals` returns compact active World Cup 2026 prediction-market signals from Supabase/memory.
@@ -188,6 +189,7 @@ create extension if not exists "pgcrypto";
 create table if not exists public.users (
     id uuid primary key default gen_random_uuid(),
     email text unique,
+    name text,
     plan text not null default 'free' check (plan in ('free', 'premium')),
     daily_chat_count integer not null default 0,
     last_reset_date date not null default current_date,

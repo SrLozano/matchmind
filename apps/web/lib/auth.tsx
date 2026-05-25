@@ -12,7 +12,7 @@ type AuthContextValue = {
   user: User | null
   authError: string | null
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>
+  signUp: (email: string, password: string, name: string) => Promise<{ needsConfirmation: boolean }>
   signInWithGoogle: () => Promise<void>
   requestPasswordReset: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
@@ -133,10 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw error
         }
       },
-      async signUp(email, password) {
+      async signUp(email, password, name) {
         if (!supabase) return { needsConfirmation: false }
         setAuthError(null)
-        const { data, error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name,
+              full_name: name,
+            },
+          },
+        })
         if (error) {
           setAuthError(error.message)
           throw error

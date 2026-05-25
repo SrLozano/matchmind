@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, HelpCircle, LockKeyhole, MessageCircleMore, RefreshCw, ShieldCheck, UserRound } from "lucide-react"
-import { type CurrentUser } from "@/lib/api"
+import { useEffect, useState } from "react"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, HelpCircle, LockKeyhole, MessageCircleMore, Pencil, RefreshCw, Save, ShieldCheck, UserRound, X } from "lucide-react"
+import { type CurrentUser, updateCurrentUserName } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 import SectionHeader from "./SectionHeader"
@@ -24,6 +24,10 @@ export default function Profile({
   const { isConfigured, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [openInfoSection, setOpenInfoSection] = useState<string | null>(null)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(currentUser?.name ?? "")
+  const [isSavingName, setIsSavingName] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
   const isPremium = currentUser?.plan === "premium"
   const chatLimit = currentUser?.chat_count_limit ?? currentUser?.daily_chat_count_limit ?? 5
   const chatsUsed = currentUser?.daily_chat_count ?? 0
@@ -32,7 +36,8 @@ export default function Profile({
   const usagePercent = isPremium ? 100 : Math.min((chatsUsed / chatLimit) * 100, 100)
   const isLowFreeQuota = !isPremium && visibleChatsRemaining <= 1
   const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
-  const accountLabel = currentUser?.email ?? t.profile.matchmindUser
+  const displayName = currentUser?.name?.trim() || t.profile.matchmindUser
+  const accountLabel = currentUser?.email ?? t.profile.account
   const menuItems = [
     {
       id: "responsible",
@@ -53,6 +58,29 @@ export default function Profile({
     },
   ]
 
+  useEffect(() => {
+    setNameDraft(currentUser?.name ?? "")
+  }, [currentUser?.name])
+
+  const saveName = async () => {
+    const nextName = nameDraft.trim()
+    if (!nextName) {
+      setNameError(t.profile.nameRequired)
+      return
+    }
+    setIsSavingName(true)
+    setNameError(null)
+    try {
+      await updateCurrentUserName(nextName)
+      setIsEditingName(false)
+      onRetryUser()
+    } catch (error) {
+      setNameError(error instanceof Error ? error.message : t.profile.nameSaveError)
+    } finally {
+      setIsSavingName(false)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col overflow-y-auto pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
       <SectionHeader icon={UserRound} title={t.profile.title} subtitle={t.profile.subtitle} />
@@ -65,8 +93,52 @@ export default function Profile({
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-bold text-foreground">{accountLabel}</p>
-          <p className="text-xs text-[#6A7A9B]">{t.profile.account}</p>
+          {isEditingName ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-[#1A2845] bg-[#070D1A] px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-[#00FF87]/60"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                maxLength={80}
+                aria-label={t.profile.name}
+              />
+              <button
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#00FF87] text-[#070D1A] disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label={t.profile.saveName}
+                onClick={() => void saveName()}
+                disabled={isSavingName}
+                type="button"
+              >
+                {isSavingName ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </button>
+              <button
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#1A2845] text-[#6A7A9B] transition-colors hover:text-foreground"
+                aria-label={t.profile.cancelNameEdit}
+                onClick={() => {
+                  setIsEditingName(false)
+                  setNameDraft(currentUser?.name ?? "")
+                  setNameError(null)
+                }}
+                type="button"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-base font-bold text-foreground">{displayName}</p>
+              <button
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#1A2845] text-[#6A7A9B] transition-colors hover:border-[#00FF87]/50 hover:text-[#00FF87]"
+                aria-label={t.profile.editName}
+                onClick={() => setIsEditingName(true)}
+                type="button"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <p className="truncate text-xs text-[#6A7A9B]">{accountLabel}</p>
+          {nameError && <p className="mt-1 text-xs font-semibold text-[#FF6B6B]">{nameError}</p>}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <div className={`rounded-full px-2.5 py-0.5 ${isPremium ? "border border-[#00FF87]/25 bg-[#00FF87]/10" : "bg-[#1A2845]"}`}>
               <span className={`text-[10px] font-semibold uppercase tracking-wide ${isPremium ? "text-[#00FF87]" : "text-[#6A7A9B]"}`}>
