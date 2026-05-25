@@ -358,7 +358,6 @@ export default function Profile({
                       <span className="text-sm font-bold leading-none text-[#6A7A9B] line-through">{formatEuro(standardPassPrice)}</span>
                       <span className="text-2xl font-black leading-none text-[#00FF87]">{formatEuro(referralPassPrice)}</span>
                     </div>
-                    <p className="mt-1 text-[10px] text-[#A8B4D0]">{formatEuro(appliedReferral?.discount_amount ?? 0)} de descuento</p>
                   </div>
                 ) : (
                   <>
@@ -549,6 +548,7 @@ function ReferralsSection({
   const [applyStatus, setApplyStatus] = useState<string | null>(null)
   const [applyError, setApplyError] = useState<string | null>(null)
   const [isApplying, setIsApplying] = useState(false)
+  const [isPartnerSignupOpen, setIsPartnerSignupOpen] = useState(false)
   const hasPartner = Boolean(dashboard?.has_bar_partner)
   const appliedReferral = dashboard?.applied_referral ?? null
 
@@ -602,7 +602,7 @@ function ReferralsSection({
     setApplyStatus(null)
     try {
       const response = await applyReferralCode(normalizedCode)
-      setApplyStatus(`Codigo aplicado: ${response.code}. Tendras ${formatEuro(response.discount_amount)} de descuento en el World Pass.`)
+      setApplyStatus(`Codigo aplicado: ${response.code}. Veras tu precio actualizado en el World Pass.`)
       setCodeDraft("")
       onRefresh()
     } catch (requestError) {
@@ -624,10 +624,10 @@ function ReferralsSection({
   return (
     <section className="mx-4 mb-3 shrink-0 overflow-hidden rounded-2xl border border-[#1A2845] bg-card sm:mx-5">
       <div className="border-b border-[#1A2845] px-4 py-3.5">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Handshake className="h-4 w-4 shrink-0 text-[#00FF87]" />
-            <h2 className="text-sm font-bold text-foreground">Referrals</h2>
+            <h2 className="text-sm font-bold text-foreground">Referidos</h2>
           </div>
           <button
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#1A2845] text-[#6A7A9B] transition-colors hover:border-[#00FF87]/50 hover:text-[#00FF87]"
@@ -638,10 +638,6 @@ function ReferralsSection({
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </button>
         </div>
-        <div className="grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
-          <ReferralTabButton active={activeTab === "bars"} label="Bars" icon={Store} onClick={() => setActiveTab("bars")} />
-          <ReferralTabButton active={activeTab === "users"} label="Users" icon={UsersRound} onClick={() => setActiveTab("users")} />
-        </div>
       </div>
 
       {error && (
@@ -650,50 +646,80 @@ function ReferralsSection({
         </div>
       )}
 
-      {activeTab === "users" ? (
+      <div className="divide-y divide-[#1A2845]">
         <div className="px-4 py-4">
-          <p className="text-sm font-semibold text-foreground">Invita amigos pronto</p>
-          <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">
-            Soon you will be able to invite friends and get perks on Matchmind.
-          </p>
+          <ReferralCodeApply
+            appliedReferral={appliedReferral}
+            codeDraft={codeDraft}
+            applyStatus={applyStatus}
+            applyError={applyError}
+            isApplying={isApplying}
+            onCodeChange={(value) => {
+              setCodeDraft(value.toUpperCase())
+              setApplyError(null)
+              setApplyStatus(null)
+            }}
+            onApply={applyCode}
+          />
         </div>
-      ) : (
-        <div className="divide-y divide-[#1A2845]">
-          <div className="px-4 py-4">
-            {isLoading && !dashboard ? (
-              <div className="flex items-center gap-2 text-sm text-[#A8B4D0]">
-                <RefreshCw className="h-4 w-4 animate-spin text-[#00FF87]" />
-                Cargando referrals...
-              </div>
-            ) : hasPartner ? (
-              <BarPartnerDashboard dashboard={dashboard} onCopyCode={copyCode} />
+
+        <div>
+          <button
+            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35]"
+            type="button"
+            onClick={() => setIsPartnerSignupOpen((isOpen) => !isOpen)}
+            aria-expanded={isPartnerSignupOpen}
+          >
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Store className="h-4 w-4 shrink-0 text-[#00FF87]" />
+                ¿Quieres tu propio codigo de referidos?
+              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-[#6A7A9B]">
+                Da de alta un bar o prepara tu codigo personal para compartir Matchmind durante el Mundial.
+              </span>
+            </span>
+            {isPartnerSignupOpen ? (
+              <ChevronDown className="h-4 w-4 shrink-0 text-[#6A7A9B]" />
             ) : (
-              <BarPartnerForm
-                form={form}
-                formError={formError}
-                isCreating={isCreating}
-                onUpdateField={updateField}
-                onSubmit={createPartner}
-              />
+              <ChevronRight className="h-4 w-4 shrink-0 text-[#6A7A9B]" />
             )}
-          </div>
-          <div className="px-4 py-4">
-            <ReferralCodeApply
-              appliedReferral={appliedReferral}
-              codeDraft={codeDraft}
-              applyStatus={applyStatus}
-              applyError={applyError}
-              isApplying={isApplying}
-              onCodeChange={(value) => {
-                setCodeDraft(value.toUpperCase())
-                setApplyError(null)
-                setApplyStatus(null)
-              }}
-              onApply={applyCode}
-            />
-          </div>
+          </button>
+
+          {isPartnerSignupOpen && (
+            <div className="border-t border-[#1A2845] px-4 py-4">
+              <div className="mb-4 grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
+                <ReferralTabButton active={activeTab === "bars"} label="Bars" icon={Store} onClick={() => setActiveTab("bars")} />
+                <ReferralTabButton active={activeTab === "users"} label="Users" icon={UsersRound} onClick={() => setActiveTab("users")} />
+              </div>
+
+              {activeTab === "users" ? (
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Invita amigos pronto</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">
+                    Soon you will be able to invite friends and get perks on Matchmind.
+                  </p>
+                </div>
+              ) : isLoading && !dashboard ? (
+                <div className="flex items-center gap-2 text-sm text-[#A8B4D0]">
+                  <RefreshCw className="h-4 w-4 animate-spin text-[#00FF87]" />
+                  Cargando referrals...
+                </div>
+              ) : hasPartner ? (
+                <BarPartnerDashboard dashboard={dashboard} onCopyCode={copyCode} />
+              ) : (
+                <BarPartnerForm
+                  form={form}
+                  formError={formError}
+                  isCreating={isCreating}
+                  onUpdateField={updateField}
+                  onSubmit={createPartner}
+                />
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </section>
   )
 }
@@ -838,7 +864,7 @@ function ReferralCodeApply({
         <div className="rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
           <p className="text-sm font-bold text-[#00FF87]">Codigo aplicado: {appliedReferral.code}</p>
           <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">
-            Tendras {formatEuro(appliedReferral.discount_amount)} de descuento en el World Pass. Por ahora no se puede cambiar el codigo aplicado.
+            Veras tu precio actualizado en el World Pass. Por ahora no se puede cambiar el codigo aplicado.
           </p>
         </div>
       ) : (
