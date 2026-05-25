@@ -91,7 +91,7 @@ class GPTResponseParsingTest(unittest.TestCase):
 
         self.assertIn("Resumen rápido:", result.response)
         self.assertIn("Confianza:", result.response)
-        self.assertEqual(result.verdict, "RISKY")
+        self.assertEqual(result.verdict, "FAIR")
         self.assertEqual(result.stake_posture, "very small")
         self.assertEqual(result.implied_probability, 0.7692)
 

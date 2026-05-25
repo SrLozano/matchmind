@@ -12,6 +12,8 @@ import {
   type CurrentUser,
 } from "@/lib/api"
 import { useLanguage } from "@/lib/i18n"
+import { usePreferences } from "@/lib/preferences"
+import { ConceptTip } from "./ConceptTip"
 
 type Message = {
   id: number
@@ -36,6 +38,7 @@ export default function ChatCoach({
   onShowUpgradePrompt: () => void
 }) {
   const { language, t } = useLanguage()
+  const { isBeginner, isAdvanced } = usePreferences()
   const getInitialMessages = () => [
     {
       id: 1,
@@ -292,24 +295,32 @@ export default function ChatCoach({
     return (
       <div className="mb-3 flex flex-wrap gap-1.5">
         {verdict && (
-          <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${verdictTone(message.verdict)}`}>
-            {t.chat.verdict}: {verdict}
-          </span>
+          <ConceptTip concept="verdict" subtle>
+            <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${verdictTone(message.verdict)}`}>
+              {t.chat.verdict}: {verdict}
+            </span>
+          </ConceptTip>
         )}
         {confidence && (
-          <span className="rounded-md border border-[#00FF87]/25 bg-[#00FF87]/5 px-2 py-1 text-[10px] font-semibold text-[#00FF87]">
-            {t.chat.confidence}: {confidence}/10
-          </span>
+          <ConceptTip concept="confidence" subtle>
+            <span className="rounded-md border border-[#00FF87]/25 bg-[#00FF87]/5 px-2 py-1 text-[10px] font-semibold text-[#00FF87]">
+              {t.chat.confidence}: {confidence}/10
+            </span>
+          </ConceptTip>
         )}
         {stakePosture && (
-          <span className="rounded-md border border-[#FFD600]/25 bg-[#FFD600]/5 px-2 py-1 text-[10px] font-semibold text-[#FFD600]">
-            {t.chat.stake}: {stakePosture}
-          </span>
+          <ConceptTip concept="stake" subtle>
+            <span className="rounded-md border border-[#FFD600]/25 bg-[#FFD600]/5 px-2 py-1 text-[10px] font-semibold text-[#FFD600]">
+              {t.chat.stake}: {stakePosture}
+            </span>
+          </ConceptTip>
         )}
         {impliedProbability && (
-          <span className="rounded-md border border-[#6A7A9B]/30 bg-[#6A7A9B]/10 px-2 py-1 text-[10px] font-semibold text-[#D7DEEF]">
-            {t.chat.impliedProbability}: {impliedProbability}
-          </span>
+          <ConceptTip concept="impliedProbability" subtle>
+            <span className="rounded-md border border-[#6A7A9B]/30 bg-[#6A7A9B]/10 px-2 py-1 text-[10px] font-semibold text-[#D7DEEF]">
+              {t.chat.impliedProbability}: {impliedProbability}
+            </span>
+          </ConceptTip>
         )}
       </div>
     )
@@ -374,12 +385,28 @@ export default function ChatCoach({
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
-              {t.chat.crowdProbability}
+              <ConceptTip concept="crowdProbability" label={t.chat.crowdProbability} subtle />
             </p>
             <p className="text-sm font-semibold text-[#00FF87]">
               {formatPercent(signal.implied_probability)}
             </p>
           </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              <ConceptTip concept="signalQuality" label={t.chat.quality} subtle />
+            </p>
+            <p className="text-sm font-semibold text-foreground">
+              {formatQualityLabel(signal.signal_quality_score, language, t)}
+            </p>
+          </div>
+        </div>
+        {(!isBeginner || isAdvanced) && (
+          <details className="group mt-2 rounded-lg border border-[#1A2845] bg-[#0A1325]/70 px-3 py-2" open={isAdvanced}>
+            <summary className="flex cursor-pointer list-none items-center justify-between text-[11px] font-semibold text-[#A8B4D0]">
+              <span>{t.chat.details}</span>
+              <span className="transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#1A2845] pt-2">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
               {t.chat.liquidity}
@@ -404,7 +431,9 @@ export default function ChatCoach({
               {signal.signal_quality_score ?? "—"}/100
             </p>
           </div>
-        </div>
+            </div>
+          </details>
+        )}
       </div>
     )
   }
@@ -597,4 +626,11 @@ export default function ChatCoach({
       </div>
     </div>
   )
+}
+
+function formatQualityLabel(value: number | null, language: "en" | "es", t: ReturnType<typeof useLanguage>["t"]) {
+  if (typeof value !== "number") return "—"
+  if (value >= 75) return t.signals.strongSignal
+  if (value >= 50) return t.signals.mediumSignal
+  return t.signals.thinSignal
 }

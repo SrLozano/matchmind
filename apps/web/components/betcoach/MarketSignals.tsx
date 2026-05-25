@@ -7,6 +7,8 @@ import { Activity, AlertCircle, Crown, RefreshCw } from "lucide-react"
 import { getMarketSignals, type MarketSignal } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage, type Language } from "@/lib/i18n"
+import { usePreferences } from "@/lib/preferences"
+import { ConceptTip } from "./ConceptTip"
 import SectionHeader from "./SectionHeader"
 
 const FREE_SIGNAL_COUNT = 3
@@ -152,6 +154,7 @@ function SignalRow({
   onShowUpgradePrompt: () => void
 }) {
   const { t } = useLanguage()
+  const { isAdvanced } = usePreferences()
   const quality = signal.signal_quality_score
   const displayTitle = locked ? t.signals.lockedSignal : formatSignalTitle(signal, language, t.feed.unknownTeam)
   const metricValue = locked ? t.feed.locked : undefined
@@ -186,7 +189,7 @@ function SignalRow({
               </p>
             </div>
             <p className="mt-1 text-[11px] font-medium text-[#6A7A9B]">
-              {locked ? t.signals.lockedCopy : formatMarketType(signal.market_type, language)}
+              {locked ? t.signals.lockedCopy : formatSignalSummary(signal, language)}
             </p>
           </div>
 
@@ -198,7 +201,7 @@ function SignalRow({
           ) : (
             <div className="shrink-0 rounded-lg border border-[#00FF87]/20 bg-[#00FF87]/5 px-2.5 py-1.5 text-right">
               <p className="text-[9px] uppercase tracking-wide text-[#6A7A9B]">
-                {t.feed.crowdProbability}
+                <ConceptTip concept="crowdProbability" label={t.feed.crowdProbability} subtle />
               </p>
               <p className="text-base font-bold leading-tight text-[#00FF87]">
                 {formatPercent(signal.implied_probability, t.feed.noValue)}
@@ -207,27 +210,35 @@ function SignalRow({
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-          <SignalMetric label={t.feed.liquidity} value={metricValue ?? signal.liquidity_label ?? t.feed.noValue} />
-          <SignalMetric
-            label={t.feed.signalQuality}
-            value={metricValue ?? (typeof quality === "number" ? `${quality}/100` : t.feed.noValue)}
-            accent={locked ? "text-[#E8D39A]" : getSignalQualityClass(quality)}
-          />
-          <SignalMetric label={t.feed.marketType} value={metricValue ?? formatMarketType(signal.market_type, language)} wide />
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+              locked ? "border-[#D8B866]/25 bg-[#D8B866]/8 text-[#E8D39A]" : getSignalQualityBadgeClass(quality)
+            }`}
+          >
+            {metricValue ?? formatQualityLabel(quality, t)}
+          </span>
+          {!locked && (
+            <span className="text-[11px] font-medium text-[#6A7A9B]">
+              {formatMarketType(signal.market_type, language)}
+            </span>
+          )}
         </div>
 
         {shouldShowMarketDetails && (
-          <details className="group mt-3 rounded-lg border border-[#1A2845] bg-[#0A1325]/70 px-3 py-2">
+          <details className="group mt-3 rounded-lg border border-[#1A2845] bg-[#0A1325]/70 px-3 py-2" open={isAdvanced}>
             <summary className="cursor-pointer list-none text-[11px] font-semibold text-[#6A7A9B] transition-colors hover:text-[#A8B4D0]">
-              <span>{t.signals.originalMarket}</span>
+              <span>{t.signals.details}</span>
               <span className="ml-1 inline-block transition-transform group-open:rotate-180">⌄</span>
             </summary>
             <p className="mt-2 break-words text-xs leading-relaxed text-[#A8B4D0]">{signal.question}</p>
             <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#1A2845] pt-3">
               <DetailMetric label={t.signals.sourceProbability} value={formatPercent(signal.yes_price ?? signal.implied_probability, t.feed.noValue)} />
+              <DetailMetric label={t.feed.liquidity} value={signal.liquidity_label ?? t.feed.noValue} />
               <DetailMetric label={t.signals.volume} value={formatCompactNumber(signal.volume, t.feed.noValue)} />
               <DetailMetric label={t.signals.spread} value={formatSpread(signal.spread, t.feed.noValue)} />
+              {isAdvanced && <DetailMetric label={t.feed.signalQuality} value={typeof quality === "number" ? `${quality}/100` : t.feed.noValue} />}
+              <DetailMetric label={t.signals.originalMarket} value={formatMarketType(signal.market_type, language)} />
               <DetailMetric label={t.signals.lastUpdated} value={formatSignalDate(signal.last_fetched_at, language, t.feed.noValue)} />
               <DetailMetric label={t.signals.marketCloses} value={formatSignalDate(signal.end_date, language, t.feed.noValue)} />
             </div>
@@ -243,25 +254,6 @@ function DetailMetric({ label, value }: { label: string; value: string }) {
     <div className="min-w-0">
       <p className="truncate text-[9px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
       <p className="mt-0.5 truncate text-[11px] font-semibold text-[#A8B4D0]">{value}</p>
-    </div>
-  )
-}
-
-function SignalMetric({
-  label,
-  value,
-  accent = "text-[#A8B4D0]",
-  wide = false,
-}: {
-  label: string
-  value: string
-  accent?: string
-  wide?: boolean
-}) {
-  return (
-    <div className={`min-w-0 ${wide ? "col-span-2" : ""}`}>
-      <p className="truncate text-[9px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
-      <p className={`mt-0.5 text-[11px] font-semibold leading-snug ${accent}`}>{value}</p>
     </div>
   )
 }
@@ -575,9 +567,23 @@ function formatMarketType(value: string | null, language: Language) {
   return labels[value]?.[language] ?? value.replaceAll("_", " ")
 }
 
-function getSignalQualityClass(value: number | null) {
+function formatQualityLabel(value: number | null, t: ReturnType<typeof useLanguage>["t"]) {
+  if (typeof value !== "number") return t.signals.thinSignal
+  if (value >= 75) return t.signals.strongSignal
+  if (value >= 50) return t.signals.mediumSignal
+  return t.signals.thinSignal
+}
+
+function formatSignalSummary(signal: MarketSignal, language: Language) {
+  if (signal.market_type === "tournament_outright") return language === "es" ? "Opción de campeón del Mundial" : "World Cup winner market"
+  if (signal.market_type === "group_winner") return language === "es" ? "Opción de ganador de grupo" : "Group winner market"
+  if (signal.market_type === "advance_to_knockout") return language === "es" ? "Opción de clasificación" : "Knockout qualification market"
+  return formatMarketType(signal.market_type, language)
+}
+
+function getSignalQualityBadgeClass(value: number | null) {
   if (typeof value !== "number") return "text-[#A8B4D0]"
-  if (value >= 75) return "text-[#00FF87]"
-  if (value >= 50) return "text-[#FFD600]"
-  return "text-[#A8B4D0]"
+  if (value >= 75) return "border-[#00FF87]/25 bg-[#00FF87]/10 text-[#00FF87]"
+  if (value >= 50) return "border-[#FFD600]/25 bg-[#FFD600]/10 text-[#FFD600]"
+  return "border-[#6A7A9B]/25 bg-[#6A7A9B]/10 text-[#A8B4D0]"
 }

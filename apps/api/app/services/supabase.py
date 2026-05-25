@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -101,10 +102,20 @@ def _normalize_user_name(name: str | None) -> str | None:
     return normalized[:80]
 
 
+def _name_from_email(email: str | None) -> str | None:
+    local_part = (email or "").split("@", 1)[0].strip()
+    if not local_part:
+        return None
+    first_token = next((part for part in re.split(r"[._\-\s]+", local_part) if part), "")
+    if not first_token:
+        return None
+    return first_token[:1].upper() + first_token[1:].lower()
+
+
 async def ensure_user_profile(user_id: UUID, email: str | None = None, name: str | None = None) -> dict[str, Any]:
     client = await get_supabase()
     existing = await client.table("users").select("*").eq("id", str(user_id)).limit(1).execute()
-    normalized_name = _normalize_user_name(name)
+    normalized_name = _normalize_user_name(name) or _name_from_email(email)
     if existing.data:
         user = existing.data[0]
         updates = {}

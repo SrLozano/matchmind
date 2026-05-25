@@ -51,7 +51,6 @@ type LandingCopy = {
   signUpSubtitle: string
   forgotTitle: string
   forgotSubtitle: string
-  name: string
   email: string
   password: string
   signIn: string
@@ -79,7 +78,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const { isConfigured, isLoading, session, authError, signIn, signUp, signInWithGoogle, requestPasswordReset } = useAuth()
   const { language, setLanguage } = useLanguage()
   const [email, setEmail] = useState("")
-  const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signup")
@@ -95,7 +93,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isLoading) return
-    if (mode === "signup" && (!ageConfirmed || !name.trim())) return
+    if (mode === "signup" && !ageConfirmed) return
     setIsSubmitting(true)
     setLocalError(null)
     setSuccessMessage(null)
@@ -106,11 +104,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       } else if (mode === "signin") {
         await signIn(email, password)
       } else {
-        const result = await signUp(email, password, name.trim())
+        const result = await signUp(email, password)
         if (result.needsConfirmation) {
           setSuccessMessage(copy.confirmEmail)
           setPassword("")
-          setName("")
           setAgeConfirmed(false)
           setMode("signin")
         }
@@ -283,22 +280,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               )}
 
               <form onSubmit={submit} className="space-y-3">
-                {mode === "signup" && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-semibold text-[#A8B4D0]">{copy.name}</span>
-                    <input
-                      className="w-full rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3 text-base text-foreground outline-none placeholder:text-[#6A7A9B] sm:text-sm"
-                      type="text"
-                      autoComplete="given-name"
-                      maxLength={80}
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      placeholder={language === "es" ? "Tu nombre" : "Your name"}
-                      required
-                    />
-                  </label>
-                )}
-
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-semibold text-[#A8B4D0]">{copy.email}</span>
                   <span className="flex items-center gap-2 rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3">
@@ -358,7 +339,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <button
                   className="flex w-full items-center justify-center rounded-xl bg-[#00FF87] py-3 text-sm font-bold text-[#070D1A] transition-colors hover:bg-[#00e87a] disabled:cursor-not-allowed disabled:opacity-70"
                   type="submit"
-                  disabled={isSubmitting || isLoading || (mode === "signup" && (!ageConfirmed || !name.trim()))}
+                  disabled={isSubmitting || isLoading || (mode === "signup" && !ageConfirmed)}
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {mode === "forgot" ? copy.sendReset : mode === "signin" ? copy.signIn : copy.signUp}
@@ -577,7 +558,6 @@ const copyEn: LandingCopy = {
   signUpSubtitle: "Get your second opinion before kickoff. No sportsbook, no bet placement.",
   forgotTitle: "Reset your password",
   forgotSubtitle: "Enter your email and we will send you a reset link.",
-  name: "Name",
   email: "Email",
   password: "Password",
   signIn: "Sign in",
@@ -636,7 +616,6 @@ const copyEs: LandingCopy = {
   signUpSubtitle: "Ten una segunda opinión antes del saque inicial. Sin casa de apuestas, sin colocar apuestas.",
   forgotTitle: "Recupera tu contraseña",
   forgotSubtitle: "Escribe tu email y te enviaremos un enlace de recuperación.",
-  name: "Nombre",
   email: "Email",
   password: "Contraseña",
   signIn: "Entrar",

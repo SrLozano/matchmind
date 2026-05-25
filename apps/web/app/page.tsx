@@ -9,9 +9,11 @@ import BetTracker from "@/components/betcoach/BetTracker"
 import Profile from "@/components/betcoach/Profile"
 import BottomNav from "@/components/betcoach/BottomNav"
 import MarketSignals from "@/components/betcoach/MarketSignals"
+import OnboardingTutorial, { ONBOARDING_STORAGE_KEY } from "@/components/betcoach/OnboardingTutorial"
 import { createTournamentPassCheckoutSession, getCurrentUser, type ChatResponse, type CurrentUser } from "@/lib/api"
 import { AuthProvider, useAuth } from "@/lib/auth"
 import { LanguageProvider, useLanguage } from "@/lib/i18n"
+import { PreferencesProvider } from "@/lib/preferences"
 import AuthGate from "@/components/betcoach/AuthGate"
 
 export type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
@@ -19,11 +21,13 @@ export type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
 export default function MatchmindApp() {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <AuthGate>
-          <MatchmindShell />
-        </AuthGate>
-      </AuthProvider>
+      <PreferencesProvider>
+        <AuthProvider>
+          <AuthGate>
+            <MatchmindShell />
+          </AuthGate>
+        </AuthProvider>
+      </PreferencesProvider>
     </LanguageProvider>
   )
 }
@@ -36,6 +40,7 @@ function MatchmindShell() {
   const [userError, setUserError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
   const { session } = useAuth()
   const isPremium = currentUser?.plan === "premium"
 
@@ -55,6 +60,12 @@ function MatchmindShell() {
   useEffect(() => {
     void loadCurrentUser()
   }, [session?.access_token])
+
+  useEffect(() => {
+    if (window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true") {
+      setOnboardingOpen(true)
+    }
+  }, [])
 
   useEffect(() => {
     const refreshOnFocus = () => {
@@ -165,6 +176,7 @@ function MatchmindShell() {
                   userError={userError}
                   onRetryUser={() => void loadCurrentUser()}
                   onShowUpgradePrompt={() => setUpgradePromptOpen(true)}
+                  onReplayOnboarding={() => setOnboardingOpen(true)}
                 />
               </div>
             </div>
@@ -173,6 +185,13 @@ function MatchmindShell() {
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} isHidden={isEditing} />
           {upgradePromptOpen && !isPremium && (
             <UpgradePrompt onClose={() => setUpgradePromptOpen(false)} />
+          )}
+          {onboardingOpen && (
+            <OnboardingTutorial
+              currentUser={currentUser}
+              onProfileUpdated={() => void loadCurrentUser()}
+              onComplete={() => setOnboardingOpen(false)}
+            />
           )}
         </div>
       </div>

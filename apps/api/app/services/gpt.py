@@ -18,7 +18,8 @@ You analyze bets only. You never place bets, give financial advice, guarantee ou
 Voice:
 - Direct, concise, opinionated, and practical.
 - Sound like a sharp, honest betting friend, not a generic chatbot.
-- Be willing to say "do not take this bet" when the edge is weak.
+- Be willing to say "do not take this bet" when the spot is genuinely poor, but do not make every answer feel like "do not bet".
+- Be nuanced: separate bad value, acceptable fun bets, reasonable small-stake bets, and serious value bets.
 - Treat broad beginner questions as a coaching opportunity, not a dead end.
 - Reply in the user's detected language. Use Spanish when detected_language is "es"; use English otherwise.
 - If detected_language is "es", every user-facing sentence and every visible label in response must be Spanish.
@@ -39,7 +40,7 @@ Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
 The visible response should feel like a sharp friend answering in chat, not a reusable report template.
-- Start with the bottom line in plain language.
+- Start with the bottom line in plain beginner-friendly language.
 - Use 2-5 short paragraphs or bullets, whichever feels more natural for the user's question.
 - Keep it concise, usually 90-170 words.
 - Mention the user's odds and implied probability when odds are supplied.
@@ -48,6 +49,7 @@ The visible response should feel like a sharp friend answering in chat, not a re
 - Vary wording across answers. Do not always use the same section labels or the same order.
 - For vague inputs, ask one useful follow-up question and give a useful preliminary plan.
 - Never recommend a large or aggressive stake. Use stake language as posture, not instruction.
+- If the bet is mathematically not great but plausible for entertainment, say that directly. English example: "I would not make it a serious stake, but as a small fun bet I understand it." Spanish example: "No la haría fuerte, pero como apuesta pequeña por diversión la entiendo."
 
 Behavior rules:
 - If no odds are provided, ask for the odds but still give a preliminary football opinion if teams or market are clear.
@@ -60,6 +62,12 @@ Behavior rules:
 - If the message is vague, do not invent specifics.
 - Do not encourage chasing losses or staking because of emotion, loyalty, narratives, or gut feeling.
 - Include responsible-betting language naturally and briefly.
+- Infer or ask about user intent when it would change the answer: long-term profit, fun bet, conservative, balanced, or long-shot/aggressive.
+- Use GOOD VALUE only when the price/value edge is clear from supplied data.
+- Use FAIR for reasonable or acceptable bets, especially when the user frames it as entertainment and the risk is controlled.
+- Use RISKY for high-variance or fragile prices that could still be understandable as a very small fun bet.
+- Use AVOID for genuinely poor, misleading, reckless, emotional, or chase-loss spots.
+- Use NOT ENOUGH INFO when key input is missing.
 
 Return valid JSON with keys:
 "response", "confidence_score", "verdict", "implied_probability", "stake_posture".
@@ -475,29 +483,29 @@ Confidence: {confidence_score:g}/10"""
         my_take = f"I can see the angle on {bet_target}, but I would not judge value without the actual price. The same football opinion can be good at one number and poor at another, so the odds matter."
         value_judgment = "Not enough information without the price."
     elif parsed_bet.odds <= 1.40:
-        verdict = "RISKY"
+        verdict = "FAIR"
         stake_posture = "very small"
         confidence_score = 5.5
-        my_take = f"This looks short on {bet_target}. At {parsed_bet.odds:.2f}, you need it to land more than {parsed_bet.implied_probability * 100:.1f}% of the time just to break even, which leaves very little room for World Cup chaos."
-        value_judgment = "Likely poor unless live data strongly supports it."
+        my_take = f"This is a short price on {bet_target}. At {parsed_bet.odds:.2f}, you need it to land more than {parsed_bet.implied_probability * 100:.1f}% of the time just to break even, so I would not make it a serious stake."
+        value_judgment = "Acceptable only as a small, controlled bet unless live data shows a clear edge."
     elif parsed_bet.odds >= 6.00:
         verdict = "RISKY"
         stake_posture = "very small"
         confidence_score = 5.0
-        my_take = f"This is a high-variance position on {bet_target}. The price is interesting, but long odds need market comparison and tournament context before I would call them value."
-        value_judgment = "Interesting number, but not automatically value."
+        my_take = f"This is a high-variance position on {bet_target}. The price can be fun, but long odds need market comparison and tournament context before I would call them value."
+        value_judgment = "Fine for a tiny fun bet or watchlist, not a serious value claim yet."
     else:
         verdict = "FAIR"
         stake_posture = "small"
         confidence_score = 5.5
-        my_take = f"I do not hate the bet on {bet_target}, but I would not call it clear value without live odds, team news, and market comparison. Treat it as a controlled opinion, not a spot to force."
-        value_judgment = "Potentially fair, but not obviously generous."
+        my_take = f"I do not hate the bet on {bet_target}. Without live odds, team news, and market comparison I cannot call it clear value, but as a reasonable small-stake idea it is understandable."
+        value_judgment = "Fair or watchlist, not obviously generous."
 
     response = f"""Short version: {verdict}. {my_take}
 
 At the price you gave me, the odds are {odds_text} and the implied probability is {probability_text}. My value read: {value_judgment}
 
-The main caveat is that I do not have live bookmaker, lineup, injury, or market-signal data in this fallback analysis. Keep the stake posture {stake_posture}; do not size up because of loyalty, emotion, or chasing.
+The main caveat is that I do not have live bookmaker, lineup, injury, or market-signal data in this fallback analysis. Keep the stake posture {stake_posture}; do not size up because of loyalty, emotion, or chasing. If this is just for fun, keep it small and honest.
 
 Confidence: {confidence_score:g}/10"""
     response = _ensure_user_name_in_response(response, user_name)
@@ -558,35 +566,35 @@ Confianza: {confidence_score:g}/10"""
         my_take = f"Veo la idea sobre {bet_target}, pero no juzgaría valor sin la cuota. La misma opinión futbolística puede ser buena a un precio y mala a otro."
         value_judgment = "No hay información suficiente sin la cuota."
     elif parsed_bet.odds <= 1.40:
-        verdict = "RISKY"
-        visible_verdict = "ARRIESGADA"
+        verdict = "FAIR"
+        visible_verdict = "JUSTA / NEUTRAL"
         stake_posture = "very small"
         visible_posture = "muy pequeño"
         confidence_score = 5.5
-        my_take = f"Esta cuota se ve corta para {bet_target}. A {parsed_bet.odds:.2f}, necesitas que salga más del {parsed_bet.implied_probability * 100:.1f}% de las veces solo para empatar, y en un Mundial hay poco margen para sustos."
-        value_judgment = "Probablemente pobre salvo que los datos en vivo la apoyen mucho."
+        my_take = f"Esta cuota es baja para {bet_target}. A {parsed_bet.odds:.2f}, necesitas que salga más del {parsed_bet.implied_probability * 100:.1f}% de las veces solo para empatar, así que no la haría fuerte."
+        value_judgment = "Aceptable solo como apuesta pequeña y controlada salvo que los datos en vivo muestren una ventaja clara."
     elif parsed_bet.odds >= 6.00:
         verdict = "RISKY"
         visible_verdict = "ARRIESGADA"
         stake_posture = "very small"
         visible_posture = "muy pequeño"
         confidence_score = 5.0
-        my_take = f"Esto es una posición de mucha varianza sobre {bet_target}. La cuota es interesante, pero necesito comparación de mercado y contexto del torneo antes de llamarla valor."
-        value_judgment = "Número interesante, pero no es valor automáticamente."
+        my_take = f"Esto es una posición de mucha varianza sobre {bet_target}. La cuota puede ser divertida, pero necesito comparación de mercado y contexto del torneo antes de llamarla valor."
+        value_judgment = "Sirve como apuesta mínima por diversión o para vigilar, no como valor serio todavía."
     else:
         verdict = "FAIR"
         visible_verdict = "JUSTA / NEUTRAL"
         stake_posture = "small"
         visible_posture = "pequeño"
         confidence_score = 5.5
-        my_take = f"No odio la apuesta sobre {bet_target}, pero no la llamaría valor claro sin cuotas en vivo, noticias del equipo y comparación de mercado. Trátala como una opinión controlada, no como algo que haya que forzar."
-        value_judgment = "Potencialmente justa, pero no claramente generosa."
+        my_take = f"No odio la apuesta sobre {bet_target}. Sin cuotas en vivo, noticias del equipo y comparación de mercado no la llamaría valor claro, pero como idea pequeña y razonable se entiende."
+        value_judgment = "Justa o para vigilar, no claramente generosa."
 
     response = f"""Resumen rápido: {visible_verdict}. {my_take}
 
 Con la cuota que me das, el precio es {odds_text} y la probabilidad implícita es {probability_text}. Mi lectura de valor: {value_judgment}
 
-La gran cautela es que no tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni señales de mercado en este análisis de respaldo. Postura de stake: {visible_posture}; no subas el importe por lealtad, emoción o por intentar recuperar.
+La gran cautela es que no tengo datos en vivo de casas de apuestas, alineaciones, lesiones ni señales de mercado en este análisis de respaldo. Postura de stake: {visible_posture}; no subas el importe por lealtad, emoción o por intentar recuperar. Si es por diversión, que sea pequeña y consciente.
 
 Confianza: {confidence_score:g}/10"""
     response = _ensure_user_name_in_response(response, user_name)
@@ -632,7 +640,7 @@ async def generate_chat_reply(
                 ),
             },
         ],
-        temperature=0.4,
+        temperature=0.55,
     )
     content = completion.choices[0].message.content or "{}"
     result = _extract_json(content)

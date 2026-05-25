@@ -6,6 +6,8 @@ import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, MessageCirc
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage } from "@/lib/i18n"
+import { usePreferences } from "@/lib/preferences"
+import { ConceptTip } from "./ConceptTip"
 import SectionHeader from "./SectionHeader"
 
 type FeedState = {
@@ -306,6 +308,7 @@ function UnlockedInsight({
   isPremium: boolean
 }) {
   const { t } = useLanguage()
+  const { isAdvanced } = usePreferences()
   const isPremiumAccess = access === "premium"
   const isFullAccess = isPremium && isPremiumAccess
 
@@ -333,7 +336,7 @@ function UnlockedInsight({
         <span className="text-sm font-bold text-[#00FF87]">
           {match.confidence_score ? `${match.confidence_score}/10` : t.feed.open}
         </span>
-        {typeof match.edge === "number" && (
+        {isAdvanced && typeof match.edge === "number" && (
           <span className="text-[10px] font-semibold text-[#00FF87]">
             {match.edge > 0 ? "+" : ""}
             {match.edge.toFixed(1)}% {t.feed.edge}
@@ -356,6 +359,7 @@ function BookmakerPanel({
   access: MatchAccess
 }) {
   const { language, t } = useLanguage()
+  const { isBeginner, isAdvanced } = usePreferences()
   const home = findOutcome(odds?.h2h ?? [], homeTeam)
   const away = findOutcome(odds?.h2h ?? [], awayTeam)
   const draw = odds?.h2h.find((row) => row.outcome_name === "Draw") ?? null
@@ -393,7 +397,7 @@ function BookmakerPanel({
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#A8B4D0]">{t.feed.bookmakerOdds}</p>
             <p className="line-clamp-1 text-[10px] text-[#6A7A9B]">
-              {favorite?.outcome_name ? `${t.feed.marketFavorite}: ${formatOutcomeName(favorite.outcome_name, language)}` : t.feed.marketSnapshot}
+              {favorite?.outcome_name ? `${t.feed.marketFavorite} ${formatOutcomeName(favorite.outcome_name, language)}` : t.feed.marketSnapshot}
             </p>
           </div>
         </div>
@@ -403,29 +407,66 @@ function BookmakerPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-[#1A2845]">
-        <PriceCell label={displayTeamName(homeTeam, language)} row={home} highlighted={favorite === home} />
-        <PriceCell label={t.feed.draw} row={draw} highlighted={favorite === draw} />
-        <PriceCell label={displayTeamName(awayTeam, language)} row={away} highlighted={favorite === away} />
-      </div>
-
       {favorite && (
+        <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{t.feed.marketFavorite}</p>
+            <p className="truncate text-sm font-bold text-foreground">{formatOutcomeName(favorite.outcome_name, language)}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+              <ConceptTip concept="bestPrice" label={t.feed.bestPrice} subtle />
+            </p>
+            <p className="text-sm font-bold text-[#00FF87]">{formatPrice(favorite.best_price, t.feed.noValue)}</p>
+          </div>
+        </div>
+      )}
+
+      {!isBeginner && (
+        <div className="grid grid-cols-3 divide-x divide-[#1A2845] border-t border-[#1A2845]">
+          <PriceCell label={displayTeamName(homeTeam, language)} row={home} highlighted={favorite === home} />
+          <PriceCell label={t.feed.draw} row={draw} highlighted={favorite === draw} />
+          <PriceCell label={displayTeamName(awayTeam, language)} row={away} highlighted={favorite === away} />
+        </div>
+      )}
+
+      {favorite && !isBeginner && (
         <div className="grid grid-cols-3 gap-2 border-t border-[#1A2845] px-3 py-2.5">
-          <MiniMetric label={t.feed.bestPrice} value={formatPrice(favorite.best_price, t.feed.noValue)} accent="text-[#00FF87]" />
-          <MiniMetric label={t.feed.fairProbability} value={formatPercent(favorite.no_vig_probability, t.feed.noValue)} />
+          <MiniMetric label={t.feed.bestPrice} value={formatPrice(favorite.best_price, t.feed.noValue)} accent="text-[#00FF87]" concept="bestPrice" />
+          <MiniMetric label={t.feed.fairProbability} value={formatPercent(favorite.no_vig_probability, t.feed.noValue)} concept="fairProbability" />
           <MiniMetric label={t.feed.bookmakers} value={formatBookmakerCount(favorite.bookmaker_count, t.feed.noValue)} />
         </div>
       )}
 
-      {hasExpandedMarkets && (
-        <details className="group border-t border-[#1A2845]">
+      {(isBeginner || hasExpandedMarkets) && (
+        <details className="group border-t border-[#1A2845]" open={isAdvanced}>
           <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[11px] font-semibold text-[#A8B4D0] transition-colors hover:text-foreground">
-            <span>{t.feed.moreMarkets}</span>
+            <span>{isBeginner ? t.feed.details : t.feed.moreMarkets}</span>
             <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
           </summary>
           <div className="space-y-3 px-3 pb-3">
-            <MarketRows title={t.feed.totals} rows={odds.featured_markets.totals ?? []} language={language} emptyLabel={t.feed.noValue} />
-            <MarketRows title={t.feed.handicap} rows={odds.featured_markets.spreads ?? []} language={language} emptyLabel={t.feed.noValue} />
+            {isBeginner && (
+              <>
+                <div className="grid grid-cols-3 divide-x divide-[#1A2845] overflow-hidden rounded-lg border border-[#1A2845]">
+                  <PriceCell label={displayTeamName(homeTeam, language)} row={home} highlighted={favorite === home} />
+                  <PriceCell label={t.feed.draw} row={draw} highlighted={favorite === draw} />
+                  <PriceCell label={displayTeamName(awayTeam, language)} row={away} highlighted={favorite === away} />
+                </div>
+                {favorite && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <MiniMetric label={t.feed.bestPrice} value={formatPrice(favorite.best_price, t.feed.noValue)} accent="text-[#00FF87]" concept="bestPrice" />
+                    <MiniMetric label={t.feed.fairProbability} value={formatPercent(favorite.no_vig_probability, t.feed.noValue)} concept="fairProbability" />
+                    <MiniMetric label={t.feed.bookmakers} value={formatBookmakerCount(favorite.bookmaker_count, t.feed.noValue)} />
+                  </div>
+                )}
+              </>
+            )}
+            {hasExpandedMarkets && (
+              <>
+                <MarketRows title={t.feed.totals} rows={odds.featured_markets.totals ?? []} language={language} emptyLabel={t.feed.noValue} />
+                <MarketRows title={t.feed.handicap} rows={odds.featured_markets.spreads ?? []} language={language} emptyLabel={t.feed.noValue} />
+              </>
+            )}
           </div>
         </details>
       )}
@@ -491,10 +532,22 @@ function MarketRows({
   )
 }
 
-function MiniMetric({ label, value, accent = "text-foreground" }: { label: string; value: string; accent?: string }) {
+function MiniMetric({
+  label,
+  value,
+  accent = "text-foreground",
+  concept,
+}: {
+  label: string
+  value: string
+  accent?: string
+  concept?: "bestPrice" | "fairProbability"
+}) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-[#6A7A9B]">{label}</p>
+      <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-[#6A7A9B]">
+        {concept ? <ConceptTip concept={concept} label={label} subtle /> : label}
+      </p>
       <p className={`mt-0.5 truncate text-xs font-bold ${accent}`}>{value}</p>
     </div>
   )

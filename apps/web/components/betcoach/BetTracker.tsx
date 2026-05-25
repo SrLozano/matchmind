@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { ConceptTip } from "./ConceptTip"
 import SectionHeader from "./SectionHeader"
 
 const emptyTracker: BetListResponse = {
@@ -227,12 +228,16 @@ export default function BetTracker() {
           </div>
           <div className="h-10 w-px bg-[#1A2845]" />
           <div className="flex-1 text-center">
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-[#6A7A9B]">{t.tracker.winRate}</p>
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              <ConceptTip concept="winRate" label={t.tracker.winRate} subtle />
+            </p>
             <p className="text-xl font-bold text-[#00FF87]">{winRate}%</p>
           </div>
           <div className="h-10 w-px bg-[#1A2845]" />
           <div className="flex-1 text-center">
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-[#6A7A9B]">P&amp;L</p>
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+              <ConceptTip concept="pnl" label={t.tracker.profitLoss} subtle />
+            </p>
             <div className="flex items-center justify-center gap-1">
               {totalPnl >= 0 ? (
                 <TrendingUp className="h-4 w-4 text-[#00FF87]" />
@@ -290,17 +295,23 @@ export default function BetTracker() {
                 <div className="flex items-center justify-between border-t border-[#1A2845] pt-2.5">
                   <div className="flex items-center gap-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">{t.tracker.stake}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+                        <ConceptTip concept="stake" label={t.tracker.stake} subtle />
+                      </p>
                       <p className="text-sm font-semibold text-foreground">€{bet.amount.toFixed(2)}</p>
                     </div>
                     <div className="h-6 w-px bg-[#1A2845]" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">{t.tracker.odds}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+                        <ConceptTip concept="bookmakerOdds" label={t.tracker.odds} subtle />
+                      </p>
                       <p className="text-sm font-semibold text-foreground">{bet.odds.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">P&amp;L</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[#6A7A9B]">
+                      <ConceptTip concept="pnl" label={t.tracker.profitLoss} subtle />
+                    </p>
                     {bet.outcome === "pending" ? (
                       <p className="text-sm font-bold text-[#FFD600]">{t.tracker.pending}</p>
                     ) : (

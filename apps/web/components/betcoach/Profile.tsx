@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, HelpCircle, LockKeyhole, MessageCircleMore, Pencil, RefreshCw, Save, ShieldCheck, UserRound, X } from "lucide-react"
+import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, GraduationCap, HelpCircle, LockKeyhole, MessageCircleMore, Pencil, PlayCircle, RefreshCw, Save, ShieldCheck, UserRound, X } from "lucide-react"
 import { type CurrentUser, updateCurrentUserName } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
+import { usePreferences } from "@/lib/preferences"
+import { displayUserName } from "@/lib/user-display"
 import SectionHeader from "./SectionHeader"
 
 export default function Profile({
@@ -13,14 +15,17 @@ export default function Profile({
   userError,
   onRetryUser,
   onShowUpgradePrompt,
+  onReplayOnboarding,
 }: {
   currentUser: CurrentUser | null
   isLoadingUser: boolean
   userError: string | null
   onRetryUser: () => void
   onShowUpgradePrompt: () => void
+  onReplayOnboarding: () => void
 }) {
   const { language, setLanguage, t } = useLanguage()
+  const { explanationLevel, setExplanationLevel } = usePreferences()
   const { isConfigured, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [openInfoSection, setOpenInfoSection] = useState<string | null>(null)
@@ -36,7 +41,11 @@ export default function Profile({
   const usagePercent = isPremium ? 100 : Math.min((chatsUsed / chatLimit) * 100, 100)
   const isLowFreeQuota = !isPremium && visibleChatsRemaining <= 1
   const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
-  const displayName = currentUser?.name?.trim() || t.profile.matchmindUser
+  const displayName = displayUserName({
+    name: currentUser?.name,
+    email: currentUser?.email,
+    fallback: t.profile.matchmindUser,
+  })
   const accountLabel = currentUser?.email ?? t.profile.account
   const menuItems = [
     {
@@ -301,6 +310,45 @@ export default function Profile({
         </div>
 
         <button
+          onClick={onReplayOnboarding}
+          className="flex w-full items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-3.5 text-left text-sm text-[#A8B4D0] transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35]"
+          type="button"
+        >
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 text-sm font-semibold text-[#A8B4D0]">
+              <PlayCircle className="h-4 w-4 shrink-0 text-[#00FF87]" />
+              {t.profile.replayTutorial}
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-[#6A7A9B]">{t.profile.replayTutorialCopy}</span>
+          </span>
+          <ChevronRight className="w-4 h-4 shrink-0 text-[#6A7A9B]" />
+        </button>
+
+        <div className="border-b border-[#1A2845] px-4 py-3.5">
+          <div className="mb-3 flex min-w-0 items-center gap-2">
+            <GraduationCap className="h-4 w-4 shrink-0 text-[#00FF87]" />
+            <span className="text-sm font-semibold text-[#A8B4D0]">{t.profile.explanationLevel}</span>
+          </div>
+          <div className="grid grid-cols-3 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
+            <ExplanationButton
+              isActive={explanationLevel === "beginner"}
+              label={t.profile.beginner}
+              onClick={() => setExplanationLevel("beginner")}
+            />
+            <ExplanationButton
+              isActive={explanationLevel === "standard"}
+              label={t.profile.standard}
+              onClick={() => setExplanationLevel("standard")}
+            />
+            <ExplanationButton
+              isActive={explanationLevel === "advanced"}
+              label={t.profile.advanced}
+              onClick={() => setExplanationLevel("advanced")}
+            />
+          </div>
+        </div>
+
+        <button
           onClick={() => setNotificationsOpen((open) => !open)}
           className="flex w-full items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-3.5 text-left text-sm text-[#A8B4D0] transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35]"
           aria-expanded={notificationsOpen}
@@ -421,6 +469,30 @@ function LanguageButton({
           ? "bg-[#00FF87] text-[#070D1A]"
           : "text-[#6A7A9B] hover:text-[#A8B4D0]"
       }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function ExplanationButton({
+  isActive,
+  label,
+  onClick,
+}: {
+  isActive: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`min-w-0 rounded-lg px-2 py-2 text-xs font-bold transition-colors ${
+        isActive
+          ? "bg-[#00FF87] text-[#070D1A]"
+          : "text-[#6A7A9B] hover:text-[#A8B4D0]"
+      }`}
+      type="button"
     >
       {label}
     </button>
