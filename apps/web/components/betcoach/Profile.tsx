@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { AlertCircle, Check, ChevronDown, ChevronRight, Clipboard, Copy, Crown, FileText, Globe2, GraduationCap, Handshake, LockKeyhole, MessageCircleMore, Pencil, PlayCircle, RefreshCw, Save, ShieldCheck, Store, UserRound, UsersRound, X } from "lucide-react"
-import { applyReferralCode, createBarReferralPartner, createUserReferralCode, getMyReferralDashboard, type CurrentUser, type ReferralDashboardResponse, updateCurrentUserName, updateCurrentUserProfile } from "@/lib/api"
+import { applyReferralCode, createBarReferralPartner, createUserReferralCode, getMyReferralDashboard, type CurrentUser, type ReferralDashboardResponse, type UserReferralTierKey, updateCurrentUserName, updateCurrentUserProfile } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
 import { displayUserName } from "@/lib/user-display"
 import SectionHeader from "./SectionHeader"
+
+const USER_REFERRAL_TIER_ORDER: UserReferralTierKey[] = ["scout", "insider", "captain", "legend", "founder_circle"]
 
 export default function Profile({
   currentUser,
@@ -949,6 +951,7 @@ function UserReferralPanel({
         </div>
         <p className="text-xs leading-relaxed text-[#A8B4D0]">{copy.userShareCode}</p>
       </div>
+      <UserReferralProgress userReferral={userReferral} />
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <ReferralMetric label={copy.friendsRegistered} value={(userReferral?.registered_referrals ?? 0).toString()} />
         <ReferralMetric label={copy.friendsPurchased} value={(userReferral?.paid_referrals ?? 0).toString()} />
@@ -977,6 +980,71 @@ function UserReferralPanel({
             <p className="mt-2 text-xs leading-relaxed text-[#E8D39A]">{copy.betaPriority}</p>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function UserReferralProgress({
+  userReferral,
+}: {
+  userReferral: ReferralDashboardResponse["user_referral"] | null
+}) {
+  const { t } = useLanguage()
+  const copy = t.profile.referrals
+  if (!userReferral) return null
+
+  const currentTierKey = userReferral.perks.current_tier?.key ?? null
+  const currentIndex = currentTierKey ? USER_REFERRAL_TIER_ORDER.indexOf(currentTierKey) : -1
+  const progressPercent = currentIndex < 0 ? 0 : (currentIndex / (USER_REFERRAL_TIER_ORDER.length - 1)) * 100
+
+  return (
+    <div className="mt-4 rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold text-foreground">{copy.progressTitle}</p>
+        <p className="text-[11px] font-semibold text-[#6A7A9B]">
+          {currentTierKey ? copy.tierLabels[currentTierKey] : copy.progressStart}
+        </p>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#101B32]" aria-label={copy.progressTitle}>
+        <div className="h-full rounded-full bg-[#00FF87] transition-all" style={{ width: `${progressPercent}%` }} />
+      </div>
+      <div className="mt-3 grid gap-2">
+        {USER_REFERRAL_TIER_ORDER.map((tierKey, index) => {
+          const isUnlocked = index <= currentIndex
+          const isNext = userReferral.perks.next_tier?.key === tierKey
+          return (
+            <div
+              key={tierKey}
+              className={`flex items-start gap-3 rounded-lg border p-2.5 ${
+                isUnlocked
+                  ? "border-[#00FF87]/30 bg-[#00FF87]/10"
+                  : isNext
+                    ? "border-[#D8B866]/30 bg-[#D8B866]/8"
+                    : "border-[#1A2845] bg-[#0B1426]"
+              }`}
+            >
+              <span
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-black ${
+                  isUnlocked
+                    ? "border-[#00FF87] bg-[#00FF87] text-[#070D1A]"
+                    : isNext
+                      ? "border-[#D8B866] text-[#E8D39A]"
+                      : "border-[#263653] text-[#6A7A9B]"
+                }`}
+              >
+                {isUnlocked ? <Check className="h-3 w-3" /> : index + 1}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-foreground">{copy.tierLabels[tierKey]}</span>
+                  {isNext && <span className="rounded-full bg-[#D8B866]/15 px-2 py-0.5 text-[10px] font-bold text-[#E8D39A]">{copy.nextBadge}</span>}
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-relaxed text-[#A8B4D0]">{copy.tierRewards[tierKey]}</span>
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
