@@ -101,6 +101,7 @@ export type CurrentUser = {
   id: string
   email: string | null
   name: string | null
+  avatar_emoji: string
   plan: UserPlan
   daily_chat_count: number
   daily_chat_count_limit: number | null
@@ -365,13 +366,13 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   return response.json()
 }
 
-export async function updateCurrentUserName(name: string): Promise<CurrentUser> {
+export async function updateCurrentUserProfile(profile: { name?: string; avatar_emoji?: string }): Promise<CurrentUser> {
   const response = await apiFetch(`${getApiUrl()}/users/me`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(profile),
   })
 
   if (!response.ok) {
@@ -379,6 +380,10 @@ export async function updateCurrentUserName(name: string): Promise<CurrentUser> 
   }
 
   return response.json()
+}
+
+export async function updateCurrentUserName(name: string): Promise<CurrentUser> {
+  return updateCurrentUserProfile({ name })
 }
 
 export async function getTrackedBets(): Promise<BetListResponse> {

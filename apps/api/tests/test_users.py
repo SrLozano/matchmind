@@ -1,7 +1,8 @@
 import unittest
 
 from app.config import get_settings
-from app.models.users import UserResponse
+from app.models.users import DEFAULT_AVATAR_EMOJI, UserResponse
+from app.services.supabase import _normalize_avatar_emoji
 
 
 class UsersModelTest(unittest.TestCase):
@@ -21,6 +22,7 @@ class UsersModelTest(unittest.TestCase):
 
         self.assertEqual(payload.plan, "free")
         self.assertEqual(payload.name, "Alex")
+        self.assertEqual(payload.avatar_emoji, DEFAULT_AVATAR_EMOJI)
         self.assertEqual(payload.daily_chats_remaining, 3)
 
     def test_user_response_accepts_premium_plan_with_hidden_usage_quota(self) -> None:
@@ -41,6 +43,19 @@ class UsersModelTest(unittest.TestCase):
         self.assertIsNone(payload.chat_count_limit)
         self.assertIsNone(payload.chat_limit_period)
         self.assertIsNone(payload.chats_remaining)
+
+    def test_avatar_accepts_one_character_or_one_emoji(self) -> None:
+        self.assertEqual(_normalize_avatar_emoji("M"), "M")
+        self.assertEqual(_normalize_avatar_emoji("⚽"), "⚽")
+        self.assertEqual(_normalize_avatar_emoji("👍🏽"), "👍🏽")
+        self.assertEqual(_normalize_avatar_emoji("🇪🇸"), "🇪🇸")
+        self.assertEqual(_normalize_avatar_emoji("👨‍👩‍👧"), "👨‍👩‍👧")
+
+    def test_avatar_rejects_text_and_multiple_emoji(self) -> None:
+        self.assertIsNone(_normalize_avatar_emoji("MM"))
+        self.assertIsNone(_normalize_avatar_emoji("Alex"))
+        self.assertIsNone(_normalize_avatar_emoji("⚽⚽"))
+        self.assertIsNone(_normalize_avatar_emoji("M ⚽"))
 
 
 if __name__ == "__main__":

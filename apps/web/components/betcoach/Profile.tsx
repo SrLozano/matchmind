@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertCircle, Bell, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, GraduationCap, HelpCircle, LockKeyhole, MessageCircleMore, Pencil, PlayCircle, RefreshCw, Save, ShieldCheck, UserRound, X } from "lucide-react"
-import { type CurrentUser, updateCurrentUserName } from "@/lib/api"
+import { AlertCircle, Check, ChevronDown, ChevronRight, Crown, FileText, Globe2, GraduationCap, LockKeyhole, MessageCircleMore, Pencil, PlayCircle, RefreshCw, Save, ShieldCheck, UserRound, X } from "lucide-react"
+import { type CurrentUser, updateCurrentUserName, updateCurrentUserProfile } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
@@ -27,12 +27,15 @@ export default function Profile({
   const { language, setLanguage, t } = useLanguage()
   const { explanationLevel, setExplanationLevel } = usePreferences()
   const { isConfigured, signOut } = useAuth()
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [openInfoSection, setOpenInfoSection] = useState<string | null>(null)
   const [isEditingName, setIsEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(currentUser?.name ?? "")
   const [isSavingName, setIsSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
+  const [isEditingAvatar, setIsEditingAvatar] = useState(false)
+  const [avatarDraft, setAvatarDraft] = useState(currentUser?.avatar_emoji ?? "👤")
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
   const isPremium = currentUser?.plan === "premium"
   const chatLimit = currentUser?.chat_count_limit ?? currentUser?.daily_chat_count_limit ?? 5
   const chatsUsed = currentUser?.daily_chat_count ?? 0
@@ -47,6 +50,7 @@ export default function Profile({
     fallback: t.profile.matchmindUser,
   })
   const accountLabel = currentUser?.email ?? t.profile.account
+  const avatarEmoji = currentUser?.avatar_emoji || "👤"
   const menuItems = [
     {
       id: "responsible",
@@ -56,7 +60,6 @@ export default function Profile({
       icon: ShieldCheck,
       link: { href: "https://www.ordenacionjuego.es/participantes-juego/juego-seguro/rgiaj", label: t.profile.responsibleSpain },
     },
-    { id: "help", label: t.profile.help, description: t.profile.helpCopy, details: t.profile.helpDetails, icon: HelpCircle },
     { id: "privacy", label: t.profile.privacy, description: t.profile.privacyCopy, details: t.profile.privacyDetails, icon: LockKeyhole },
     {
       id: "terms",
@@ -70,6 +73,10 @@ export default function Profile({
   useEffect(() => {
     setNameDraft(currentUser?.name ?? "")
   }, [currentUser?.name])
+
+  useEffect(() => {
+    setAvatarDraft(currentUser?.avatar_emoji ?? "👤")
+  }, [currentUser?.avatar_emoji])
 
   const saveName = async () => {
     const nextName = nameDraft.trim()
@@ -90,6 +97,25 @@ export default function Profile({
     }
   }
 
+  const saveAvatar = async () => {
+    const nextAvatar = avatarDraft.trim()
+    if (!isSingleAvatarCharacter(nextAvatar)) {
+      setAvatarError(t.profile.avatarRequired)
+      return
+    }
+    setIsSavingAvatar(true)
+    setAvatarError(null)
+    try {
+      await updateCurrentUserProfile({ avatar_emoji: nextAvatar })
+      setIsEditingAvatar(false)
+      onRetryUser()
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : t.profile.avatarSaveError)
+    } finally {
+      setIsSavingAvatar(false)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col overflow-y-auto pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
       <SectionHeader icon={UserRound} title={t.profile.title} subtitle={t.profile.subtitle} />
@@ -98,8 +124,50 @@ export default function Profile({
       <div className="mx-4 mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-[#1A2845] bg-[#0F1C35] p-4 sm:mx-5 sm:gap-4">
         <div className="relative shrink-0">
           <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#00FF87]/40 bg-gradient-to-br from-[#00FF87]/30 to-[#0F1C35]">
-            <span className="text-2xl">👤</span>
+            {isEditingAvatar ? (
+              <input
+                className="h-10 w-10 rounded-full border border-[#00FF87]/30 bg-[#070D1A] text-center text-2xl outline-none focus:border-[#00FF87]"
+                value={avatarDraft}
+                onChange={(event) => {
+                  const nextAvatar = event.target.value.trim()
+                  if (!nextAvatar || isSingleAvatarCharacter(nextAvatar)) {
+                    setAvatarDraft(nextAvatar)
+                    setAvatarError(null)
+                    return
+                  }
+                  setAvatarError(t.profile.avatarRequired)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void saveAvatar()
+                  if (event.key === "Escape") {
+                    setIsEditingAvatar(false)
+                    setAvatarDraft(currentUser?.avatar_emoji ?? "👤")
+                    setAvatarError(null)
+                  }
+                }}
+                maxLength={16}
+                aria-label={t.profile.avatarEmoji}
+                autoFocus
+              />
+            ) : (
+              <span className="text-2xl">{avatarEmoji}</span>
+            )}
           </div>
+          <button
+            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-lg border border-[#1A2845] bg-[#070D1A] text-[#6A7A9B] transition-colors hover:border-[#00FF87]/50 hover:text-[#00FF87]"
+            aria-label={isEditingAvatar ? t.profile.saveAvatarEmoji : t.profile.editAvatarEmoji}
+            onClick={() => {
+              if (isEditingAvatar) {
+                void saveAvatar()
+              } else {
+                setIsEditingAvatar(true)
+              }
+            }}
+            disabled={isSavingAvatar}
+            type="button"
+          >
+            {isSavingAvatar ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : isEditingAvatar ? <Save className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+          </button>
         </div>
         <div className="min-w-0 flex-1">
           {isEditingName ? (
@@ -147,6 +215,7 @@ export default function Profile({
             </div>
           )}
           <p className="truncate text-xs text-[#6A7A9B]">{accountLabel}</p>
+          {avatarError && <p className="mt-1 text-xs font-semibold text-[#FF6B6B]">{avatarError}</p>}
           {nameError && <p className="mt-1 text-xs font-semibold text-[#FF6B6B]">{nameError}</p>}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <div className={`rounded-full px-2.5 py-0.5 ${isPremium ? "border border-[#00FF87]/25 bg-[#00FF87]/10" : "bg-[#1A2845]"}`}>
@@ -348,26 +417,6 @@ export default function Profile({
           </div>
         </div>
 
-        <button
-          onClick={() => setNotificationsOpen((open) => !open)}
-          className="flex w-full items-center justify-between gap-3 border-b border-[#1A2845] px-4 py-3.5 text-left text-sm text-[#A8B4D0] transition-colors hover:bg-[#0F1C35] active:bg-[#0F1C35]"
-          aria-expanded={notificationsOpen}
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <Bell className="h-4 w-4 shrink-0 text-[#6A7A9B]" />
-            {t.profile.notificationSettings}
-          </span>
-          {notificationsOpen ? (
-            <ChevronDown className="w-4 h-4 text-[#6A7A9B]" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-[#6A7A9B]" />
-          )}
-        </button>
-        {notificationsOpen && (
-          <div className="border-b border-[#1A2845] bg-[#0A1325]/70 px-4 py-3">
-            <p className="text-xs leading-relaxed text-[#6A7A9B]">{t.profile.notificationCopy}</p>
-          </div>
-        )}
         {menuItems.map(({ id, label, description, details, icon: Icon, link }, index) => (
           <div
             key={id}
@@ -381,7 +430,7 @@ export default function Profile({
             >
               <span className="min-w-0">
                 <span className="flex items-center gap-2 text-sm font-semibold text-[#A8B4D0]">
-                  <Icon className={`h-4 w-4 shrink-0 ${id === "responsible" ? "text-[#00FF87]" : "text-[#6A7A9B]"}`} />
+                  <Icon className="h-4 w-4 shrink-0 text-[#00FF87]" />
                   {label}
                 </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-[#6A7A9B]">{description}</span>
@@ -450,6 +499,24 @@ function StatusRow({
       </div>
     </div>
   )
+}
+
+function isSingleAvatarCharacter(value: string) {
+  if (!value || /\s/.test(value)) return false
+  const Segmenter = (
+    Intl as typeof Intl & {
+      Segmenter?: new (
+        locales?: string | string[],
+        options?: { granularity: "grapheme" },
+      ) => { segment(input: string): Iterable<unknown> }
+    }
+  ).Segmenter
+
+  if (Segmenter) {
+    return Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(value)).length === 1
+  }
+
+  return Array.from(value).length === 1
 }
 
 function LanguageButton({

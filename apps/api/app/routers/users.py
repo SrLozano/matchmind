@@ -28,7 +28,11 @@ async def update_current_user(
 ) -> dict:
     try:
         authenticated_user = await require_authenticated_user(authorization)
-        return await update_user_profile(authenticated_user.id, payload.name)
+        return await update_user_profile(
+            authenticated_user.id,
+            name=payload.name,
+            avatar_emoji=payload.avatar_emoji,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

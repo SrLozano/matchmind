@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from supabase import AsyncClient, acreate_client
 
 from app.config import get_settings
+from app.models.users import DEFAULT_AVATAR_EMOJI
 
 _supabase_client: AsyncClient | None = None
 
@@ -102,6 +103,62 @@ def _normalize_user_name(name: str | None) -> str | None:
     return normalized[:80]
 
 
+def _normalize_avatar_emoji(avatar_emoji: str | None) -> str | None:
+    if avatar_emoji is None:
+        return None
+    normalized = str(avatar_emoji).strip()
+    if not normalized or any(char.isspace() for char in normalized):
+        return None
+    if not _is_single_avatar_character(normalized):
+        return None
+    return normalized[:16]
+
+
+def _is_single_avatar_character(value: str) -> bool:
+    if len(value) == 1:
+        return True
+    if _is_keycap_emoji(value) or _is_flag_emoji(value):
+        return True
+    return _is_zwj_emoji_sequence(value) or _is_modified_emoji(value)
+
+
+def _is_keycap_emoji(value: str) -> bool:
+    return bool(re.fullmatch(r"[0-9#*]\ufe0f?\u20e3", value))
+
+
+def _is_flag_emoji(value: str) -> bool:
+    return len(value) == 2 and all(0x1F1E6 <= ord(char) <= 0x1F1FF for char in value)
+
+
+def _is_modified_emoji(value: str) -> bool:
+    chars = list(value)
+    if len(chars) not in {2, 3} or not _is_emoji_base(chars[0]):
+        return False
+    rest = chars[1:]
+    return all(_is_emoji_modifier(char) for char in rest)
+
+
+def _is_zwj_emoji_sequence(value: str) -> bool:
+    parts = value.split("\u200d")
+    if len(parts) < 2 or any(not part for part in parts):
+        return False
+    return all(len(part) <= 3 and _is_modified_emoji(part) or (len(part) == 1 and _is_emoji_base(part)) for part in parts)
+
+
+def _is_emoji_base(char: str) -> bool:
+    codepoint = ord(char)
+    return (
+        0x1F000 <= codepoint <= 0x1FAFF
+        or 0x2600 <= codepoint <= 0x27BF
+        or 0x2300 <= codepoint <= 0x23FF
+    )
+
+
+def _is_emoji_modifier(char: str) -> bool:
+    codepoint = ord(char)
+    return codepoint == 0xFE0F or 0x1F3FB <= codepoint <= 0x1F3FF
+
+
 def _name_from_email(email: str | None) -> str | None:
     local_part = (email or "").split("@", 1)[0].strip()
     if not local_part:
@@ -135,6 +192,7 @@ async def ensure_user_profile(user_id: UUID, email: str | None = None, name: str
                 "id": str(user_id),
                 "email": email,
                 "name": normalized_name,
+                "avatar_emoji": DEFAULT_AVATAR_EMOJI,
                 "plan": "free",
                 "daily_chat_count": 0,
                 "last_reset_date": date.today().isoformat(),
@@ -161,6 +219,7 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
         "id": user["id"],
         "email": user.get("email"),
         "name": user.get("name"),
+        "avatar_emoji": user.get("avatar_emoji") or DEFAULT_AVATAR_EMOJI,
         "plan": plan,
         "daily_chat_count": chat_count,
         "daily_chat_count_limit": chat_usage["chat_count_limit"],
@@ -173,15 +232,28 @@ async def get_user_profile(user_id: UUID) -> dict[str, Any]:
     }
 
 
-async def update_user_profile(user_id: UUID, name: str) -> dict[str, Any]:
-    normalized_name = _normalize_user_name(name)
-    if normalized_name is None:
-        raise ValueError("Name is required.")
+async def update_user_profile(user_id: UUID, name: str | None = None, avatar_emoji: str | None = None) -> dict[str, Any]:
+    updates: dict[str, Any] = {}
+
+    if name is not None:
+        normalized_name = _normalize_user_name(name)
+        if normalized_name is None:
+            raise ValueError("Name is required.")
+        updates["name"] = normalized_name
+
+    if avatar_emoji is not None:
+        normalized_avatar_emoji = _normalize_avatar_emoji(avatar_emoji)
+        if normalized_avatar_emoji is None:
+            raise ValueError("Avatar must be one character or one emoji.")
+        updates["avatar_emoji"] = normalized_avatar_emoji
+
+    if not updates:
+        raise ValueError("No profile updates provided.")
 
     client = await get_supabase()
     response = (
         await client.table("users")
-        .update({"name": normalized_name})
+        .update(updates)
         .eq("id", str(user_id))
         .execute()
     )
