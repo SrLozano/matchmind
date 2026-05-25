@@ -143,13 +143,13 @@ export default function RootLayout({
         "@type": "Offer",
         price: "9.99",
         priceCurrency: "EUR",
-        name: "World Cup 2026 tournament pass",
+        name: "World Cup 2026 tournament pass standard price",
       },
       {
         "@type": "Offer",
-        price: "4.99",
+        price: "8.99",
         priceCurrency: "EUR",
-        name: "Monthly premium plan",
+        name: "World Cup 2026 tournament pass referral price",
       },
     ],
   }

@@ -570,7 +570,7 @@ export async function createBarReferralPartner(
   })
 
   if (!response.ok) {
-    throw new Error(await readApiError(response, "Unable to create your bar code. Try again in a moment."))
+    throw new Error(await readApiError(response, "Unable to create your partner code. Try again in a moment."))
   }
 
   return response.json()

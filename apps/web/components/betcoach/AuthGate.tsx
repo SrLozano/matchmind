@@ -532,7 +532,7 @@ const copyEn: LandingCopy = {
   heroSubtitle:
     "Matchmind combines match context, bookmaker odds, and prediction-market signals into one direct coach verdict before you stake a cent.",
   primaryCta: "Start free",
-  priceHook: "Full tournament pass: €9.99 once",
+  priceHook: "World Cup Pass from €8.99 with referrals",
   proofPoints: ["Pause impulsive bets", "Spot overpriced odds", "Track every decision"],
   previewTitle: "Coach verdict",
   previewLive: "AI read",
@@ -590,7 +590,7 @@ const copyEs: LandingCopy = {
   heroSubtitle:
     "Tu segunda opinión para cortar el ruido, el hype y las cuotas malas antes de poner dinero en juego.",
   primaryCta: "Crear cuenta gratis",
-  priceHook: "Pase Mundial: 9,99 € para todo el torneo",
+  priceHook: "Pase Mundial desde €8.99 con referidos",
   proofPoints: ["Frena apuestas por impulso", "Detecta cuotas caras", "Guarda cada decisión"],
   previewTitle: "Veredicto Matchmind",
   previewLive: "Análisis IA",

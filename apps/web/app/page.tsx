@@ -10,9 +10,10 @@ import Profile from "@/components/betcoach/Profile"
 import BottomNav from "@/components/betcoach/BottomNav"
 import MarketSignals from "@/components/betcoach/MarketSignals"
 import OnboardingTutorial, { ONBOARDING_STORAGE_KEY } from "@/components/betcoach/OnboardingTutorial"
-import { createTournamentPassCheckoutSession, getCurrentUser, type ChatResponse, type CurrentUser } from "@/lib/api"
+import { createTournamentPassCheckoutSession, getCurrentUser, getMyReferralDashboard, type ChatResponse, type CurrentUser, type ReferralDashboardResponse } from "@/lib/api"
 import { AuthProvider, useAuth } from "@/lib/auth"
 import { LanguageProvider, useLanguage } from "@/lib/i18n"
+import { getBestPassPriceOffer } from "@/lib/referral-pricing"
 import { PreferencesProvider } from "@/lib/preferences"
 import AuthGate from "@/components/betcoach/AuthGate"
 
@@ -38,6 +39,7 @@ function MatchmindShell() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [userError, setUserError] = useState<string | null>(null)
+  const [referralDashboard, setReferralDashboard] = useState<ReferralDashboardResponse | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
@@ -60,6 +62,23 @@ function MatchmindShell() {
   useEffect(() => {
     void loadCurrentUser()
   }, [session?.access_token])
+
+  useEffect(() => {
+    if (!currentUser || isPremium || !upgradePromptOpen) return
+
+    let isMounted = true
+    getMyReferralDashboard()
+      .then((dashboard) => {
+        if (isMounted) setReferralDashboard(dashboard)
+      })
+      .catch(() => {
+        if (isMounted) setReferralDashboard(null)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [currentUser, isPremium, upgradePromptOpen])
 
   useEffect(() => {
     if (window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true") {
@@ -184,7 +203,7 @@ function MatchmindShell() {
 
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} isHidden={isEditing} />
           {upgradePromptOpen && !isPremium && (
-            <UpgradePrompt onClose={() => setUpgradePromptOpen(false)} />
+            <UpgradePrompt referralDashboard={referralDashboard} onClose={() => setUpgradePromptOpen(false)} />
           )}
           {onboardingOpen && (
             <OnboardingTutorial
@@ -198,10 +217,17 @@ function MatchmindShell() {
   )
 }
 
-function UpgradePrompt({ onClose }: { onClose: () => void }) {
+function UpgradePrompt({
+  referralDashboard,
+  onClose,
+}: {
+  referralDashboard: ReferralDashboardResponse | null
+  onClose: () => void
+}) {
   const { language, t } = useLanguage()
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const passOffer = getBestPassPriceOffer(referralDashboard)
 
   const startCheckout = async () => {
     setIsStartingCheckout(true)
@@ -241,7 +267,10 @@ function UpgradePrompt({ onClose }: { onClose: () => void }) {
 
         <div className="mt-4 flex items-center justify-between rounded-xl border border-[#1A2845] bg-[#070D1A] px-3 py-3">
           <span className="text-sm font-semibold text-[#A8B4D0]">{t.profile.pass}</span>
-          <span className="text-xl font-black text-foreground">€9.99</span>
+          <span className="flex items-baseline gap-2">
+            {passOffer.isDiscounted && <span className="text-xs font-bold text-[#6A7A9B] line-through">{formatEuro(passOffer.standardPrice)}</span>}
+            <span className="text-xl font-black text-foreground">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
+          </span>
         </div>
 
         <button
@@ -259,4 +288,12 @@ function UpgradePrompt({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   )
+}
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
+}
+
+function formatPassPrice(value: number, freeLabel: string) {
+  return value <= 0 ? freeLabel : formatEuro(value)
 }

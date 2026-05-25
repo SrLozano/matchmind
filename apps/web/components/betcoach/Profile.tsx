@@ -6,6 +6,7 @@ import { applyReferralCode, createBarReferralPartner, createUserReferralCode, ge
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
+import { getBestPassPriceOffer } from "@/lib/referral-pricing"
 import { displayUserName } from "@/lib/user-display"
 import SectionHeader from "./SectionHeader"
 
@@ -50,10 +51,7 @@ export default function Profile({
   const usagePercent = isPremium ? 100 : Math.min((chatsUsed / chatLimit) * 100, 100)
   const isLowFreeQuota = !isPremium && visibleChatsRemaining <= 1
   const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
-  const appliedReferral = referralDashboard?.applied_referral ?? null
-  const hasAppliedReferral = Boolean(appliedReferral)
-  const standardPassPrice = 9.99
-  const referralPassPrice = Math.max(standardPassPrice - (appliedReferral?.discount_amount ?? 0), 0)
+  const passOffer = getBestPassPriceOffer(referralDashboard)
   const referralLoadError = t.profile.referrals.loadError
   const displayName = displayUserName({
     name: currentUser?.name,
@@ -340,7 +338,7 @@ export default function Profile({
           </div>
 
           {/* Upgrade card */}
-          <div className={`mx-4 mb-3 shrink-0 rounded-2xl bg-card p-4 sm:mx-5 ${hasAppliedReferral ? "referral-banner-glow border border-[#00FF87]/50" : "border border-[#00FF87]/30"}`}>
+          <div className={`mx-4 mb-3 shrink-0 rounded-2xl bg-card p-4 sm:mx-5 ${passOffer.isDiscounted ? "referral-banner-glow border border-[#00FF87]/50" : "border border-[#00FF87]/30"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-[190px] flex-1">
                 <div className="mb-2 flex items-center gap-2">
@@ -354,17 +352,23 @@ export default function Profile({
                 </p>
               </div>
               <div className="shrink-0 text-right" aria-live="polite">
-                {hasAppliedReferral ? (
+                {passOffer.isDiscounted ? (
                   <div className="referral-price-pop">
-                    <p className="text-[11px] font-bold uppercase text-[#00FF87]">Codigo {appliedReferral?.code}</p>
+                    <p className="text-[11px] font-bold uppercase text-[#00FF87]">
+                      {passOffer.appliedCode
+                        ? `${t.profile.referrals.codeLabel} ${passOffer.appliedCode}`
+                        : passOffer.tierKey
+                          ? t.profile.referrals.tierLabels[passOffer.tierKey]
+                          : t.profile.referrals.unlockedPrice}
+                    </p>
                     <div className="mt-1 flex items-end justify-end gap-2">
-                      <span className="text-sm font-bold leading-none text-[#6A7A9B] line-through">{formatEuro(standardPassPrice)}</span>
-                      <span className="text-2xl font-black leading-none text-[#00FF87]">{formatEuro(referralPassPrice)}</span>
+                      <span className="text-sm font-bold leading-none text-[#6A7A9B] line-through">{formatEuro(passOffer.standardPrice)}</span>
+                      <span className="text-2xl font-black leading-none text-[#00FF87]">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <p className="text-xl font-black leading-none text-foreground">{formatEuro(standardPassPrice)}</p>
+                    <p className="text-xl font-black leading-none text-foreground">{formatEuro(passOffer.standardPrice)}</p>
                     <p className="mt-1 text-[10px] text-[#6A7A9B]">{t.profile.oneTime}</p>
                   </>
                 )}
@@ -542,7 +546,7 @@ function ReferralsSection({
 }) {
   const { t } = useLanguage()
   const copy = t.profile.referrals
-  const [activeTab, setActiveTab] = useState<"bars" | "users">("bars")
+  const [activeTab, setActiveTab] = useState<"bars" | "users">("users")
   const [form, setForm] = useState({
     business_name: "",
     location: "",
@@ -696,7 +700,7 @@ function ReferralsSection({
           >
             <span className="min-w-0">
               <span className="flex items-center gap-2 text-sm font-bold text-foreground">
-                <Store className="h-4 w-4 shrink-0 text-[#00FF87]" />
+                <UsersRound className="h-4 w-4 shrink-0 text-[#00FF87]" />
                 {copy.ownCodeTitle}
               </span>
               <span className="mt-1 block text-xs leading-relaxed text-[#6A7A9B]">
@@ -713,8 +717,8 @@ function ReferralsSection({
           {isPartnerSignupOpen && (
             <div className="border-t border-[#1A2845] px-4 py-4">
               <div className="mb-4 grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#070D1A] p-1">
-                <ReferralTabButton active={activeTab === "bars"} label={copy.barsTab} icon={Store} onClick={() => setActiveTab("bars")} />
                 <ReferralTabButton active={activeTab === "users"} label={copy.usersTab} icon={UsersRound} onClick={() => setActiveTab("users")} />
+                <ReferralTabButton active={activeTab === "bars"} label={copy.barsTab} icon={Store} onClick={() => setActiveTab("bars")} />
               </div>
 
               {activeTab === "users" ? (
@@ -888,10 +892,11 @@ function UserReferralPanel({
   const currentTier = perks?.current_tier ?? null
   const nextTier = perks?.next_tier ?? null
   const currentPerkValue = currentTier ? copy.tierRewards[currentTier.key] : copy.noPerkYet
-  const currentStatus = currentTier ? copy.tierLabels[currentTier.key] : copy.perksComingSoon
+  const currentStatus = currentTier ? copy.tierLabels[currentTier.key] : copy.progressStart
   const nextPerkValue = nextTier
     ? `${copy.tierRewards[nextTier.key]} · ${formatReferralRequirement(perks, copy)}`
     : copy.allPerksUnlocked
+  const nextAction = formatReferralAction(perks, copy)
   const unlockedPrice = formatEuro(perks?.unlocked_pass_price ?? 9.99)
 
   if (isLoading && !userReferral) {
@@ -952,10 +957,14 @@ function UserReferralPanel({
         <p className="text-xs leading-relaxed text-[#A8B4D0]">{copy.userShareCode}</p>
       </div>
       <UserReferralProgress userReferral={userReferral} />
+      <div className="mt-4 rounded-xl border border-[#D8B866]/30 bg-[#D8B866]/8 p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-normal text-[#E8D39A]">{copy.nextAction}</p>
+        <p className="mt-1 text-sm font-bold leading-relaxed text-foreground">{nextAction}</p>
+      </div>
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <ReferralMetric label={copy.friendsRegistered} value={(userReferral?.registered_referrals ?? 0).toString()} />
         <ReferralMetric label={copy.friendsPurchased} value={(userReferral?.paid_referrals ?? 0).toString()} />
-        <ReferralMetric label={copy.perks} value={currentStatus} />
+        <ReferralMetric label={copy.currentTier} value={currentStatus} />
       </div>
       <div className="mt-4 rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1041,6 +1050,7 @@ function UserReferralProgress({
                   {isNext && <span className="rounded-full bg-[#D8B866]/15 px-2 py-0.5 text-[10px] font-bold text-[#E8D39A]">{copy.nextBadge}</span>}
                 </span>
                 <span className="mt-0.5 block text-[11px] leading-relaxed text-[#A8B4D0]">{copy.tierRewards[tierKey]}</span>
+                <span className="mt-0.5 block text-[10px] leading-relaxed text-[#6A7A9B]">{copy.tierRequirements[tierKey]}</span>
               </span>
             </div>
           )
@@ -1169,6 +1179,10 @@ function formatEuro(value: number) {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
 }
 
+function formatPassPrice(value: number, freeLabel: string) {
+  return value <= 0 ? freeLabel : formatEuro(value)
+}
+
 function formatReferralRequirement(
   perks: ReferralDashboardResponse["user_referral"]["perks"] | undefined,
   copy: ReturnType<typeof useLanguage>["t"]["profile"]["referrals"],
@@ -1186,6 +1200,25 @@ function formatReferralRequirement(
     return template.replace("{count}", remainingPaid.toString())
   }
   return copy.allPerksUnlocked
+}
+
+function formatReferralAction(
+  perks: ReferralDashboardResponse["user_referral"]["perks"] | undefined,
+  copy: ReturnType<typeof useLanguage>["t"]["profile"]["referrals"],
+) {
+  if (!perks?.next_tier) return copy.topTierAction
+
+  const remainingRegistered = perks.remaining_registered_referrals
+  const remainingPaid = perks.remaining_paid_referrals
+  if (remainingRegistered > 0) {
+    const template = remainingRegistered === 1 ? copy.nextActionRegistered : copy.nextActionRegisteredPlural
+    return template.replace("{count}", remainingRegistered.toString())
+  }
+  if (remainingPaid > 0) {
+    const template = remainingPaid === 1 ? copy.nextActionPaid : copy.nextActionPaidPlural
+    return template.replace("{count}", remainingPaid.toString())
+  }
+  return copy.topTierAction
 }
 
 function translateReferralApiError(
