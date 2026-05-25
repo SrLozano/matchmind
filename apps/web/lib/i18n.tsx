@@ -270,6 +270,7 @@ export const translations = {
           "Your first friend who registers unlocks your €8.99 pass price.",
           "Paid friends unlock €4.99, €2.49, and free pass tiers.",
           "If you already paid, your unlocked value is saved as future Matchmind credit.",
+          "Referral perks are promotional and may be reviewed for abuse or duplicate accounts.",
           "Matchmind never accepts or places bets.",
         ],
         userCreateButton: "Create my code",
@@ -330,7 +331,7 @@ export const translations = {
         barConditions: [
           "Your customers get the partner price using your code.",
           "Your pub earns €2 for every referred customer who purchases the World Cup Pass.",
-          "Payment is made at the end of the World Cup.",
+          "Commission is paid only after manual review of genuine paid customers.",
           "Matchmind does not accept or place bets.",
           "We only use your phone number for contact and manual payments.",
         ],
@@ -354,7 +355,7 @@ export const translations = {
         estimatedCommission: "Estimated commission",
         expectedPayment: "Expected payment",
         endOfWorldCup: "End of World Cup",
-        manualReview: "Commissions will be reviewed and paid manually at the end of the tournament.",
+        manualReview: "In-app commissions are estimates. Final payment requires manual validation and may exclude refunds, duplicate accounts, fake referrals, or suspicious activity.",
       },
       notificationSettings: "Notification Settings",
       notificationCopy: "Match alerts, odds movement nudges, and daily market signals will live here once push notifications are connected.",
@@ -385,7 +386,7 @@ export const translations = {
       termsDisclaimer: "Terms & Disclaimer",
       termsDisclaimerCopy: "Analysis only. No outcomes are promised.",
       termsDisclaimerDetails:
-        "Matchmind is a coaching and analysis tool for the World Cup. It is not a sportsbook, does not accept wagers, and does not guarantee results or profits.",
+        "Matchmind is a coaching and analysis tool for the World Cup. It is not a sportsbook, does not accept wagers, and does not guarantee results or profits. Referral rewards are promotional and subject to review. A user may apply only one referral code. Personal referral perks and pub partner commissions are separate and do not stack. Matchmind may reject, pause, or remove rewards, credits, commissions, or partner status in cases of suspected abuse, duplicate accounts, fake referrals, self-referrals, payment disputes, refunds, or activity that does not represent genuine users. Pub partner commissions shown in the app are estimates and are only payable after manual review and validation.",
       features: [
         "Full AI Coach access",
         "Full market divergence feed",
@@ -799,6 +800,7 @@ export const translations = {
           "Tu primer amigo registrado desbloquea tu precio de €8.99.",
           "Los amigos que compran desbloquean los niveles de €4.99, €2.49 y pase gratis.",
           "Si ya pagaste, tu valor desbloqueado queda guardado como credito futuro de Matchmind.",
+          "Las ventajas por referidos son promocionales y pueden revisarse si hay abuso o cuentas duplicadas.",
           "Matchmind nunca acepta ni coloca apuestas.",
         ],
         userCreateButton: "Crear mi codigo",
@@ -859,7 +861,7 @@ export const translations = {
         barConditions: [
           "Tus clientes consiguen el precio partner usando tu codigo.",
           "Ganas €2 por cada cliente referido que compre el Pase Mundial.",
-          "El pago se hara al final del Mundial.",
+          "La comision solo se paga tras revisar que sean clientes reales de pago.",
           "Matchmind no acepta ni coloca apuestas.",
           "Solo usamos tu telefono para contacto y pagos manuales.",
         ],
@@ -883,7 +885,7 @@ export const translations = {
         estimatedCommission: "Comision estimada",
         expectedPayment: "Pago esperado",
         endOfWorldCup: "Fin del Mundial",
-        manualReview: "Las comisiones se revisaran y pagaran manualmente al final del torneo.",
+        manualReview: "Las comisiones de la app son estimadas. El pago final requiere validacion manual y puede excluir reembolsos, cuentas duplicadas, referidos falsos o actividad sospechosa.",
       },
       notificationSettings: "Ajustes de notificaciones",
       notificationCopy: "Aquí estarán los avisos de partidos, movimientos de cuotas y señales diarias cuando conectemos notificaciones push.",
@@ -914,7 +916,7 @@ export const translations = {
       termsDisclaimer: "Términos y aviso",
       termsDisclaimerCopy: "Solo análisis. No se promete ningún resultado.",
       termsDisclaimerDetails:
-        "Matchmind es una herramienta de análisis y acompañamiento para el Mundial. No es una casa de apuestas, no acepta apuestas y no garantiza resultados ni beneficios.",
+        "Matchmind es una herramienta de analisis y acompañamiento para el Mundial. No es una casa de apuestas, no acepta apuestas y no garantiza resultados ni beneficios. Las recompensas por referidos son promocionales y estan sujetas a revision. Un usuario solo puede aplicar un codigo de referido. Las ventajas por referidos personales y las comisiones de bares partner son independientes y no se acumulan. Matchmind puede rechazar, pausar o eliminar recompensas, creditos, comisiones o el estado de partner si detecta posible abuso, cuentas duplicadas, referidos falsos, auto-referidos, disputas de pago, reembolsos o actividad que no represente usuarios reales. Las comisiones de bares partner mostradas en la app son estimadas y solo se pagaran tras revision y validacion manual.",
       features: [
         "Acceso completo al coach IA",
         "Panel completo de divergencias de mercado",
