@@ -15,6 +15,49 @@ from app.services.supabase import get_supabase
 DEFAULT_DISCOUNT_AMOUNT = 1.0
 DEFAULT_COMMISSION_AMOUNT = 2.0
 USER_REFERRAL_COMMISSION_AMOUNT = 0.0
+STANDARD_TOURNAMENT_PASS_PRICE = 9.99
+USER_REFERRAL_PERK_TIERS = [
+    {
+        "key": "scout",
+        "required_registered_referrals": 1,
+        "required_paid_referrals": 0,
+        "pass_price": 8.99,
+        "discount_percent": 10,
+        "beta_priority": False,
+    },
+    {
+        "key": "insider",
+        "required_registered_referrals": 0,
+        "required_paid_referrals": 2,
+        "pass_price": 4.99,
+        "discount_percent": 50,
+        "beta_priority": False,
+    },
+    {
+        "key": "captain",
+        "required_registered_referrals": 0,
+        "required_paid_referrals": 5,
+        "pass_price": 2.49,
+        "discount_percent": 75,
+        "beta_priority": False,
+    },
+    {
+        "key": "legend",
+        "required_registered_referrals": 0,
+        "required_paid_referrals": 7,
+        "pass_price": 0.0,
+        "discount_percent": 100,
+        "beta_priority": False,
+    },
+    {
+        "key": "founder_circle",
+        "required_registered_referrals": 0,
+        "required_paid_referrals": 10,
+        "pass_price": 0.0,
+        "discount_percent": 100,
+        "beta_priority": True,
+    },
+]
 LEADING_BUSINESS_WORDS = {
     "BAR",
     "CAFE",
@@ -68,6 +111,37 @@ def discount_label(discount_amount: float) -> str:
     if float(discount_amount).is_integer():
         return f"€{int(discount_amount)} discount"
     return f"€{discount_amount:.2f} discount"
+
+
+def user_referral_perks(registered_referrals: int, paid_referrals: int) -> dict[str, Any]:
+    current_tier = None
+    next_tier = None
+    for tier in USER_REFERRAL_PERK_TIERS:
+        registered_unlocked = registered_referrals >= int(tier["required_registered_referrals"])
+        paid_unlocked = paid_referrals >= int(tier["required_paid_referrals"])
+        if registered_unlocked and paid_unlocked:
+            current_tier = tier
+        elif next_tier is None:
+            next_tier = tier
+
+    unlocked_pass_price = float(current_tier["pass_price"]) if current_tier else STANDARD_TOURNAMENT_PASS_PRICE
+    discount_percent = int(current_tier["discount_percent"]) if current_tier else 0
+    beta_priority = bool(current_tier["beta_priority"]) if current_tier else False
+    remaining_registered = 0
+    remaining_paid = 0
+    if next_tier:
+        remaining_registered = max(int(next_tier["required_registered_referrals"]) - registered_referrals, 0)
+        remaining_paid = max(int(next_tier["required_paid_referrals"]) - paid_referrals, 0)
+
+    return {
+        "current_tier": current_tier,
+        "next_tier": next_tier,
+        "unlocked_pass_price": unlocked_pass_price,
+        "discount_percent": discount_percent,
+        "beta_priority": beta_priority,
+        "remaining_registered_referrals": remaining_registered,
+        "remaining_paid_referrals": remaining_paid,
+    }
 
 
 async def _ensure_user_exists(user_id: UUID) -> None:
@@ -185,6 +259,7 @@ async def create_user_referral_code(user_id: UUID) -> dict[str, Any]:
             "registered_referrals": summary["registered_referrals"],
             "paid_referrals": summary["paid_referrals"],
             "status_label": "Tracked",
+            "perks": summary["perks"],
         }
 
     code = await generate_unique_code_from_base(base_code_from_user(user))
@@ -212,6 +287,7 @@ async def create_user_referral_code(user_id: UUID) -> dict[str, Any]:
         "registered_referrals": 0,
         "paid_referrals": 0,
         "status_label": "Tracked",
+        "perks": user_referral_perks(0, 0),
     }
 
 
@@ -232,6 +308,7 @@ async def get_user_referral_summary(user_id: UUID) -> dict[str, Any]:
             "registered_referrals": 0,
             "paid_referrals": 0,
             "status_label": "Coming soon",
+            "perks": user_referral_perks(0, 0),
         }
 
     referral_code = code_response.data[0]
@@ -242,12 +319,16 @@ async def get_user_referral_summary(user_id: UUID) -> dict[str, Any]:
         .execute()
     )
     attributions = attributions_response.data or []
+    registered_referrals = len(attributions)
+    paid_referrals = sum(1 for attribution in attributions if attribution.get("converted_at"))
+    perks = user_referral_perks(registered_referrals, paid_referrals)
     return {
         "has_code": True,
         "code": referral_code["code"],
-        "registered_referrals": len(attributions),
-        "paid_referrals": sum(1 for attribution in attributions if attribution.get("converted_at")),
-        "status_label": "Tracked",
+        "registered_referrals": registered_referrals,
+        "paid_referrals": paid_referrals,
+        "status_label": (perks["current_tier"] or {}).get("key", "tracking"),
+        "perks": perks,
     }
 
 

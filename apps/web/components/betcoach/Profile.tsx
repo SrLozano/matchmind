@@ -406,6 +406,7 @@ export default function Profile({
         dashboard={referralDashboard}
         isLoading={isLoadingReferrals}
         error={referralError}
+        isPremium={isPremium}
         onRefresh={refreshReferrals}
       />
 
@@ -528,11 +529,13 @@ function ReferralsSection({
   dashboard,
   isLoading,
   error,
+  isPremium,
   onRefresh,
 }: {
   dashboard: ReferralDashboardResponse | null
   isLoading: boolean
   error: string | null
+  isPremium: boolean
   onRefresh: () => void
 }) {
   const { t } = useLanguage()
@@ -718,6 +721,7 @@ function ReferralsSection({
                   isLoading={isLoading}
                   isCreating={isCreatingUserCode}
                   error={userCodeError}
+                  isPremium={isPremium}
                   onCreate={createPersonalCode}
                   onCopyCode={() => copyCode(userReferral?.code)}
                 />
@@ -863,6 +867,7 @@ function UserReferralPanel({
   isLoading,
   isCreating,
   error,
+  isPremium,
   onCreate,
   onCopyCode,
 }: {
@@ -870,12 +875,22 @@ function UserReferralPanel({
   isLoading: boolean
   isCreating: boolean
   error: string | null
+  isPremium: boolean
   onCreate: () => void
   onCopyCode: () => void
 }) {
   const { t } = useLanguage()
   const copy = t.profile.referrals
   const hasCode = Boolean(userReferral?.has_code && userReferral.code)
+  const perks = userReferral?.perks
+  const currentTier = perks?.current_tier ?? null
+  const nextTier = perks?.next_tier ?? null
+  const currentPerkValue = currentTier ? copy.tierRewards[currentTier.key] : copy.noPerkYet
+  const currentStatus = currentTier ? copy.tierLabels[currentTier.key] : copy.perksComingSoon
+  const nextPerkValue = nextTier
+    ? `${copy.tierRewards[nextTier.key]} · ${formatReferralRequirement(perks, copy)}`
+    : copy.allPerksUnlocked
+  const unlockedPrice = formatEuro(perks?.unlocked_pass_price ?? 9.99)
 
   if (isLoading && !userReferral) {
     return (
@@ -937,7 +952,31 @@ function UserReferralPanel({
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <ReferralMetric label={copy.friendsRegistered} value={(userReferral?.registered_referrals ?? 0).toString()} />
         <ReferralMetric label={copy.friendsPurchased} value={(userReferral?.paid_referrals ?? 0).toString()} />
-        <ReferralMetric label={copy.perks} value={copy.perksComingSoon} />
+        <ReferralMetric label={copy.perks} value={currentStatus} />
+      </div>
+      <div className="mt-4 rounded-xl border border-[#1A2845] bg-[#070D1A] p-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-normal text-[#6A7A9B]">{copy.currentPerk}</p>
+            <p className="mt-1 text-sm font-bold text-foreground">{currentPerkValue}</p>
+          </div>
+          <div className="rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/10 px-3 py-2 text-right">
+            <p className="text-[10px] font-semibold text-[#6A7A9B]">{copy.unlockedPrice}</p>
+            <p className="text-sm font-black text-[#00FF87]">{unlockedPrice}</p>
+          </div>
+        </div>
+        <div className="mt-3 border-t border-[#1A2845] pt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-normal text-[#6A7A9B]">{copy.nextPerk}</p>
+          <p className="mt-1 text-xs font-semibold leading-relaxed text-[#A8B4D0]">{nextPerkValue}</p>
+          {isPremium && (
+            <p className="mt-2 text-xs leading-relaxed text-[#00FF87]">
+              {(perks?.unlocked_pass_price ?? 9.99) <= 0 ? copy.futureCreditFree : copy.futureCredit}
+            </p>
+          )}
+          {perks?.beta_priority && (
+            <p className="mt-2 text-xs leading-relaxed text-[#E8D39A]">{copy.betaPriority}</p>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -1060,6 +1099,25 @@ function ReferralTabButton({
 
 function formatEuro(value: number) {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value)
+}
+
+function formatReferralRequirement(
+  perks: ReferralDashboardResponse["user_referral"]["perks"] | undefined,
+  copy: ReturnType<typeof useLanguage>["t"]["profile"]["referrals"],
+) {
+  if (!perks?.next_tier) return copy.allPerksUnlocked
+
+  const remainingRegistered = perks.remaining_registered_referrals
+  const remainingPaid = perks.remaining_paid_referrals
+  if (remainingRegistered > 0) {
+    const template = remainingRegistered === 1 ? copy.registeredNeeded : copy.registeredNeededPlural
+    return template.replace("{count}", remainingRegistered.toString())
+  }
+  if (remainingPaid > 0) {
+    const template = remainingPaid === 1 ? copy.paidNeeded : copy.paidNeededPlural
+    return template.replace("{count}", remainingPaid.toString())
+  }
+  return copy.allPerksUnlocked
 }
 
 function translateReferralApiError(

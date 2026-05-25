@@ -486,6 +486,18 @@ grant select, insert, update on public.referral_codes to service_role;
 grant select, insert, update on public.referral_attributions to service_role;
 ```
 
+User referral perks are computed from `referral_attributions`, so no extra rewards table is required for v1:
+
+| Requirement | User perk |
+|---|---|
+| 1 friend registers with the code | €8.99 World Cup Pass price |
+| 2 friends purchase | 50% discount, €4.99 |
+| 5 friends purchase | 75% discount, €2.49 |
+| 7 friends purchase | Free World Cup Pass |
+| 10 friends purchase | Founder Circle / priority beta access for future League and Champions versions |
+
+If a user has already purchased, the API still returns the same perk state so the frontend can present it as future Matchmind credit instead of asking for a refund or extra claim step.
+
 Seed a local dev user if you are using the default frontend env:
 
 ```sql

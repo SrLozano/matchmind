@@ -235,12 +235,34 @@ export type AppliedReferral = {
   owner_type: "bar_partner" | "user" | null
 }
 
+export type UserReferralTierKey = "scout" | "insider" | "captain" | "legend" | "founder_circle"
+
+export type UserReferralTier = {
+  key: UserReferralTierKey
+  required_registered_referrals: number
+  required_paid_referrals: number
+  pass_price: number
+  discount_percent: number
+  beta_priority: boolean
+}
+
+export type UserReferralPerks = {
+  current_tier: UserReferralTier | null
+  next_tier: UserReferralTier | null
+  unlocked_pass_price: number
+  discount_percent: number
+  beta_priority: boolean
+  remaining_registered_referrals: number
+  remaining_paid_referrals: number
+}
+
 export type UserReferralSummary = {
   has_code: boolean
   code: string | null
   registered_referrals: number
   paid_referrals: number
   status_label: string
+  perks: UserReferralPerks
 }
 
 export type ReferralDashboardResponse = {
@@ -276,6 +298,7 @@ export type CreateUserReferralCodeResponse = {
   registered_referrals: number
   paid_referrals: number
   status_label: string
+  perks: UserReferralPerks
 }
 
 export type ValidateReferralCodeResponse = {

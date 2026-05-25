@@ -16,6 +16,7 @@ from app.services.referrals import (
     get_referral_dashboard,
     mark_referral_conversion,
     normalize_referral_code,
+    user_referral_perks,
     validate_referral_code,
 )
 
@@ -148,6 +149,34 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(base_code_from_user({"name": "Marío Lozano", "email": "mario@example.com"}), "MARIO")
         self.assertEqual(base_code_from_user({"name": "", "email": "ana.soto@example.com"}), "ANASOTO")
         self.assertEqual(base_code_from_user({"name": "", "email": ""}), "MATCHMIND")
+
+    def test_user_referral_perks_follow_product_ladder(self) -> None:
+        no_perk = user_referral_perks(0, 0)
+        self.assertIsNone(no_perk["current_tier"])
+        self.assertEqual(no_perk["next_tier"]["key"], "scout")
+        self.assertEqual(no_perk["unlocked_pass_price"], 9.99)
+
+        scout = user_referral_perks(1, 0)
+        self.assertEqual(scout["current_tier"]["key"], "scout")
+        self.assertEqual(scout["unlocked_pass_price"], 8.99)
+        self.assertEqual(scout["next_tier"]["key"], "insider")
+
+        insider = user_referral_perks(1, 2)
+        self.assertEqual(insider["current_tier"]["key"], "insider")
+        self.assertEqual(insider["unlocked_pass_price"], 4.99)
+
+        captain = user_referral_perks(1, 5)
+        self.assertEqual(captain["current_tier"]["key"], "captain")
+        self.assertEqual(captain["unlocked_pass_price"], 2.49)
+
+        legend = user_referral_perks(1, 7)
+        self.assertEqual(legend["current_tier"]["key"], "legend")
+        self.assertEqual(legend["unlocked_pass_price"], 0.0)
+
+        founder = user_referral_perks(1, 10)
+        self.assertEqual(founder["current_tier"]["key"], "founder_circle")
+        self.assertTrue(founder["beta_priority"])
+        self.assertIsNone(founder["next_tier"])
 
     async def test_creates_bar_partner_and_generates_correct_code(self) -> None:
         client = FakeSupabase({"users": [{"id": str(PARTNER_USER_ID)}]})
@@ -396,7 +425,9 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(dashboard["user_referral"]["code"], "MARIO")
         self.assertEqual(dashboard["user_referral"]["registered_referrals"], 2)
         self.assertEqual(dashboard["user_referral"]["paid_referrals"], 1)
-        self.assertEqual(dashboard["user_referral"]["status_label"], "Tracked")
+        self.assertEqual(dashboard["user_referral"]["status_label"], "scout")
+        self.assertEqual(dashboard["user_referral"]["perks"]["current_tier"]["key"], "scout")
+        self.assertEqual(dashboard["user_referral"]["perks"]["next_tier"]["key"], "insider")
 
     async def test_referral_conversion_appears_in_user_referral_paid_metrics(self) -> None:
         client = seeded_client()

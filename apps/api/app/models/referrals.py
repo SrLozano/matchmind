@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 ReferralOwnerType = Literal["bar_partner", "user"]
+UserReferralTierKey = Literal["scout", "insider", "captain", "legend", "founder_circle"]
 
 
 class BarPartnerCreate(BaseModel):
@@ -61,12 +62,32 @@ class BarPartnerCreateResponse(BaseModel):
     status: str
 
 
+class UserReferralTier(BaseModel):
+    key: UserReferralTierKey
+    required_registered_referrals: int
+    required_paid_referrals: int
+    pass_price: float
+    discount_percent: int
+    beta_priority: bool = False
+
+
+class UserReferralPerks(BaseModel):
+    current_tier: UserReferralTier | None = None
+    next_tier: UserReferralTier | None = None
+    unlocked_pass_price: float = 9.99
+    discount_percent: int = 0
+    beta_priority: bool = False
+    remaining_registered_referrals: int = 1
+    remaining_paid_referrals: int = 0
+
+
 class UserReferralSummary(BaseModel):
     has_code: bool
     code: str | None = None
     registered_referrals: int = 0
     paid_referrals: int = 0
     status_label: str = "Coming soon"
+    perks: UserReferralPerks = Field(default_factory=UserReferralPerks)
 
 
 class UserReferralCodeCreateResponse(BaseModel):
@@ -74,6 +95,7 @@ class UserReferralCodeCreateResponse(BaseModel):
     registered_referrals: int = 0
     paid_referrals: int = 0
     status_label: str = "Tracked"
+    perks: UserReferralPerks = Field(default_factory=UserReferralPerks)
 
 
 class ApplyReferralCodeRequest(BaseModel):
