@@ -331,6 +331,38 @@ async def _get_applied_referral(user_id: UUID) -> dict[str, Any] | None:
     }
 
 
+async def get_applied_referral_for_checkout(user_id: UUID) -> dict[str, Any] | None:
+    client = await get_supabase()
+    attribution_response = (
+        await client.table("referral_attributions")
+        .select("id, referral_code_id, partner_id, discount_amount")
+        .eq("referred_user_id", str(user_id))
+        .limit(1)
+        .execute()
+    )
+    if not attribution_response.data:
+        return None
+
+    attribution = attribution_response.data[0]
+    code_response = (
+        await client.table("referral_codes")
+        .select("code, discount_amount, active")
+        .eq("id", attribution["referral_code_id"])
+        .limit(1)
+        .execute()
+    )
+    if not code_response.data or not code_response.data[0].get("active"):
+        return None
+
+    referral_code = code_response.data[0]
+    return {
+        "attribution_id": attribution["id"],
+        "code": referral_code["code"],
+        "partner_id": attribution["partner_id"],
+        "discount_amount": float(attribution.get("discount_amount") or referral_code["discount_amount"]),
+    }
+
+
 async def mark_referral_conversion(user_id: UUID, gross_amount: float | None = None) -> bool:
     client = await get_supabase()
     existing = (

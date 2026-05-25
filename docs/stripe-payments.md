@@ -1,9 +1,10 @@
 # Stripe Payments
 
-Matchmind uses Stripe Checkout for one payment product:
+Matchmind uses Stripe Checkout for one payment product with two one-time prices:
 
 - Product: World Cup Tournament Pass
-- Price: EUR 9.99
+- Standard price: EUR 9.99
+- Referral price: EUR 8.99, used when the user has applied a referral code
 - Mode: one-time payment
 - Result after successful payment: `public.users.plan = 'premium'`
 
@@ -19,6 +20,7 @@ Profile upgrade button
 -> Stripe sends checkout.session.completed to /payments/webhook
 -> FastAPI verifies Stripe-Signature against STRIPE_WEBHOOK_SECRET
 -> FastAPI updates public.users.plan = 'premium'
+-> FastAPI marks referral_attributions.converted_at when the user had applied a referral code
 -> frontend reloads /users/me on focus/profile refresh
 ```
 
@@ -32,6 +34,7 @@ Set these in the root/backend `.env`, not in `apps/web/.env.local`.
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
 APP_URL=http://localhost:3000
 ```
 
@@ -40,6 +43,7 @@ APP_URL=http://localhost:3000
 | `STRIPE_SECRET_KEY` | `sk_test_...` | Server-side Stripe API key used to create Checkout Sessions. |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` from `stripe listen` | Secret used to verify that webhook events came from Stripe. |
 | `STRIPE_TOURNAMENT_PASS_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 9.99 tournament pass. |
+| `STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 8.99 tournament pass shown after a referral code is applied. |
 | `APP_URL` | `http://localhost:3000` | Success and cancel redirect base URL. |
 
 Use the Price ID that starts with `price_`, not the Product ID that starts with `prod_`.
@@ -58,35 +62,43 @@ STRIPE_SECRET_KEY=sk_test_...
 
 - Name: `Matchmind World Cup Tournament Pass`
 - Pricing model: one-off
-- Price: EUR 9.99
+- Standard price: EUR 9.99
 - Currency: EUR
 
-4. Copy the generated Price ID:
+4. Add a second one-off price to the same product:
+
+- Referral price: EUR 8.99
+- Currency: EUR
+
+Do not encode the bar code or discount in the Stripe Price name. Keep the product generic; Matchmind decides whether the user gets the referral price.
+
+5. Copy both generated Price IDs:
 
 ```text
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
 ```
 
-5. Set the local app URL:
+6. Set the local app URL:
 
 ```text
 APP_URL=http://localhost:3000
 ```
 
-6. Install and log in to the Stripe CLI:
+7. Install and log in to the Stripe CLI:
 
 ```bash
 brew install stripe/stripe-cli/stripe
 stripe login
 ```
 
-7. Start webhook forwarding in a separate terminal:
+8. Start webhook forwarding in a separate terminal:
 
 ```bash
 stripe listen --forward-to localhost:8000/payments/webhook
 ```
 
-8. Copy the printed webhook signing secret into `.env`:
+9. Copy the printed webhook signing secret into `.env`:
 
 ```text
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -94,21 +106,23 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 The `whsec_...` from `stripe listen` is for local CLI-forwarded events. It is different from any webhook secret created in the Stripe Dashboard.
 
-9. Restart the API after changing `.env`:
+10. Restart the API after changing `.env`:
 
 ```bash
 make api-dev
 ```
 
-10. Start the frontend:
+11. Start the frontend:
 
 ```bash
 pnpm web:dev
 ```
 
-11. Sign in with Supabase Auth, open Profile, and click the upgrade button.
+12. For a standard purchase, sign in with Supabase Auth, open Profile, and click the upgrade button. Checkout should show EUR 9.99.
 
-12. Pay with Stripe's standard successful test card:
+13. For a referral purchase, apply a bar code in Profile before clicking the upgrade button. Checkout should show EUR 8.99.
+
+14. Pay with Stripe's standard successful test card:
 
 ```text
 4242 4242 4242 4242
@@ -139,6 +153,7 @@ Expected success signs:
 - The `stripe listen` terminal logs a delivered `checkout.session.completed` event.
 - The API logs do not show an invalid signature error.
 - The current user's row in Supabase changes to `plan = 'premium'`.
+- If the user applied a referral code, their `public.referral_attributions.converted_at` is set and the partner dashboard counts one paid referral.
 - Profile shows the premium state after refresh or window focus.
 
 Run automated checks before committing payment changes:
@@ -159,6 +174,7 @@ Check:
 - The API is running at `NEXT_PUBLIC_API_URL`.
 - `STRIPE_SECRET_KEY` starts with `sk_test_`.
 - `STRIPE_TOURNAMENT_PASS_PRICE_ID` starts with `price_`.
+- If testing a referral checkout, `STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID` starts with `price_`.
 - The API was restarted after editing `.env`.
 
 ### Webhook Does Not Upgrade The User
@@ -198,6 +214,7 @@ Do not switch to live mode until local test-mode checkout and webhook delivery a
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
 APP_URL=https://your-production-domain.com
 ```
 

@@ -19,7 +19,7 @@ async def create_checkout_session(authorization: str | None = Header(default=Non
             detail="Authentication is required to start checkout.",
         )
 
-    return {"url": create_tournament_pass_checkout_session(authenticated_user.id)}
+    return {"url": await create_tournament_pass_checkout_session(authenticated_user.id)}
 
 
 @router.post("/webhook")

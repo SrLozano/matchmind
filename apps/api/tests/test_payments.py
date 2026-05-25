@@ -23,31 +23,12 @@ def payment_settings() -> SimpleNamespace:
         stripe_secret_key="sk_test_matchmind",
         stripe_webhook_secret="whsec_matchmind",
         stripe_tournament_pass_price_id="price_tournament_pass",
+        stripe_tournament_pass_referral_price_id="price_tournament_pass_referral",
         app_url="http://localhost:3000",
     )
 
 
 class PaymentsTest(unittest.TestCase):
-    def test_checkout_session_creation_uses_authenticated_user_metadata(self) -> None:
-        created_kwargs = {}
-
-        def fake_create(**kwargs):
-            created_kwargs.update(kwargs)
-            return SimpleNamespace(url="https://checkout.stripe.com/c/test")
-
-        with patch("app.services.payments.get_settings", return_value=payment_settings()):
-            with patch("app.services.payments.stripe.checkout.Session.create", side_effect=fake_create):
-                checkout_url = create_tournament_pass_checkout_session(USER_ID)
-
-        self.assertEqual(checkout_url, "https://checkout.stripe.com/c/test")
-        self.assertEqual(created_kwargs["mode"], "payment")
-        self.assertEqual(created_kwargs["line_items"], [{"price": "price_tournament_pass", "quantity": 1}])
-        self.assertEqual(created_kwargs["client_reference_id"], str(USER_ID))
-        self.assertEqual(created_kwargs["metadata"]["user_id"], str(USER_ID))
-        self.assertEqual(created_kwargs["payment_intent_data"]["metadata"]["user_id"], str(USER_ID))
-        self.assertEqual(created_kwargs["success_url"], "http://localhost:3000/?payment=success")
-        self.assertEqual(created_kwargs["cancel_url"], "http://localhost:3000/?payment=cancelled")
-
     def test_invalid_webhook_signature_is_rejected(self) -> None:
         signature_error = stripe.error.SignatureVerificationError("bad signature", "t=1,v1=bad")
 
@@ -61,6 +42,53 @@ class PaymentsTest(unittest.TestCase):
 
 
 class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
+    async def test_checkout_session_creation_uses_standard_price_without_referral(self) -> None:
+        created_kwargs = {}
+
+        def fake_create(**kwargs):
+            created_kwargs.update(kwargs)
+            return SimpleNamespace(url="https://checkout.stripe.com/c/test")
+
+        with patch("app.services.payments.get_settings", return_value=payment_settings()):
+            with patch("app.services.payments.get_applied_referral_for_checkout", new_callable=AsyncMock, return_value=None):
+                with patch("app.services.payments.stripe.checkout.Session.create", side_effect=fake_create):
+                    checkout_url = await create_tournament_pass_checkout_session(USER_ID)
+
+        self.assertEqual(checkout_url, "https://checkout.stripe.com/c/test")
+        self.assertEqual(created_kwargs["mode"], "payment")
+        self.assertEqual(created_kwargs["line_items"], [{"price": "price_tournament_pass", "quantity": 1}])
+        self.assertEqual(created_kwargs["client_reference_id"], str(USER_ID))
+        self.assertEqual(created_kwargs["metadata"]["user_id"], str(USER_ID))
+        self.assertEqual(created_kwargs["metadata"]["checkout_price_type"], "standard")
+        self.assertEqual(created_kwargs["payment_intent_data"]["metadata"]["user_id"], str(USER_ID))
+        self.assertEqual(created_kwargs["success_url"], "http://localhost:3000/?payment=success")
+        self.assertEqual(created_kwargs["cancel_url"], "http://localhost:3000/?payment=cancelled")
+
+    async def test_checkout_session_uses_referral_price_when_user_has_applied_code(self) -> None:
+        created_kwargs = {}
+
+        def fake_create(**kwargs):
+            created_kwargs.update(kwargs)
+            return SimpleNamespace(url="https://checkout.stripe.com/c/test")
+
+        referral = {
+            "attribution_id": "attr_123",
+            "code": "CERVANTES",
+            "partner_id": "partner_123",
+            "discount_amount": 1.0,
+        }
+        with patch("app.services.payments.get_settings", return_value=payment_settings()):
+            with patch("app.services.payments.get_applied_referral_for_checkout", new_callable=AsyncMock, return_value=referral):
+                with patch("app.services.payments.stripe.checkout.Session.create", side_effect=fake_create):
+                    checkout_url = await create_tournament_pass_checkout_session(USER_ID)
+
+        self.assertEqual(checkout_url, "https://checkout.stripe.com/c/test")
+        self.assertEqual(created_kwargs["line_items"], [{"price": "price_tournament_pass_referral", "quantity": 1}])
+        self.assertEqual(created_kwargs["metadata"]["checkout_price_type"], "referral")
+        self.assertEqual(created_kwargs["metadata"]["referral_code"], "CERVANTES")
+        self.assertEqual(created_kwargs["metadata"]["referral_partner_id"], "partner_123")
+        self.assertEqual(created_kwargs["metadata"]["referral_attribution_id"], "attr_123")
+
     async def test_create_checkout_endpoint_uses_authenticated_user(self) -> None:
         with patch(
             "app.routers.payments.get_authenticated_user",
@@ -69,12 +97,13 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
         ):
             with patch(
                 "app.routers.payments.create_tournament_pass_checkout_session",
+                new_callable=AsyncMock,
                 return_value="https://checkout.stripe.com/c/test",
             ) as create_session:
                 result = await create_checkout_session("Bearer token")
 
         self.assertEqual(result, {"url": "https://checkout.stripe.com/c/test"})
-        create_session.assert_called_once_with(USER_ID)
+        create_session.assert_awaited_once_with(USER_ID)
 
     async def test_webhook_updates_user_plan_on_checkout_session_completed(self) -> None:
         event = {

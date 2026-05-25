@@ -6,7 +6,7 @@ import stripe
 from fastapi import HTTPException, status
 
 from app.config import get_settings
-from app.services.referrals import mark_referral_conversion
+from app.services.referrals import get_applied_referral_for_checkout, mark_referral_conversion
 from app.services.supabase import update_user_plan
 
 
@@ -22,11 +22,24 @@ def _require_setting(value: str | None, name: str) -> str:
     )
 
 
-def create_tournament_pass_checkout_session(user_id: UUID) -> str:
+async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
     settings = get_settings()
     stripe.api_key = _require_setting(settings.stripe_secret_key, "STRIPE_SECRET_KEY")
-    price_id = _require_setting(settings.stripe_tournament_pass_price_id, "STRIPE_TOURNAMENT_PASS_PRICE_ID")
-    metadata = {"user_id": str(user_id), "product": TOURNAMENT_PASS_PRODUCT}
+    referral = await get_applied_referral_for_checkout(user_id)
+    price_id = _checkout_price_id(settings, has_referral=referral is not None)
+    metadata = {
+        "user_id": str(user_id),
+        "product": TOURNAMENT_PASS_PRODUCT,
+        "checkout_price_type": "referral" if referral else "standard",
+    }
+    if referral:
+        metadata.update(
+            {
+                "referral_code": str(referral["code"]),
+                "referral_partner_id": str(referral["partner_id"]),
+                "referral_attribution_id": str(referral["attribution_id"]),
+            }
+        )
     app_url = settings.app_url.rstrip("/")
 
     session = stripe.checkout.Session.create(
@@ -45,6 +58,15 @@ def create_tournament_pass_checkout_session(user_id: UUID) -> str:
             detail="Stripe did not return a checkout URL.",
         )
     return url
+
+
+def _checkout_price_id(settings, has_referral: bool) -> str:
+    if has_referral:
+        return _require_setting(
+            settings.stripe_tournament_pass_referral_price_id,
+            "STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID",
+        )
+    return _require_setting(settings.stripe_tournament_pass_price_id, "STRIPE_TOURNAMENT_PASS_PRICE_ID")
 
 
 def construct_webhook_event(payload: bytes, signature: str | None) -> dict:
