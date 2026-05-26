@@ -5,6 +5,7 @@ import {
   ArrowRight,
   AlertTriangle,
   CheckCircle2,
+  Languages,
   LineChart,
   Loader2,
   Mail,
@@ -477,24 +478,30 @@ function LanguageSwitcher({
   languageLabel: string
   onLanguageChange: (language: Language) => void
 }) {
+  const options: Array<{ value: Language; label: string }> = [
+    { value: "en", label: "English" },
+    { value: "es", label: "Español" },
+  ]
+
   return (
     <div
-      className="flex items-center gap-1 rounded-full border border-white/15 bg-white/8 p-1 text-xs font-black text-[#A8B4D0] backdrop-blur"
+      className="inline-flex max-w-full items-center gap-1 rounded-full border border-white/15 bg-[#071222]/78 p-1 text-xs font-black text-[#A8B4D0] shadow-[0_12px_40px_rgba(0,0,0,0.22)] backdrop-blur"
       aria-label={languageLabel}
     >
-      {(["en", "es"] as const).map((option) => (
+      <Languages className="ml-2 hidden h-4 w-4 shrink-0 text-[#00FF87] sm:block" aria-hidden="true" />
+      {options.map((option) => (
         <button
-          key={option}
+          key={option.value}
           type="button"
-          onClick={() => onLanguageChange(option)}
-          className={`h-8 rounded-full px-3 transition-colors ${
-            language === option
+          onClick={() => onLanguageChange(option.value)}
+          className={`h-8 rounded-full px-3 transition-colors sm:px-3.5 ${
+            language === option.value
               ? "bg-[#00FF87] text-[#06101D]"
               : "text-[#DCE6FA] hover:bg-white/10 hover:text-white"
           }`}
-          aria-pressed={language === option}
+          aria-pressed={language === option.value}
         >
-          {option.toUpperCase()}
+          {option.label}
         </button>
       ))}
     </div>

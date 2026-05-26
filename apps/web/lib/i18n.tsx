@@ -1092,6 +1092,14 @@ function isLanguage(value: string | null): value is Language {
   return value === "en" || value === "es"
 }
 
+function detectBrowserLanguage(): Language {
+  const browserLanguages = window.navigator.languages?.length
+    ? window.navigator.languages
+    : [window.navigator.language]
+
+  return browserLanguages.some((browserLanguage) => browserLanguage.toLowerCase().startsWith("es")) ? "es" : "en"
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>("en")
 
@@ -1102,10 +1110,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const browserLanguage = window.navigator.language.toLowerCase()
-    if (browserLanguage.startsWith("es")) {
-      setLanguageState("es")
-    }
+    setLanguageState(detectBrowserLanguage())
   }, [])
 
   const setLanguage = (nextLanguage: Language) => {
