@@ -590,17 +590,19 @@ Match Radar reads `GET /odds/matches`. It shows 1X2 best prices by default and e
 
 ## Stripe Test-Mode Checkout
 
-Payments are test-mode only for local development. Create one-time Stripe Prices for €9.99 and €8.99 under the World Cup Tournament Pass product, then set the backend `.env` values:
+Payments are test-mode only for local development. Create one-time Stripe Prices for €9.99, €8.99, €4.99, and €2.49 under the World Cup Tournament Pass product, then set the backend `.env` values:
 
 ```text
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID=price_...
 APP_URL=http://localhost:3000
 ```
 
-The API uses the €8.99 referral price only when the authenticated user has already applied a referral code. Otherwise it uses the normal €9.99 price.
+The API uses the best eligible price for the authenticated user: applied referral code, personal referral tier, or the normal €9.99 price. Free personal referral tiers activate the pass directly without starting Stripe Checkout.
 
 Start the API, then forward webhooks with the Stripe CLI:
 

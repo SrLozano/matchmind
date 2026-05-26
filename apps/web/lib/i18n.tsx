@@ -244,6 +244,9 @@ export const translations = {
       paidThanks: "Your tournament pass is locked in.",
       premiumSummary: "Premium member · Tournament pass secured",
       upgrade: "Get the Tournament Pass",
+      unlockFreePass: "Unlock free pass",
+      openingStripe: "Opening Stripe...",
+      activatingPass: "Activating pass...",
       stripe: "Powered by Stripe · Secure checkout · No subscription",
       referrals: {
         title: "Referrals",
@@ -774,6 +777,9 @@ export const translations = {
       paidThanks: "Tu pase del torneo ya está asegurado.",
       premiumSummary: "Miembro Premium · Pase del torneo asegurado",
       upgrade: "Conseguir el Pase Mundial",
+      unlockFreePass: "Desbloquear pase gratis",
+      openingStripe: "Abriendo Stripe...",
+      activatingPass: "Activando pase...",
       stripe: "Con Stripe · Pago seguro · Sin suscripción",
       referrals: {
         title: "Referidos",

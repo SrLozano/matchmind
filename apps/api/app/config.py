@@ -15,6 +15,14 @@ class Settings(BaseSettings):
         default=None,
         alias="STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID",
     )
+    stripe_tournament_pass_insider_price_id: str | None = Field(
+        default=None,
+        alias="STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID",
+    )
+    stripe_tournament_pass_captain_price_id: str | None = Field(
+        default=None,
+        alias="STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID",
+    )
     app_url: str = Field(default="http://localhost:3000", alias="APP_URL")
     allow_dev_auth_fallback: bool = Field(default=False, alias="ALLOW_DEV_AUTH_FALLBACK")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")

@@ -6,7 +6,7 @@ import { applyReferralCode, createBarReferralPartner, createUserReferralCode, ge
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
-import { getBestPassPriceOffer } from "@/lib/referral-pricing"
+import { getBestPassPriceOffer, STANDARD_WORLD_CUP_PASS_PRICE } from "@/lib/referral-pricing"
 import { displayUserName } from "@/lib/user-display"
 import SectionHeader from "./SectionHeader"
 
@@ -398,11 +398,13 @@ export default function Profile({
                 type="button"
                 onClick={onShowUpgradePrompt}
               >
-                {t.profile.upgrade}
+                {passOffer.isFree ? t.profile.unlockFreePass : t.profile.upgrade}
               </button>
-              <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">
-                {t.profile.stripe}
-              </p>
+              {!passOffer.isFree && (
+                <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">
+                  {t.profile.stripe}
+                </p>
+              )}
             </div>
           </div>
         </>
@@ -897,7 +899,7 @@ function UserReferralPanel({
     ? `${copy.tierRewards[nextTier.key]} · ${formatReferralRequirement(perks, copy)}`
     : copy.allPerksUnlocked
   const nextAction = formatReferralAction(perks, copy)
-  const unlockedPrice = formatEuro(perks?.unlocked_pass_price ?? 9.99)
+  const unlockedPrice = formatEuro(perks?.unlocked_pass_price ?? STANDARD_WORLD_CUP_PASS_PRICE)
 
   if (isLoading && !userReferral) {
     return (
@@ -982,7 +984,7 @@ function UserReferralPanel({
           <p className="mt-1 text-xs font-semibold leading-relaxed text-[#A8B4D0]">{nextPerkValue}</p>
           {isPremium && (
             <p className="mt-2 text-xs leading-relaxed text-[#00FF87]">
-              {(perks?.unlocked_pass_price ?? 9.99) <= 0 ? copy.futureCreditFree : copy.futureCredit}
+              {(perks?.unlocked_pass_price ?? STANDARD_WORLD_CUP_PASS_PRICE) <= 0 ? copy.futureCreditFree : copy.futureCredit}
             </p>
           )}
           {perks?.beta_priority && (

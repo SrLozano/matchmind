@@ -228,6 +228,13 @@ function UpgradePrompt({
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const passOffer = getBestPassPriceOffer(referralDashboard)
+  const offerSourceLabel = passOffer.appliedCode
+    ? `${t.profile.referrals.codeLabel} ${passOffer.appliedCode}`
+    : passOffer.tierKey
+      ? t.profile.referrals.tierLabels[passOffer.tierKey]
+      : null
+  const checkoutLoadingLabel = passOffer.isFree ? t.profile.activatingPass : t.profile.openingStripe
+  const checkoutButtonLabel = passOffer.isFree ? t.profile.unlockFreePass : t.profile.upgrade
 
   const startCheckout = async () => {
     setIsStartingCheckout(true)
@@ -266,7 +273,10 @@ function UpgradePrompt({
         </div>
 
         <div className="mt-4 flex items-center justify-between rounded-xl border border-[#1A2845] bg-[#070D1A] px-3 py-3">
-          <span className="text-sm font-semibold text-[#A8B4D0]">{t.profile.pass}</span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-[#A8B4D0]">{t.profile.pass}</span>
+            {offerSourceLabel && <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-normal text-[#00FF87]">{offerSourceLabel}</span>}
+          </span>
           <span className="flex items-baseline gap-2">
             {passOffer.isDiscounted && <span className="text-xs font-bold text-[#6A7A9B] line-through">{formatEuro(passOffer.standardPrice)}</span>}
             <span className="text-xl font-black text-foreground">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
@@ -280,11 +290,11 @@ function UpgradePrompt({
           disabled={isStartingCheckout}
         >
           {isStartingCheckout && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isStartingCheckout ? (language === "es" ? "Abriendo Stripe..." : "Opening Stripe...") : t.profile.upgrade}
+          {isStartingCheckout ? checkoutLoadingLabel : checkoutButtonLabel}
         </button>
         {checkoutError && <p className="mt-2.5 text-center text-[11px] font-semibold text-[#FF4D4D]">{checkoutError}</p>}
         <p className="mt-2.5 text-center text-[10px] leading-snug text-[#6A7A9B]">{t.profile.upgradeDisclaimer}</p>
-        <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">{t.profile.stripe}</p>
+        {!passOffer.isFree && <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">{t.profile.stripe}</p>}
       </div>
     </div>
   )
