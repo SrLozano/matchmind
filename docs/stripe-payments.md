@@ -34,6 +34,8 @@ Referral commissions are based on Stripe-backed conversions, not `converted_at` 
 
 For v1, Matchmind does not offer refunds, but the webhook handles `charge.dispute.created` and `payment_intent.canceled` by cancelling unpaid referral payouts for the matching PaymentIntent. Already paid commissions are left unchanged for manual review.
 
+Before paying pub partner commissions, use [Referral Payout Review](referral-payout-review.md). Pub commission values shown in the app are estimates until Stripe proof, referral legitimacy, and payout status have been manually reviewed.
+
 ## Backend Environment
 
 Set these in the root/backend `.env`, not in `apps/web/.env.local`.

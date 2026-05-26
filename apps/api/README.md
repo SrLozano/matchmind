@@ -520,6 +520,8 @@ Paid referral counts and bar commissions require Stripe proof on the attribution
 
 If Stripe later sends `charge.dispute.created` or `payment_intent.canceled`, the API marks the matching attribution `payout_status = 'cancelled'` unless the commission has already been paid.
 
+Before paying pub partners, use `docs/referral-payout-review.md` to audit Stripe proof, referral legitimacy, payout status, and commission totals. Pub commission values shown in the app are estimates until this manual review is complete.
+
 Seed a local dev user if you are using the default frontend env:
 
 ```sql
