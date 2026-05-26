@@ -188,10 +188,22 @@ async def handle_checkout_session_completed(session: dict) -> bool:
     except ValueError:
         return False
 
-    await update_user_plan(user_id, "premium")
+    if session.get("payment_status") != "paid":
+        return False
+
     amount_total = session.get("amount_total")
     gross_amount = round(float(amount_total) / 100, 2) if isinstance(amount_total, int | float) else None
-    await mark_referral_conversion(user_id, gross_amount=gross_amount)
+
+    await update_user_plan(user_id, "premium")
+    checkout_session_id = _stripe_object_id(session.get("id"))
+    if checkout_session_id:
+        await mark_referral_conversion(
+            user_id,
+            gross_amount=gross_amount,
+            stripe_checkout_session_id=checkout_session_id,
+            stripe_payment_intent_id=_stripe_object_id(session.get("payment_intent")),
+            converted_price_type=_metadata_value(metadata.get("checkout_price_type")),
+        )
     return True
 
 
@@ -202,3 +214,19 @@ async def handle_webhook_event(event: dict) -> dict[str, bool]:
     session = (event.get("data") or {}).get("object") or {}
     processed = await handle_checkout_session_completed(session)
     return {"received": True, "processed": processed}
+
+
+def _stripe_object_id(value) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, dict):
+        object_id = value.get("id")
+        if isinstance(object_id, str) and object_id.strip():
+            return object_id.strip()
+    return None
+
+
+def _metadata_value(value) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None

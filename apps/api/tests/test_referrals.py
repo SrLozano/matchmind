@@ -356,6 +356,10 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
                 "partner_id": partner["id"],
                 "referrer_user_id": None,
                 "converted_at": "2026-06-12T10:00:00+00:00",
+                "conversion_source": "stripe_checkout_completed",
+                "stripe_checkout_session_id": "cs_test_bar_1",
+                "stripe_payment_intent_id": "pi_test_bar_1",
+                "converted_price_type": "referral",
                 "discount_amount": 1.0,
                 "commission_amount": 2.0,
             },
@@ -404,6 +408,10 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
                 "partner_id": None,
                 "referrer_user_id": str(REFERRED_USER_ID),
                 "converted_at": "2026-06-12T10:00:00+00:00",
+                "conversion_source": "stripe_checkout_completed",
+                "stripe_checkout_session_id": "cs_test_user_1",
+                "stripe_payment_intent_id": "pi_test_user_1",
+                "converted_price_type": "referral",
                 "discount_amount": 1.0,
                 "commission_amount": 0.0,
             },
@@ -459,11 +467,46 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         ]
 
         with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
-            converted = await mark_referral_conversion(OTHER_USER_ID, gross_amount=8.99)
+            converted = await mark_referral_conversion(
+                OTHER_USER_ID,
+                gross_amount=8.99,
+                stripe_checkout_session_id="cs_test_user_2",
+                stripe_payment_intent_id="pi_test_user_2",
+                converted_price_type="referral",
+            )
             dashboard = await get_referral_dashboard(REFERRED_USER_ID)
 
         self.assertTrue(converted)
         self.assertEqual(dashboard["user_referral"]["paid_referrals"], 1)
+        attribution = client.tables["referral_attributions"][0]
+        self.assertEqual(attribution["conversion_source"], "stripe_checkout_completed")
+        self.assertEqual(attribution["stripe_checkout_session_id"], "cs_test_user_2")
+        self.assertEqual(attribution["stripe_payment_intent_id"], "pi_test_user_2")
+        self.assertEqual(attribution["converted_price_type"], "referral")
+
+    async def test_paid_metrics_ignore_converted_at_without_stripe_proof(self) -> None:
+        client = seeded_client()
+        partner = client.tables["referral_partners"][0]
+        code = client.tables["referral_codes"][0]
+        client.tables["referral_attributions"] = [
+            {
+                "id": str(uuid4()),
+                "referred_user_id": str(REFERRED_USER_ID),
+                "referral_code_id": code["id"],
+                "partner_id": partner["id"],
+                "referrer_user_id": None,
+                "converted_at": "2026-06-12T10:00:00+00:00",
+                "discount_amount": 1.0,
+                "commission_amount": 2.0,
+            }
+        ]
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            dashboard = await get_referral_dashboard(PARTNER_USER_ID)
+
+        self.assertEqual(dashboard["registered_referrals"], 1)
+        self.assertEqual(dashboard["paid_referrals"], 0)
+        self.assertEqual(dashboard["estimated_payout"], 0.0)
 
 
 if __name__ == "__main__":

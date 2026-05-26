@@ -449,6 +449,10 @@ create table if not exists public.referral_attributions (
     applied_at timestamptz not null default timezone('utc', now()),
     converted_at timestamptz,
     gross_amount numeric(10, 2),
+    stripe_checkout_session_id text,
+    stripe_payment_intent_id text,
+    conversion_source text,
+    converted_price_type text,
     discount_amount numeric(10, 2),
     commission_amount numeric(10, 2),
     payout_status text not null default 'pending' check (payout_status in ('pending', 'approved', 'paid', 'cancelled')),
@@ -469,6 +473,13 @@ create index if not exists idx_referral_attributions_code_id
 
 create index if not exists idx_referral_attributions_referrer_user_id
     on public.referral_attributions(referrer_user_id);
+
+create unique index if not exists idx_referral_attributions_stripe_checkout_session_id
+    on public.referral_attributions(stripe_checkout_session_id)
+    where stripe_checkout_session_id is not null;
+
+create index if not exists idx_referral_attributions_conversion_source
+    on public.referral_attributions(conversion_source);
 
 grant usage on schema public to service_role;
 grant select, insert, update on public.users to service_role;
@@ -497,6 +508,8 @@ User referral perks are computed from `referral_attributions`, so no extra rewar
 | 10 friends purchase | Founder Circle / priority beta access for future League and Champions versions |
 
 If a user has already purchased, the API still returns the same perk state so the frontend can present it as future Matchmind credit instead of asking for a refund or extra claim step.
+
+Paid referral counts and bar commissions require Stripe proof on the attribution row. `converted_at` alone is not treated as real-money evidence; the API only counts a paid referral when the row also has `conversion_source = 'stripe_checkout_completed'` and a non-empty `stripe_checkout_session_id` written from a verified Stripe webhook.
 
 Seed a local dev user if you are using the default frontend env:
 

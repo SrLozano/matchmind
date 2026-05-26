@@ -144,6 +144,14 @@ def user_referral_perks(registered_referrals: int, paid_referrals: int) -> dict[
     }
 
 
+def referral_attribution_is_verified_conversion(attribution: dict[str, Any]) -> bool:
+    return (
+        bool(attribution.get("converted_at"))
+        and attribution.get("conversion_source") == "stripe_checkout_completed"
+        and bool(attribution.get("stripe_checkout_session_id"))
+    )
+
+
 async def _ensure_user_exists(user_id: UUID) -> None:
     await _get_user(user_id)
 
@@ -320,7 +328,7 @@ async def get_user_referral_summary(user_id: UUID) -> dict[str, Any]:
     )
     attributions = attributions_response.data or []
     registered_referrals = len(attributions)
-    paid_referrals = sum(1 for attribution in attributions if attribution.get("converted_at"))
+    paid_referrals = sum(1 for attribution in attributions if referral_attribution_is_verified_conversion(attribution))
     perks = user_referral_perks(registered_referrals, paid_referrals)
     return {
         "has_code": True,
@@ -513,7 +521,7 @@ async def get_referral_dashboard(user_id: UUID) -> dict[str, Any]:
         .execute()
     )
     attributions = attributions_response.data or []
-    paid_referrals = sum(1 for attribution in attributions if attribution.get("converted_at"))
+    paid_referrals = sum(1 for attribution in attributions if referral_attribution_is_verified_conversion(attribution))
     commission_amount = float(referral_code["commission_amount"]) if referral_code else DEFAULT_COMMISSION_AMOUNT
     discount_amount = float(referral_code["discount_amount"]) if referral_code else DEFAULT_DISCOUNT_AMOUNT
 
@@ -621,11 +629,19 @@ async def get_applied_referral_for_checkout(user_id: UUID) -> dict[str, Any] | N
     }
 
 
-async def mark_referral_conversion(user_id: UUID, gross_amount: float | None = None) -> bool:
+async def mark_referral_conversion(
+    user_id: UUID,
+    *,
+    gross_amount: float | None = None,
+    stripe_checkout_session_id: str,
+    stripe_payment_intent_id: str | None = None,
+    converted_price_type: str | None = None,
+    conversion_source: str = "stripe_checkout_completed",
+) -> bool:
     client = await get_supabase()
     existing = (
         await client.table("referral_attributions")
-        .select("id, converted_at, commission_amount")
+        .select("id, converted_at, commission_amount, stripe_checkout_session_id")
         .eq("referred_user_id", str(user_id))
         .limit(1)
         .execute()
@@ -633,7 +649,15 @@ async def mark_referral_conversion(user_id: UUID, gross_amount: float | None = N
     if not existing.data or existing.data[0].get("converted_at"):
         return False
 
-    updates: dict[str, Any] = {"converted_at": datetime.now(timezone.utc).isoformat()}
+    updates: dict[str, Any] = {
+        "converted_at": datetime.now(timezone.utc).isoformat(),
+        "conversion_source": conversion_source,
+        "stripe_checkout_session_id": stripe_checkout_session_id,
+    }
+    if stripe_payment_intent_id:
+        updates["stripe_payment_intent_id"] = stripe_payment_intent_id
+    if converted_price_type:
+        updates["converted_price_type"] = converted_price_type
     if gross_amount is not None:
         updates["gross_amount"] = round(gross_amount, 2)
 

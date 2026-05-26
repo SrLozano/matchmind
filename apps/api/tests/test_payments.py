@@ -237,7 +237,10 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
             "data": {
                 "object": {
                     "id": "cs_test_123",
-                    "metadata": {"user_id": str(USER_ID)},
+                    "payment_intent": "pi_test_123",
+                    "payment_status": "paid",
+                    "amount_total": 899,
+                    "metadata": {"user_id": str(USER_ID), "checkout_price_type": "referral"},
                 }
             },
         }
@@ -248,7 +251,34 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, {"received": True, "processed": True})
         update_user_plan.assert_awaited_once_with(USER_ID, "premium")
-        mark_conversion.assert_awaited_once_with(USER_ID, gross_amount=None)
+        mark_conversion.assert_awaited_once_with(
+            USER_ID,
+            gross_amount=8.99,
+            stripe_checkout_session_id="cs_test_123",
+            stripe_payment_intent_id="pi_test_123",
+            converted_price_type="referral",
+        )
+
+    async def test_webhook_does_not_process_unpaid_checkout_session(self) -> None:
+        event = {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_unpaid",
+                    "payment_status": "unpaid",
+                    "amount_total": 899,
+                    "metadata": {"user_id": str(USER_ID), "checkout_price_type": "referral"},
+                }
+            },
+        }
+
+        with patch("app.services.payments.update_user_plan", new_callable=AsyncMock) as update_user_plan:
+            with patch("app.services.payments.mark_referral_conversion", new_callable=AsyncMock) as mark_conversion:
+                result = await handle_webhook_event(event)
+
+        self.assertEqual(result, {"received": True, "processed": False})
+        update_user_plan.assert_not_awaited()
+        mark_conversion.assert_not_awaited()
 
 
 if __name__ == "__main__":
