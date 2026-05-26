@@ -24,12 +24,15 @@ Profile upgrade button
 -> FastAPI verifies Stripe-Signature against STRIPE_WEBHOOK_SECRET
 -> FastAPI updates public.users.plan = 'premium'
 -> FastAPI writes Stripe proof to referral_attributions when the user had applied a referral code
+-> Later dispute/cancel webhooks can cancel unpaid referral payouts
 -> frontend reloads /users/me on focus/profile refresh
 ```
 
 The frontend never receives Stripe secret keys. It only receives the Checkout URL returned by the backend.
 
-Referral commissions are based on Stripe-backed conversions, not `converted_at` alone. A paid referral must include `conversion_source = 'stripe_checkout_completed'` and a `stripe_checkout_session_id` written after signature verification; the webhook also stores `stripe_payment_intent_id`, `converted_price_type`, and `gross_amount` when Stripe provides them.
+Referral commissions are based on Stripe-backed conversions, not `converted_at` alone. A paid referral must include `conversion_source = 'stripe_checkout_completed'`, a `stripe_checkout_session_id` written after signature verification, and `payout_status != 'cancelled'`; the webhook also stores `stripe_payment_intent_id`, `converted_price_type`, and `gross_amount` when Stripe provides them.
+
+For v1, Matchmind does not offer refunds, but the webhook handles `charge.dispute.created` and `payment_intent.canceled` by cancelling unpaid referral payouts for the matching PaymentIntent. Already paid commissions are left unchanged for manual review.
 
 ## Backend Environment
 
@@ -166,7 +169,7 @@ Expected success signs:
 - The `stripe listen` terminal logs a delivered `checkout.session.completed` event.
 - The API logs do not show an invalid signature error.
 - The current user's row in Supabase changes to `plan = 'premium'`.
-- If the user applied a referral code, their `public.referral_attributions` row gets `converted_at`, `conversion_source`, `stripe_checkout_session_id`, optional `stripe_payment_intent_id`, `converted_price_type`, and `gross_amount`. The partner dashboard only counts it as paid when the Stripe proof fields are present.
+- If the user applied a referral code, their `public.referral_attributions` row gets `converted_at`, `conversion_source`, `stripe_checkout_session_id`, optional `stripe_payment_intent_id`, `converted_price_type`, and `gross_amount`. The partner dashboard only counts it as paid when the Stripe proof fields are present and `payout_status` is not `cancelled`.
 - Profile shows the premium state after refresh or window focus.
 
 Run automated checks before committing payment changes:

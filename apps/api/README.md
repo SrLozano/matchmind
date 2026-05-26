@@ -453,6 +453,9 @@ create table if not exists public.referral_attributions (
     stripe_payment_intent_id text,
     conversion_source text,
     converted_price_type text,
+    payout_cancelled_at timestamptz,
+    payout_cancellation_reason text,
+    stripe_dispute_id text,
     discount_amount numeric(10, 2),
     commission_amount numeric(10, 2),
     payout_status text not null default 'pending' check (payout_status in ('pending', 'approved', 'paid', 'cancelled')),
@@ -480,6 +483,10 @@ create unique index if not exists idx_referral_attributions_stripe_checkout_sess
 
 create index if not exists idx_referral_attributions_conversion_source
     on public.referral_attributions(conversion_source);
+
+create index if not exists idx_referral_attributions_stripe_payment_intent_id
+    on public.referral_attributions(stripe_payment_intent_id)
+    where stripe_payment_intent_id is not null;
 
 grant usage on schema public to service_role;
 grant select, insert, update on public.users to service_role;
@@ -509,7 +516,9 @@ User referral perks are computed from `referral_attributions`, so no extra rewar
 
 If a user has already purchased, the API still returns the same perk state so the frontend can present it as future Matchmind credit instead of asking for a refund or extra claim step.
 
-Paid referral counts and bar commissions require Stripe proof on the attribution row. `converted_at` alone is not treated as real-money evidence; the API only counts a paid referral when the row also has `conversion_source = 'stripe_checkout_completed'` and a non-empty `stripe_checkout_session_id` written from a verified Stripe webhook.
+Paid referral counts and bar commissions require Stripe proof on the attribution row. `converted_at` alone is not treated as real-money evidence; the API only counts a paid referral when the row also has `conversion_source = 'stripe_checkout_completed'`, a non-empty `stripe_checkout_session_id` written from a verified Stripe webhook, and `payout_status != 'cancelled'`.
+
+If Stripe later sends `charge.dispute.created` or `payment_intent.canceled`, the API marks the matching attribution `payout_status = 'cancelled'` unless the commission has already been paid.
 
 Seed a local dev user if you are using the default frontend env:
 

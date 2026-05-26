@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from app.config import get_settings
 from app.services.referrals import (
     STANDARD_TOURNAMENT_PASS_PRICE,
+    cancel_referral_payout_for_payment_intent,
     get_applied_referral_for_checkout,
     get_user_referral_summary,
     mark_referral_conversion,
@@ -208,12 +209,34 @@ async def handle_checkout_session_completed(session: dict) -> bool:
 
 
 async def handle_webhook_event(event: dict) -> dict[str, bool]:
-    if event.get("type") != "checkout.session.completed":
-        return {"received": True, "processed": False}
+    event_type = event.get("type")
+    stripe_object = (event.get("data") or {}).get("object") or {}
+    if event_type == "checkout.session.completed":
+        processed = await handle_checkout_session_completed(stripe_object)
+        return {"received": True, "processed": processed}
+    if event_type == "charge.dispute.created":
+        processed = await handle_charge_dispute_created(stripe_object)
+        return {"received": True, "processed": processed}
+    if event_type == "payment_intent.canceled":
+        processed = await handle_payment_intent_canceled(stripe_object)
+        return {"received": True, "processed": processed}
 
-    session = (event.get("data") or {}).get("object") or {}
-    processed = await handle_checkout_session_completed(session)
-    return {"received": True, "processed": processed}
+    return {"received": True, "processed": False}
+
+
+async def handle_charge_dispute_created(dispute: dict) -> bool:
+    return await cancel_referral_payout_for_payment_intent(
+        _stripe_object_id(dispute.get("payment_intent")),
+        cancellation_reason="stripe_dispute_created",
+        stripe_dispute_id=_stripe_object_id(dispute.get("id")),
+    )
+
+
+async def handle_payment_intent_canceled(payment_intent: dict) -> bool:
+    return await cancel_referral_payout_for_payment_intent(
+        _stripe_object_id(payment_intent.get("id")),
+        cancellation_reason="stripe_payment_intent_canceled",
+    )
 
 
 def _stripe_object_id(value) -> str | None:

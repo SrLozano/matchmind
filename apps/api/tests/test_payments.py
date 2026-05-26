@@ -280,6 +280,45 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
         update_user_plan.assert_not_awaited()
         mark_conversion.assert_not_awaited()
 
+    async def test_dispute_created_cancels_matching_referral_payout(self) -> None:
+        event = {
+            "type": "charge.dispute.created",
+            "data": {
+                "object": {
+                    "id": "du_test_123",
+                    "payment_intent": "pi_test_123",
+                    "reason": "fraudulent",
+                }
+            },
+        }
+
+        with patch("app.services.payments.cancel_referral_payout_for_payment_intent", new_callable=AsyncMock) as cancel_payout:
+            cancel_payout.return_value = True
+            result = await handle_webhook_event(event)
+
+        self.assertEqual(result, {"received": True, "processed": True})
+        cancel_payout.assert_awaited_once_with(
+            "pi_test_123",
+            cancellation_reason="stripe_dispute_created",
+            stripe_dispute_id="du_test_123",
+        )
+
+    async def test_payment_intent_canceled_cancels_matching_referral_payout(self) -> None:
+        event = {
+            "type": "payment_intent.canceled",
+            "data": {"object": {"id": "pi_test_cancelled"}},
+        }
+
+        with patch("app.services.payments.cancel_referral_payout_for_payment_intent", new_callable=AsyncMock) as cancel_payout:
+            cancel_payout.return_value = True
+            result = await handle_webhook_event(event)
+
+        self.assertEqual(result, {"received": True, "processed": True})
+        cancel_payout.assert_awaited_once_with(
+            "pi_test_cancelled",
+            cancellation_reason="stripe_payment_intent_canceled",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

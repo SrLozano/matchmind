@@ -13,6 +13,7 @@ from app.services.referrals import (
     base_code_from_user,
     create_bar_partner,
     create_user_referral_code,
+    cancel_referral_payout_for_payment_intent,
     get_referral_dashboard,
     mark_referral_conversion,
     normalize_referral_code,
@@ -507,6 +508,75 @@ class ReferralsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(dashboard["registered_referrals"], 1)
         self.assertEqual(dashboard["paid_referrals"], 0)
         self.assertEqual(dashboard["estimated_payout"], 0.0)
+
+    async def test_cancels_pending_referral_payout_for_payment_intent(self) -> None:
+        client = seeded_client()
+        partner = client.tables["referral_partners"][0]
+        code = client.tables["referral_codes"][0]
+        client.tables["referral_attributions"] = [
+            {
+                "id": str(uuid4()),
+                "referred_user_id": str(REFERRED_USER_ID),
+                "referral_code_id": code["id"],
+                "partner_id": partner["id"],
+                "referrer_user_id": None,
+                "converted_at": "2026-06-12T10:00:00+00:00",
+                "conversion_source": "stripe_checkout_completed",
+                "stripe_checkout_session_id": "cs_test_bar_2",
+                "stripe_payment_intent_id": "pi_test_bar_2",
+                "converted_price_type": "referral",
+                "discount_amount": 1.0,
+                "commission_amount": 2.0,
+                "payout_status": "pending",
+            }
+        ]
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            cancelled = await cancel_referral_payout_for_payment_intent(
+                "pi_test_bar_2",
+                cancellation_reason="stripe_dispute_created",
+                stripe_dispute_id="du_test_bar_2",
+            )
+            dashboard = await get_referral_dashboard(PARTNER_USER_ID)
+
+        self.assertTrue(cancelled)
+        attribution = client.tables["referral_attributions"][0]
+        self.assertEqual(attribution["payout_status"], "cancelled")
+        self.assertEqual(attribution["payout_cancellation_reason"], "stripe_dispute_created")
+        self.assertEqual(attribution["stripe_dispute_id"], "du_test_bar_2")
+        self.assertEqual(dashboard["paid_referrals"], 0)
+        self.assertEqual(dashboard["estimated_payout"], 0.0)
+
+    async def test_does_not_cancel_already_paid_referral_payout(self) -> None:
+        client = seeded_client()
+        partner = client.tables["referral_partners"][0]
+        code = client.tables["referral_codes"][0]
+        client.tables["referral_attributions"] = [
+            {
+                "id": str(uuid4()),
+                "referred_user_id": str(REFERRED_USER_ID),
+                "referral_code_id": code["id"],
+                "partner_id": partner["id"],
+                "referrer_user_id": None,
+                "converted_at": "2026-06-12T10:00:00+00:00",
+                "conversion_source": "stripe_checkout_completed",
+                "stripe_checkout_session_id": "cs_test_bar_3",
+                "stripe_payment_intent_id": "pi_test_bar_3",
+                "converted_price_type": "referral",
+                "discount_amount": 1.0,
+                "commission_amount": 2.0,
+                "payout_status": "paid",
+            }
+        ]
+
+        with patch("app.services.referrals.get_supabase", new_callable=AsyncMock, return_value=client):
+            cancelled = await cancel_referral_payout_for_payment_intent(
+                "pi_test_bar_3",
+                cancellation_reason="stripe_dispute_created",
+            )
+
+        self.assertFalse(cancelled)
+        self.assertEqual(client.tables["referral_attributions"][0]["payout_status"], "paid")
 
 
 if __name__ == "__main__":

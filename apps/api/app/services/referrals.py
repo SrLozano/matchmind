@@ -149,6 +149,7 @@ def referral_attribution_is_verified_conversion(attribution: dict[str, Any]) -> 
         bool(attribution.get("converted_at"))
         and attribution.get("conversion_source") == "stripe_checkout_completed"
         and bool(attribution.get("stripe_checkout_session_id"))
+        and attribution.get("payout_status") != "cancelled"
     )
 
 
@@ -660,6 +661,43 @@ async def mark_referral_conversion(
         updates["converted_price_type"] = converted_price_type
     if gross_amount is not None:
         updates["gross_amount"] = round(gross_amount, 2)
+
+    response = (
+        await client.table("referral_attributions")
+        .update(updates)
+        .eq("id", existing.data[0]["id"])
+        .execute()
+    )
+    return bool(response.data)
+
+
+async def cancel_referral_payout_for_payment_intent(
+    stripe_payment_intent_id: str | None,
+    *,
+    cancellation_reason: str,
+    stripe_dispute_id: str | None = None,
+) -> bool:
+    if not stripe_payment_intent_id:
+        return False
+
+    client = await get_supabase()
+    existing = (
+        await client.table("referral_attributions")
+        .select("id, payout_status")
+        .eq("stripe_payment_intent_id", stripe_payment_intent_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data or existing.data[0].get("payout_status") == "paid":
+        return False
+
+    updates: dict[str, Any] = {
+        "payout_status": "cancelled",
+        "payout_cancelled_at": datetime.now(timezone.utc).isoformat(),
+        "payout_cancellation_reason": cancellation_reason,
+    }
+    if stripe_dispute_id:
+        updates["stripe_dispute_id"] = stripe_dispute_id
 
     response = (
         await client.table("referral_attributions")
