@@ -3,15 +3,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
   BarChart3,
-  CalendarDays,
   CheckCircle2,
   CircleDollarSign,
   Clock3,
   Pencil,
   Plus,
-  RotateCcw,
-  Search,
-  ShieldCheck,
   Ticket,
   Trash2,
   TrendingDown,
@@ -99,12 +95,6 @@ const outcomeConfig = {
     bg: "bg-[#FFD600]/10 border border-[#FFD600]/20",
     labelKey: "pending" as const,
   },
-  cashed_out: {
-    icon: ShieldCheck,
-    color: "text-[#8AB4FF]",
-    bg: "bg-[#8AB4FF]/10 border border-[#8AB4FF]/20",
-    labelKey: "cashedOut" as const,
-  },
 }
 
 function formatCurrency(value: number, options: { signed?: boolean } = {}) {
@@ -117,10 +107,6 @@ function formatDate(value: string, locale: string) {
     month: "short",
     day: "numeric",
   }).format(new Date(value))
-}
-
-function formatInputDate(value: string) {
-  return new Date(value).toISOString().slice(0, 10)
 }
 
 function parseDecimalInput(value: string) {
@@ -151,10 +137,6 @@ function recomputeSummary(bets: TrackedBet[]): BetListResponse["summary"] {
   }
 }
 
-function includesText(value: string | null | undefined, query: string) {
-  return (value ?? "").toLowerCase().includes(query)
-}
-
 export default function BetTracker() {
   const { language, t } = useLanguage()
   const [tracker, setTracker] = useState<BetListResponse>(emptyTracker)
@@ -165,10 +147,6 @@ export default function BetTracker() {
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [activeBetId, setActiveBetId] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<"all" | BetOutcome>("all")
-  const [marketFilter, setMarketFilter] = useState<"all" | MarketType>("all")
-  const [teamFilter, setTeamFilter] = useState("")
-  const [dateFilter, setDateFilter] = useState("")
 
   const locale = language === "es" ? "es-ES" : "en-US"
   const totalPnl = tracker.summary.profit_loss
@@ -178,20 +156,6 @@ export default function BetTracker() {
     () => [...tracker.bets].sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at)),
     [tracker.bets],
   )
-
-  const filteredBets = useMemo(() => {
-    const normalizedTeam = teamFilter.trim().toLowerCase()
-    return sortedBets.filter((bet) => {
-      const matchesStatus = statusFilter === "all" || bet.outcome === statusFilter
-      const matchesMarket = marketFilter === "all" || bet.market_type === marketFilter
-      const matchesTeam =
-        normalizedTeam.length === 0 ||
-        includesText(bet.match, normalizedTeam) ||
-        includesText(bet.pick, normalizedTeam)
-      const matchesDate = dateFilter.length === 0 || formatInputDate(bet.created_at) === dateFilter
-      return matchesStatus && matchesMarket && matchesTeam && matchesDate
-    })
-  }, [dateFilter, marketFilter, sortedBets, statusFilter, teamFilter])
 
   useEffect(() => {
     let isMounted = true
@@ -251,7 +215,7 @@ export default function BetTracker() {
       bookmaker: bet.bookmaker ?? "",
       amount: String(bet.amount),
       odds: String(bet.odds),
-      outcome: bet.outcome,
+      outcome: bet.outcome === "cashed_out" ? "pending" : bet.outcome,
     })
     setError(null)
     setIsDialogOpen(true)
@@ -325,13 +289,6 @@ export default function BetTracker() {
     }
   }
 
-  const resetFilters = () => {
-    setStatusFilter("all")
-    setMarketFilter("all")
-    setTeamFilter("")
-    setDateFilter("")
-  }
-
   const summaryChips = [
     {
       label: t.tracker.totalStaked,
@@ -381,9 +338,12 @@ export default function BetTracker() {
         {summaryChips.map((chip) => {
           const Icon = chip.icon
           return (
-            <div key={chip.label} className="rounded-lg border border-[#1A2845] bg-[#0F1C35] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#6A7A9B]">
-                <Icon className="h-3.5 w-3.5" />
+            <div
+              key={chip.label}
+              className="min-w-0 rounded-lg border border-[#1A2845]/80 bg-[#0D172B] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            >
+              <div className="flex min-w-0 items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-[#6A7A9B]">
+                <Icon className="h-3 w-3 flex-shrink-0" />
                 {chip.label === t.tracker.winRate ? (
                   <ConceptTip concept="winRate" label={chip.label} subtle />
                 ) : chip.label === t.tracker.profitLoss ? (
@@ -394,74 +354,10 @@ export default function BetTracker() {
                   chip.label
                 )}
               </div>
-              <p className={`mt-1 text-lg font-bold ${chip.className}`}>{chip.value}</p>
+              <p className={`mt-0.5 truncate text-base font-bold ${chip.className}`}>{chip.value}</p>
             </div>
           )
         })}
-      </div>
-
-      <div className="mx-4 mb-3 rounded-lg border border-[#1A2845] bg-[#0A1325] p-3 sm:mx-5">
-        <div className="grid grid-cols-2 gap-2">
-          <label className="relative col-span-2">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6A7A9B]" />
-            <Input
-              className="h-9 border-[#1A2845] bg-[#071021] pl-8 text-sm text-foreground placeholder:text-[#506080]"
-              placeholder={t.tracker.teamFilter}
-              value={teamFilter}
-              onChange={(event) => setTeamFilter(event.target.value)}
-            />
-          </label>
-
-          <select
-            className="h-9 rounded-lg border border-[#1A2845] bg-[#071021] px-2 text-xs font-semibold text-foreground outline-none"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as "all" | BetOutcome)}
-            aria-label={t.tracker.status}
-          >
-            <option value="all">{t.tracker.allStatuses}</option>
-            <option value="pending">{t.tracker.pending}</option>
-            <option value="win">{t.tracker.won}</option>
-            <option value="loss">{t.tracker.lost}</option>
-            <option value="cashed_out">{t.tracker.cashedOut}</option>
-          </select>
-
-          <select
-            className="h-9 rounded-lg border border-[#1A2845] bg-[#071021] px-2 text-xs font-semibold text-foreground outline-none"
-            value={marketFilter}
-            onChange={(event) => setMarketFilter(event.target.value as "all" | MarketType)}
-            aria-label={t.tracker.marketType}
-          >
-            <option value="all">{t.tracker.allMarkets}</option>
-            {marketTypes.map((marketType) => (
-              <option key={marketType} value={marketType}>
-                {t.tracker.marketTypes[marketType]}
-              </option>
-            ))}
-          </select>
-
-          <label className="relative col-span-2">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6A7A9B]" />
-            <Input
-              className="h-9 border-[#1A2845] bg-[#071021] pl-8 text-sm text-foreground"
-              type="date"
-              value={dateFilter}
-              onChange={(event) => setDateFilter(event.target.value)}
-              aria-label={t.tracker.date}
-            />
-          </label>
-        </div>
-
-        <div className="mt-2 flex items-center justify-between text-[11px] text-[#6A7A9B]">
-          <span>{t.tracker.showing.replace("{count}", String(filteredBets.length))}</span>
-          <button
-            className="flex items-center gap-1 rounded-md px-1.5 py-1 font-semibold text-[#8AB4FF] transition-colors hover:text-foreground"
-            type="button"
-            onClick={resetFilters}
-          >
-            <RotateCcw className="h-3 w-3" />
-            {t.tracker.resetFilters}
-          </button>
-        </div>
       </div>
 
       <p className="mx-4 mb-3 flex-shrink-0 text-[10px] leading-snug text-[#6A7A9B] sm:mx-5">
@@ -484,20 +380,10 @@ export default function BetTracker() {
             <p className="text-sm font-semibold text-foreground">{t.tracker.emptyTitle}</p>
             <p className="mt-1 text-xs leading-5 text-[#6A7A9B]">{t.tracker.emptyCopy}</p>
           </div>
-        ) : filteredBets.length === 0 ? (
-          <div className="rounded-lg border border-[#1A2845] bg-card p-5 text-center">
-            <p className="text-sm font-semibold text-foreground">{t.tracker.noResults}</p>
-            <button
-              className="mt-3 rounded-lg bg-[#1A2845] px-3 py-2 text-xs font-semibold text-foreground"
-              type="button"
-              onClick={resetFilters}
-            >
-              {t.tracker.resetFilters}
-            </button>
-          </div>
         ) : (
-          filteredBets.map((bet) => {
-            const cfg = outcomeConfig[bet.outcome]
+          sortedBets.map((bet) => {
+            const displayOutcome = bet.outcome === "cashed_out" ? "pending" : bet.outcome
+            const cfg = outcomeConfig[displayOutcome]
             const Icon = cfg.icon
             const isBetBusy = activeBetId === bet.id
             const marketType = marketTypes.includes(bet.market_type as MarketType)
@@ -581,15 +467,6 @@ export default function BetTracker() {
                   >
                     <XCircle className="h-3.5 w-3.5" />
                     {t.tracker.markLoss}
-                  </button>
-                  <button
-                    className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#8AB4FF]/10 px-2 text-xs font-semibold text-[#8AB4FF] disabled:opacity-50"
-                    type="button"
-                    disabled={isBetBusy}
-                    onClick={() => void handleOutcome(bet.id, "cashed_out")}
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    {t.tracker.cashOut}
                   </button>
                   <button
                     className="flex h-8 w-9 items-center justify-center rounded-lg bg-[#1A2845] text-[#6A7A9B] transition-colors hover:text-foreground disabled:opacity-50"
@@ -688,7 +565,6 @@ export default function BetTracker() {
                   <option value="pending">{t.tracker.pending}</option>
                   <option value="win">{t.tracker.won}</option>
                   <option value="loss">{t.tracker.lost}</option>
-                  <option value="cashed_out">{t.tracker.cashedOut}</option>
                 </select>
               </label>
             </div>

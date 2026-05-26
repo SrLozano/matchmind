@@ -171,7 +171,6 @@ The API calculates `profit_loss` server-side:
 - `pending`: `0`
 - `win`: `amount * (odds - 1)`
 - `loss`: `-amount`
-- `cashed_out`: `0`
 
 List response:
 
@@ -226,7 +225,7 @@ create table if not exists public.bet_tracker (
     bookmaker text,
     amount numeric(10, 2) not null,
     odds numeric(10, 2) not null,
-    outcome text not null default 'pending' check (outcome in ('win', 'loss', 'pending', 'cashed_out')),
+    outcome text not null default 'pending' check (outcome in ('win', 'loss', 'pending')),
     profit_loss numeric(10, 2) not null default 0,
     created_at timestamptz not null default timezone('utc', now())
 );
