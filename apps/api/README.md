@@ -156,7 +156,10 @@ Create a bet. User ownership comes from the Supabase bearer token:
 
 ```json
 {
-  "match": "Spain vs Germany - Spain win",
+  "match": "Spain vs Germany",
+  "pick": "Spain win",
+  "market_type": "match_winner",
+  "bookmaker": "Bet365",
   "amount": 20,
   "odds": 2.1,
   "outcome": "pending"
@@ -168,6 +171,7 @@ The API calculates `profit_loss` server-side:
 - `pending`: `0`
 - `win`: `amount * (odds - 1)`
 - `loss`: `-amount`
+- `cashed_out`: `0`
 
 List response:
 
@@ -181,6 +185,7 @@ List response:
     "losses": 0,
     "win_rate": 0,
     "total_staked": 0,
+    "pending_exposure": 0,
     "profit_loss": 0,
     "roi": 0
   }
@@ -216,9 +221,12 @@ create table if not exists public.bet_tracker (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references public.users(id) on delete cascade,
     match text not null,
+    pick text not null,
+    market_type text not null,
+    bookmaker text,
     amount numeric(10, 2) not null,
     odds numeric(10, 2) not null,
-    outcome text not null default 'pending' check (outcome in ('win', 'loss', 'pending')),
+    outcome text not null default 'pending' check (outcome in ('win', 'loss', 'pending', 'cashed_out')),
     profit_loss numeric(10, 2) not null default 0,
     created_at timestamptz not null default timezone('utc', now())
 );

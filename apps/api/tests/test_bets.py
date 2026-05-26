@@ -10,6 +10,9 @@ class BetTrackerTest(unittest.TestCase):
     def test_profit_loss_for_pending_bet_is_zero(self) -> None:
         self.assertEqual(calculate_profit_loss(20, 2.10, "pending"), 0.0)
 
+    def test_profit_loss_for_cashed_out_bet_is_zero(self) -> None:
+        self.assertEqual(calculate_profit_loss(20, 2.10, "cashed_out"), 0.0)
+
     def test_profit_loss_for_winning_bet_returns_net_profit(self) -> None:
         self.assertEqual(calculate_profit_loss(20, 2.10, "win"), 22.0)
 
@@ -31,6 +34,7 @@ class BetTrackerTest(unittest.TestCase):
         self.assertEqual(summary.losses, 1)
         self.assertEqual(summary.win_rate, 0.5)
         self.assertEqual(summary.total_staked, 45)
+        self.assertEqual(summary.pending_exposure, 15)
         self.assertEqual(summary.profit_loss, 12)
         self.assertEqual(summary.roi, 0.2667)
 
@@ -42,12 +46,20 @@ class BetTrackerTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             BetCreateRequest(
                 match="   ",
+                pick="Spain win",
+                market_type="match_winner",
                 amount=20,
                 odds=2.10,
             )
 
     def test_create_payload_does_not_default_to_dev_user(self) -> None:
-        payload = BetCreateRequest(match="Spain vs Germany", amount=20, odds=2.10)
+        payload = BetCreateRequest(
+            match="Spain vs Germany",
+            pick="Spain win",
+            market_type="match_winner",
+            amount=20,
+            odds=2.10,
+        )
 
         self.assertIsNone(payload.user_id)
 

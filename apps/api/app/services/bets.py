@@ -10,7 +10,7 @@ from app.services.supabase import get_supabase
 
 
 def calculate_profit_loss(amount: float, odds: float, outcome: str) -> float:
-    if outcome == "pending":
+    if outcome in {"pending", "cashed_out"}:
         return 0.0
     if outcome == "loss":
         return round(-amount, 2)
@@ -24,6 +24,7 @@ def build_bet_summary(bets: list[dict[str, Any]]) -> BetSummary:
     losses = sum(1 for bet in bets if bet["outcome"] == "loss")
     settled_bets = wins + losses
     total_staked = round(sum(float(bet["amount"]) for bet in bets), 2)
+    pending_exposure = round(sum(float(bet["amount"]) for bet in bets if bet["outcome"] == "pending"), 2)
     profit_loss = round(sum(float(bet["profit_loss"]) for bet in bets), 2)
 
     return BetSummary(
@@ -33,6 +34,7 @@ def build_bet_summary(bets: list[dict[str, Any]]) -> BetSummary:
         losses=losses,
         win_rate=round(wins / settled_bets, 4) if settled_bets else 0.0,
         total_staked=total_staked,
+        pending_exposure=pending_exposure,
         profit_loss=profit_loss,
         roi=round(profit_loss / total_staked, 4) if total_staked else 0.0,
     )
@@ -53,6 +55,9 @@ async def create_bet(payload: BetCreateRequest) -> dict[str, Any]:
     bet_data = {
         "user_id": str(payload.user_id),
         "match": payload.match,
+        "pick": payload.pick,
+        "market_type": payload.market_type,
+        "bookmaker": payload.bookmaker,
         "amount": amount,
         "odds": odds,
         "outcome": payload.outcome,
@@ -107,6 +112,12 @@ async def update_bet(bet_id: UUID, payload: BetUpdateRequest) -> dict[str, Any]:
     }
     if payload.match is not None:
         update_data["match"] = payload.match
+    if payload.pick is not None:
+        update_data["pick"] = payload.pick
+    if payload.market_type is not None:
+        update_data["market_type"] = payload.market_type
+    if "bookmaker" in payload.model_fields_set:
+        update_data["bookmaker"] = payload.bookmaker
 
     response = (
         await client.table("bet_tracker")

@@ -98,7 +98,15 @@ class UserSpecificRouteSecurityTest(unittest.IsolatedAsyncioTestCase):
             ),
             (lambda: users_router.current_user(), "app.routers.users.require_authenticated_user"),
             (
-                lambda: bets_router.create_bet_endpoint(BetCreateRequest(match="Spain vs Germany", amount=20, odds=2.1)),
+                lambda: bets_router.create_bet_endpoint(
+                    BetCreateRequest(
+                        match="Spain vs Germany",
+                        pick="Spain win",
+                        market_type="match_winner",
+                        amount=20,
+                        odds=2.1,
+                    )
+                ),
                 "app.routers.bets.require_authenticated_user",
             ),
             (lambda: bets_router.list_bets_endpoint(), "app.routers.bets.require_authenticated_user"),
@@ -146,6 +154,9 @@ class UserSpecificRouteSecurityTest(unittest.IsolatedAsyncioTestCase):
             "id": BET_ID,
             "user_id": AUTH_USER_ID,
             "match": "Spain vs Germany",
+            "pick": "Spain win",
+            "market_type": "match_winner",
+            "bookmaker": "Bet365",
             "amount": 20,
             "odds": 2.1,
             "outcome": "pending",
@@ -162,7 +173,15 @@ class UserSpecificRouteSecurityTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bets_router, "create_bet", AsyncMock(return_value=created_bet)) as create_bet,
         ):
             await bets_router.create_bet_endpoint(
-                BetCreateRequest(user_id=OTHER_USER_ID, match="Spain vs Germany", amount=20, odds=2.1),
+                BetCreateRequest(
+                    user_id=OTHER_USER_ID,
+                    match="Spain vs Germany",
+                    pick="Spain win",
+                    market_type="match_winner",
+                    bookmaker="Bet365",
+                    amount=20,
+                    odds=2.1,
+                ),
                 "Bearer token",
             )
 
@@ -173,6 +192,9 @@ class UserSpecificRouteSecurityTest(unittest.IsolatedAsyncioTestCase):
             "id": BET_ID,
             "user_id": AUTH_USER_ID,
             "match": "Spain vs Germany",
+            "pick": "Spain win",
+            "market_type": "match_winner",
+            "bookmaker": "Bet365",
             "amount": 20,
             "odds": 2.1,
             "outcome": "win",
@@ -204,6 +226,7 @@ class UserSpecificRouteSecurityTest(unittest.IsolatedAsyncioTestCase):
             losses=0,
             win_rate=0,
             total_staked=0,
+            pending_exposure=0,
             profit_loss=0,
             roi=0,
         )

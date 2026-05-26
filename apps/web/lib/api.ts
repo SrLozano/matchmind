@@ -174,12 +174,15 @@ export type OddsMatchesResponse = {
   count: number
 }
 
-export type BetOutcome = "win" | "loss" | "pending"
+export type BetOutcome = "win" | "loss" | "pending" | "cashed_out"
 
 export type TrackedBet = {
   id: string
   user_id: string
   match: string
+  pick: string
+  market_type: string
+  bookmaker: string | null
   amount: number
   odds: number
   outcome: BetOutcome
@@ -194,6 +197,7 @@ export type BetSummary = {
   losses: number
   win_rate: number
   total_staked: number
+  pending_exposure: number
   profit_loss: number
   roi: number
 }
@@ -205,10 +209,15 @@ export type BetListResponse = {
 
 export type CreateBetPayload = {
   match: string
+  pick: string
+  market_type: string
+  bookmaker?: string | null
   amount: number
   odds: number
   outcome?: BetOutcome
 }
+
+export type UpdateBetPayload = Partial<CreateBetPayload>
 
 export type CheckoutSessionResponse = {
   url: string
@@ -518,15 +527,13 @@ export async function createTrackedBet(payload: CreateBetPayload): Promise<Track
   return response.json()
 }
 
-export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome): Promise<TrackedBet> {
+export async function updateTrackedBet(betId: string, payload: UpdateBetPayload): Promise<TrackedBet> {
   const response = await apiFetch(`${getApiUrl()}/bets/${betId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      outcome,
-    }),
+    body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
@@ -534,6 +541,10 @@ export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome
   }
 
   return response.json()
+}
+
+export async function updateTrackedBetOutcome(betId: string, outcome: BetOutcome): Promise<TrackedBet> {
+  return updateTrackedBet(betId, { outcome })
 }
 
 export async function deleteTrackedBet(betId: string): Promise<void> {
