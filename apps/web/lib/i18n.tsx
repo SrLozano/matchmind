@@ -410,7 +410,7 @@ export const translations = {
       namePlaceholder: "Your name",
       nameSaveError: "I could not save that name. You can update it later in Profile.",
       explanationChoiceTitle: "Choose your explanation level",
-      explanationChoiceBody: "You can change this later in Profile. Beginner keeps the app simplest.",
+      explanationChoiceBody: "You can change this later in Profile. Standard is selected by default.",
       explanationChoices: {
         beginner: "Plain labels, tips visible, technical details tucked away.",
         standard: "A balanced view with clearer betting terms and some metrics.",
@@ -944,7 +944,7 @@ export const translations = {
       namePlaceholder: "Tu nombre",
       nameSaveError: "No pude guardar ese nombre. Puedes cambiarlo luego en Perfil.",
       explanationChoiceTitle: "Elige tu nivel de explicación",
-      explanationChoiceBody: "Puedes cambiarlo luego en Perfil. Principiante mantiene la app más simple.",
+      explanationChoiceBody: "Puedes cambiarlo luego en Perfil. Normal está seleccionado por defecto.",
       explanationChoices: {
         beginner: "Etiquetas claras, ayudas visibles y detalles técnicos apartados.",
         standard: "Vista equilibrada con conceptos más claros y algunas métricas.",

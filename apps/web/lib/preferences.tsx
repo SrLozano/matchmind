@@ -6,6 +6,7 @@ import type { ReactNode } from "react"
 export type ExplanationLevel = "beginner" | "standard" | "advanced"
 
 const EXPLANATION_LEVEL_STORAGE_KEY = "matchmind-explanation-level"
+const DEFAULT_EXPLANATION_LEVEL: ExplanationLevel = "standard"
 
 type PreferencesContextValue = {
   explanationLevel: ExplanationLevel
@@ -21,7 +22,7 @@ function isExplanationLevel(value: string | null): value is ExplanationLevel {
 }
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [explanationLevel, setExplanationLevelState] = useState<ExplanationLevel>("beginner")
+  const [explanationLevel, setExplanationLevelState] = useState<ExplanationLevel>(DEFAULT_EXPLANATION_LEVEL)
 
   useEffect(() => {
     const storedLevel = window.localStorage.getItem(EXPLANATION_LEVEL_STORAGE_KEY)
