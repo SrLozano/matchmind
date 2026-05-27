@@ -6,6 +6,7 @@ from app.services.api_football import (
     find_match_in_matches,
     find_match_from_candidate_teams,
     format_match_context_block,
+    is_api_football_rate_limit_error,
 )
 
 
@@ -128,6 +129,16 @@ class APIFootballContextTest(unittest.TestCase):
         self.assertIn("MATCH CONTEXT:", block)
         self.assertIn("Spain vs Germany", block)
         self.assertIn("fixtures updated", block)
+
+    def test_api_football_rate_limit_error_is_detected_from_provider_key(self) -> None:
+        errors = {"rateLimit": "Too many requests. You have exceeded the limit of requests per minute."}
+
+        self.assertTrue(is_api_football_rate_limit_error(errors))
+
+    def test_api_football_non_rate_limit_error_is_not_detected_as_rate_limit(self) -> None:
+        errors = {"token": "Invalid API key."}
+
+        self.assertFalse(is_api_football_rate_limit_error(errors))
 
 
 if __name__ == "__main__":

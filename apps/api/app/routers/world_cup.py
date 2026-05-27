@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.services.api_football import (
+    APIFootballRateLimitError,
     compact_match_context,
     get_api_football_usage,
     get_cached_world_cup_matches,
@@ -48,6 +49,13 @@ async def refresh_world_cup_fixtures(x_internal_token: str | None = Header(defau
 
     try:
         result = await refresh_world_cup_fixtures_if_needed(force=True)
+    except APIFootballRateLimitError as exc:
+        logger.warning("API-Football rate limit hit while refreshing World Cup fixtures: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Unable to refresh World Cup fixtures: {exc}",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
     except Exception as exc:
         logger.exception("Unable to refresh World Cup fixtures.")
         raise HTTPException(

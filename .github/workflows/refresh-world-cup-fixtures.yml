@@ -35,24 +35,36 @@ jobs:
 
           api_url="${MATCHMIND_API_URL%/}"
           url="${api_url}${REFRESH_ENDPOINT}"
-          body_file="$(mktemp)"
+          max_attempts=3
+          retry_delay_seconds=75
 
           echo "Calling endpoint: ${REFRESH_ENDPOINT}"
-          status="$(
-            curl --silent --show-error \
-              --request POST \
-              --header "X-Internal-Token: ${MATCHMIND_INTERNAL_API_TOKEN}" \
-              --output "${body_file}" \
-              --write-out "%{http_code}" \
-              "${url}"
-          )"
+          for attempt in $(seq 1 "${max_attempts}"); do
+            body_file="$(mktemp)"
+            status="$(
+              curl --silent --show-error \
+                --request POST \
+                --header "X-Internal-Token: ${MATCHMIND_INTERNAL_API_TOKEN}" \
+                --output "${body_file}" \
+                --write-out "%{http_code}" \
+                "${url}"
+            )"
 
-          echo "HTTP status: ${status}"
-          echo "Response body preview:"
-          head -c 1000 "${body_file}"
-          echo
+            echo "Attempt ${attempt}/${max_attempts} HTTP status: ${status}"
+            echo "Response body preview:"
+            head -c 1000 "${body_file}"
+            echo
 
-          if [[ "${status}" -lt 200 || "${status}" -ge 300 ]]; then
+            if [[ "${status}" -ge 200 && "${status}" -lt 300 ]]; then
+              exit 0
+            fi
+
+            if [[ "${attempt}" -lt "${max_attempts}" && ( "${status}" == "429" || "${status}" =~ ^5 ) ]]; then
+              echo "Transient refresh failure; retrying in ${retry_delay_seconds}s."
+              sleep "${retry_delay_seconds}"
+              continue
+            fi
+
             echo "Refresh failed for ${REFRESH_ENDPOINT}."
             exit 1
-          fi
+          done

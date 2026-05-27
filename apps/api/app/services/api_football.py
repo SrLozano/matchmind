@@ -34,6 +34,10 @@ class APIFootballUsage:
     last_error: str | None = None
 
 
+class APIFootballRateLimitError(RuntimeError):
+    retry_after_seconds = 75
+
+
 _world_cup_cache = WorldCupCache()
 _api_usage = APIFootballUsage()
 
@@ -44,6 +48,19 @@ def get_api_football_usage() -> dict[str, Any]:
         "last_request_at": _api_usage.last_request_at.isoformat() if _api_usage.last_request_at else None,
         "last_error": _api_usage.last_error,
     }
+
+
+def is_api_football_rate_limit_error(api_errors: Any) -> bool:
+    if isinstance(api_errors, dict):
+        if any(str(key).lower() == "ratelimit" for key in api_errors):
+            return True
+        values = api_errors.values()
+    elif isinstance(api_errors, list):
+        values = api_errors
+    else:
+        values = [api_errors]
+
+    return any("too many requests" in str(value).lower() or "rate limit" in str(value).lower() for value in values)
 
 
 async def fetch_world_cup_fixtures() -> list[dict[str, Any]]:
@@ -64,6 +81,8 @@ async def fetch_world_cup_fixtures() -> list[dict[str, Any]]:
         payload = response.json()
         api_errors = payload.get("errors")
         if api_errors:
+            if is_api_football_rate_limit_error(api_errors):
+                raise APIFootballRateLimitError(f"API-Football returned errors: {api_errors}")
             raise RuntimeError(f"API-Football returned errors: {api_errors}")
         _api_usage.last_error = None
         return list(payload.get("response") or [])
