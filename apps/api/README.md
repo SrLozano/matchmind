@@ -193,7 +193,7 @@ List response:
 
 ## Supabase Schema
 
-Run this SQL in the Supabase SQL editor:
+The canonical deployable schema lives in [supabase/migrations](../../supabase/migrations). The SQL below is retained as a readable reference, but new database changes should be made as versioned migration files.
 
 ```sql
 create extension if not exists "pgcrypto";
