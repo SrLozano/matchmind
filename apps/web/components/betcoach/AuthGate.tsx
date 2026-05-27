@@ -5,13 +5,17 @@ import Link from "next/link"
 import {
   ArrowRight,
   AlertTriangle,
+  BrainCircuit,
   CheckCircle2,
+  Database,
+  Gauge,
   Languages,
   LineChart,
   Loader2,
   Mail,
   MessageSquareText,
   Sparkles,
+  Target,
   Trophy,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth"
@@ -28,6 +32,16 @@ type StatTile = {
   value: string
 }
 
+type AIPillar = {
+  title: string
+  body: string
+}
+
+type SourceChip = {
+  label: string
+  value: string
+}
+
 type LandingCopy = {
   loading: string
   navCta: string
@@ -36,7 +50,12 @@ type LandingCopy = {
   heroSubtitle: string
   primaryCta: string
   priceHook: string
+  trustLine: string
   proofPoints: string[]
+  aiSectionTitle: string
+  aiSectionSubtitle: string
+  aiPillars: AIPillar[]
+  sourceChips: SourceChip[]
   previewTitle: string
   previewLive: string
   previewQuestion: string
@@ -151,15 +170,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh] overflow-hidden bg-[#040810] text-foreground">
       <div className="relative min-h-[100dvh]">
         <div
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=2200&q=80')] bg-cover bg-center opacity-30"
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=2200&q=80')] bg-cover bg-center opacity-28"
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,8,16,0.98)_0%,rgba(4,8,16,0.88)_42%,rgba(4,8,16,0.52)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(0,255,135,0.2),transparent_32%),linear-gradient(180deg,transparent_0%,#040810_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,8,16,0.94)_0%,rgba(4,8,16,0.86)_42%,#040810_100%)] lg:bg-[linear-gradient(90deg,rgba(4,8,16,0.98)_0%,rgba(4,8,16,0.9)_43%,rgba(4,8,16,0.58)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(0,255,135,0.1)_0%,rgba(0,255,135,0)_34%,rgba(255,214,0,0.06)_68%,rgba(255,214,0,0)_100%),linear-gradient(180deg,transparent_0%,#040810_100%)]" />
 
-        <main id="main-content" className="relative mx-auto grid min-h-[100dvh] w-full max-w-7xl grid-cols-1 gap-8 px-4 py-[calc(1.25rem+env(safe-area-inset-top))] sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-12 lg:px-8">
-          <section className="flex min-h-0 flex-col justify-center pb-2 pt-2 lg:pb-10">
-            <nav className="mb-8 flex items-center justify-between gap-4 lg:mb-14">
+        <main id="main-content" className="relative mx-auto grid min-h-[100dvh] w-full max-w-7xl grid-cols-1 gap-5 px-4 py-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-12 lg:px-8">
+          <section className="flex min-h-0 flex-col justify-center pb-1 pt-1 lg:pb-10">
+            <nav className="mb-6 flex items-center justify-between gap-4 lg:mb-12">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#00FF87]/30 bg-[#00FF87]/15 shadow-[0_0_26px_rgba(0,255,135,0.18)]">
                   <Sparkles className="h-5 w-5 text-[#00FF87]" />
@@ -174,19 +193,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             </nav>
 
             <div className="max-w-3xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00FF87]/30 bg-[#00FF87]/12 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#8DFFC2]">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00FF87]/30 bg-[#00FF87]/12 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-[#8DFFC2]">
                 <Trophy className="h-3.5 w-3.5" />
                 {copy.kicker}
               </div>
-              <h1 className="text-balance text-5xl font-black leading-[0.95] tracking-normal text-white sm:text-6xl lg:text-7xl">
+              <h1 className="text-balance text-4xl font-black leading-[0.96] tracking-normal text-white sm:text-6xl lg:text-7xl">
                 {copy.heroTitle}
               </h1>
-              <p className="mt-5 max-w-2xl text-pretty text-lg leading-8 text-[#C9D4EC] sm:text-xl">
+              <p className="mt-4 max-w-2xl text-pretty text-base leading-7 text-[#C9D4EC] sm:text-xl sm:leading-8">
                 {copy.heroSubtitle}
               </p>
             </div>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#matchmind-auth"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#00FF87] px-5 py-3 text-sm font-black text-[#06101D] shadow-[0_0_28px_rgba(0,255,135,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99]"
@@ -198,8 +217,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 {copy.priceHook}
               </div>
             </div>
+            <p className="mt-3 max-w-2xl text-xs font-semibold leading-5 text-[#8EA0C0]">{copy.trustLine}</p>
 
-            <div className="mt-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
               {copy.proofPoints.map((point) => (
                 <div key={point} className="flex items-start gap-2 rounded-xl border border-white/10 bg-[#071222]/72 px-3 py-3 backdrop-blur">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#00FF87]" />
@@ -208,7 +228,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               ))}
             </div>
 
-            <div className="mt-8 grid max-w-4xl grid-cols-1 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <AIEdgePanel copy={copy} className="mt-6 hidden max-w-4xl lg:block" />
+
+            <div className="mt-6 hidden max-w-4xl grid-cols-1 gap-4 lg:grid lg:grid-cols-[1.05fr_0.95fr]">
               <ProductPreview copy={copy} />
               <SignalPreview copy={copy} />
             </div>
@@ -371,6 +393,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             </div>
             {mode !== "signup" && <LegalLinks copy={copy} language={language} className="mt-4 px-1" />}
           </aside>
+
+          <div className="grid gap-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:hidden">
+            <AIEdgePanel copy={copy} />
+            <ProductPreview copy={copy} />
+            <SignalPreview copy={copy} />
+          </div>
         </main>
       </div>
     </div>
@@ -445,9 +473,51 @@ function AuthUnavailable({
   )
 }
 
+function AIEdgePanel({ copy, className = "" }: { copy: LandingCopy; className?: string }) {
+  const icons = [BrainCircuit, Database, Gauge]
+
+  return (
+    <section className={`rounded-lg border border-[#00FF87]/18 bg-[#071222]/72 p-3.5 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur ${className}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/12">
+          <BrainCircuit className="h-5 w-5 text-[#00FF87]" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-base font-black leading-tight text-white">{copy.aiSectionTitle}</h2>
+          <p className="mt-1 text-sm leading-6 text-[#A8B4D0]">{copy.aiSectionSubtitle}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {copy.aiPillars.map((pillar, index) => {
+          const Icon = icons[index] ?? Target
+          return (
+            <div key={pillar.title} className="rounded-lg border border-white/10 bg-[#081426]/78 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Icon className="h-4 w-4 text-[#00FF87]" />
+                <p className="text-sm font-black text-white">{pillar.title}</p>
+              </div>
+              <p className="text-xs leading-5 text-[#9EADCB]">{pillar.body}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {copy.sourceChips.map((chip) => (
+          <span key={chip.label} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/8 px-2.5 py-1.5 text-[11px] font-bold text-[#DCE6FA]">
+            <span className="text-[#00FF87]">{chip.label}</span>
+            <span className="text-[#8EA0C0]">{chip.value}</span>
+          </span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function ProductPreview({ copy }: { copy: LandingCopy }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/12 bg-[#071222]/84 shadow-[0_22px_80px_rgba(0,0,0,0.38)] backdrop-blur">
+    <div className="overflow-hidden rounded-lg border border-white/12 bg-[#071222]/84 shadow-[0_22px_80px_rgba(0,0,0,0.38)] backdrop-blur">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2">
           <MessageSquareText className="h-4 w-4 text-[#00FF87]" />
@@ -458,10 +528,10 @@ function ProductPreview({ copy }: { copy: LandingCopy }) {
         </span>
       </div>
       <div className="space-y-4 p-4">
-        <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-[#13223E] px-3 py-3 text-sm leading-6 text-[#DCE6FA]">
+        <div className="max-w-[85%] rounded-lg rounded-tl-md bg-[#13223E] px-3 py-3 text-sm leading-6 text-[#DCE6FA]">
           {copy.previewQuestion}
         </div>
-        <div className="ml-auto rounded-2xl rounded-tr-md border border-[#00FF87]/25 bg-[#00FF87]/10 p-3">
+        <div className="ml-auto rounded-lg rounded-tr-md border border-[#00FF87]/25 bg-[#00FF87]/10 p-3">
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm font-black text-white">{copy.previewVerdict}</p>
             <span className="rounded-lg bg-[#00FF87] px-2 py-1 text-xs font-black text-[#06101D]">7/10</span>
@@ -475,7 +545,7 @@ function ProductPreview({ copy }: { copy: LandingCopy }) {
 
 function SignalPreview({ copy }: { copy: LandingCopy }) {
   return (
-    <div className="rounded-2xl border border-white/12 bg-[#071222]/84 p-4 shadow-[0_22px_80px_rgba(0,0,0,0.34)] backdrop-blur">
+    <div className="rounded-lg border border-white/12 bg-[#071222]/84 p-4 shadow-[0_22px_80px_rgba(0,0,0,0.34)] backdrop-blur">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-sm font-black text-white">{copy.signalsTitle}</p>
@@ -485,7 +555,7 @@ function SignalPreview({ copy }: { copy: LandingCopy }) {
       </div>
       <div className="space-y-3">
         {copy.signalRows.map((row, index) => (
-          <div key={row.label} className="rounded-xl border border-white/10 bg-[#0A1629] p-3">
+          <div key={row.label} className="rounded-lg border border-white/10 bg-[#0A1629] p-3">
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-bold text-[#DCE6FA]">{row.label}</span>
               <span className={index === 0 ? "font-black text-[#00FF87]" : "font-black text-[#FFD600]"}>{row.value}</span>
@@ -498,7 +568,7 @@ function SignalPreview({ copy }: { copy: LandingCopy }) {
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2">
         {copy.statTiles.map((tile) => (
-          <div key={tile.label} className="rounded-xl bg-white/8 px-3 py-2">
+          <div key={tile.label} className="rounded-lg bg-white/8 px-3 py-2">
             <p className="text-base font-black text-white">{tile.value}</p>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7F8FAF]">{tile.label}</p>
           </div>
@@ -573,35 +643,50 @@ function GoogleMark() {
 const copyEn: LandingCopy = {
   loading: "Checking session...",
   navCta: "Get started",
-  kicker: "World Cup 2026 betting coach",
-  heroTitle: "Know when a World Cup bet is actually worth it.",
+  kicker: "AI betting coach for World Cup 2026",
+  heroTitle: "The AI that tells you if a bet actually makes sense.",
   heroSubtitle:
-    "Matchmind combines match context, bookmaker odds, and market-movement signals into one direct coach verdict before you stake a cent.",
-  primaryCta: "Start free",
-  priceHook: "World Cup Pass from €8.99 with referrals",
-  proofPoints: ["Pause impulsive bets", "Spot overpriced odds", "Track every decision"],
-  previewTitle: "Coach verdict",
+    "Describe the bet you are considering. Matchmind reads the odds, World Cup context, bookmaker prices, and prediction-market signals, then gives you a direct verdict with confidence.",
+  primaryCta: "Ask the AI free",
+  priceHook: "World Cup Pass · one payment from €8.99",
+  trustLine: "Analysis only. Matchmind never places bets or handles betting funds.",
+  proofPoints: ["AI verdicts in plain language", "Bookmaker odds and market signals", "Confidence score before you stake"],
+  aiSectionTitle: "Built for the seconds before you bet",
+  aiSectionSubtitle:
+    "The coach is not a generic chatbot. It is tuned to challenge hype, price emotion, and explain value in the language of a football fan.",
+  aiPillars: [
+    { title: "Reads the ticket", body: "Team, market, odds, stake, timing, and the risk you are really taking." },
+    { title: "Cross-checks sources", body: "Bookmaker consensus, World Cup fixtures, Polymarket signals, and your own history." },
+    { title: "Gives a call", body: "Clear yes/no/avoid guidance, stake discipline, and a confidence score out of 10." },
+  ],
+  sourceChips: [
+    { label: "AI", value: "coach verdict" },
+    { label: "Odds", value: "value check" },
+    { label: "Markets", value: "crowd probability" },
+    { label: "Tracker", value: "decision record" },
+  ],
+  previewTitle: "AI coach verdict",
   previewLive: "AI read",
   previewQuestion: "Argentina to win the World Cup at 7.50. Good value or trap?",
   previewVerdict: "Lean yes, but keep stake controlled",
   previewAnswer:
-    "The price is interesting if the market read stays above the implied 13.3%, but this is a long tournament. Small position, no chasing.",
-  signalsTitle: "Market Reads",
-  signalsSubtitle: "Tournament clues from price and activity",
+    "The price is interesting if the market read stays above the implied 13.3%, but this is a long tournament. Small position, no chasing. Confidence: 7/10.",
+  signalsTitle: "What the AI compares",
+  signalsSubtitle: "Odds, market movement, and tournament context",
   signalRows: [
-    { label: "Brazil winner market", value: "18%", width: "78%" },
-    { label: "Spain group winner", value: "64%", width: "64%" },
+    { label: "Bookmaker consensus", value: "live", width: "78%" },
+    { label: "Polymarket signal", value: "64%", width: "64%" },
   ],
   statTiles: [
-    { value: "Ask", label: "Before betting" },
-    { value: "Value", label: "Odds check" },
-    { value: "Track", label: "Your record" },
+    { value: "Ask", label: "AI chat" },
+    { value: "Value", label: "Odds read" },
+    { value: "Track", label: "Record" },
   ],
   authEyebrow: "Create your account",
   signInTitle: "Welcome back",
   signInSubtitle: "Open your coach chats, market reads, and betting record.",
-  signUpTitle: "Create your free account",
-  signUpSubtitle: "Get your second opinion before kickoff. No sportsbook, no bet placement.",
+  signUpTitle: "Try the AI coach free",
+  signUpSubtitle: "Get 5 free coach chats per day. Upgrade only when you want the full tournament intelligence layer.",
   forgotTitle: "Reset your password",
   forgotSubtitle: "Enter your email and we will send you a reset link.",
   email: "Email",
@@ -635,35 +720,50 @@ const copyEn: LandingCopy = {
 const copyEs: LandingCopy = {
   loading: "Comprobando sesión...",
   navCta: "Empezar",
-  kicker: "Mundial 2026 · análisis antes de apostar",
-  heroTitle: "Antes de apostar, pregunta a Matchmind.",
+  kicker: "Coach IA para apostar mejor en el Mundial 2026",
+  heroTitle: "La IA que te dice si tu apuesta tiene sentido.",
   heroSubtitle:
-    "Tu segunda opinión para cortar el ruido, el hype y las cuotas malas antes de poner dinero en juego.",
-  primaryCta: "Crear cuenta gratis",
-  priceHook: "Pase Mundial desde €8.99 con referidos",
-  proofPoints: ["Frena apuestas por impulso", "Detecta cuotas caras", "Guarda cada decisión"],
-  previewTitle: "Veredicto Matchmind",
+    "Describe la apuesta que estás pensando. Matchmind lee cuotas, contexto del Mundial, precios de bookmakers y señales de mercado para darte un veredicto directo con confianza.",
+  primaryCta: "Preguntar a la IA gratis",
+  priceHook: "Pase Mundial · pago único desde €8.99",
+  trustLine: "Solo análisis. Matchmind nunca coloca apuestas ni gestiona fondos de juego.",
+  proofPoints: ["Veredictos IA en lenguaje claro", "Cuotas y señales de mercado", "Confianza antes de poner dinero"],
+  aiSectionTitle: "Pensada para los segundos antes de apostar",
+  aiSectionSubtitle:
+    "No es un chatbot genérico. Es un coach entrenado para cuestionar hype, medir precio y explicar valor como te lo diría un amigo que sabe.",
+  aiPillars: [
+    { title: "Lee tu jugada", body: "Equipo, mercado, cuota, importe, momento y el riesgo real que estás asumiendo." },
+    { title: "Cruza fuentes", body: "Consenso bookmaker, calendario del Mundial, señales Polymarket y tu propio historial." },
+    { title: "Se moja", body: "Veredicto claro, disciplina de stake y una confianza del 1 al 10 antes de apostar." },
+  ],
+  sourceChips: [
+    { label: "IA", value: "veredicto coach" },
+    { label: "Cuotas", value: "lectura de valor" },
+    { label: "Mercados", value: "probabilidad crowd" },
+    { label: "Tracker", value: "historial propio" },
+  ],
+  previewTitle: "Veredicto del coach IA",
   previewLive: "Análisis IA",
   previewQuestion: "España gana el grupo a 1.65. Todo el mundo lo ve claro. ¿Entramos?",
   previewVerdict: "Yo no la cogería a esa cuota",
   previewAnswer:
-    "Parece segura, pero el precio ya descuenta demasiado optimismo. Si quieres ir con España, esperaría una cuota mejor o bajaría mucho el importe.",
-  signalsTitle: "Lecturas de mercado",
-  signalsSubtitle: "Lo que precio y actividad dejan ver antes que el ruido",
+    "Parece segura, pero el precio ya descuenta demasiado optimismo. Si quieres ir con España, esperaría una cuota mejor o bajaría mucho el importe. Confianza: 7/10.",
+  signalsTitle: "Lo que compara la IA",
+  signalsSubtitle: "Cuotas, movimiento de mercado y contexto del torneo",
   signalRows: [
-    { label: "Favorito sobrecomprado", value: "Alerta", width: "78%" },
-    { label: "Valor en clasificación", value: "Fuerte", width: "64%" },
+    { label: "Consenso bookmaker", value: "activo", width: "78%" },
+    { label: "Señal Polymarket", value: "64%", width: "64%" },
   ],
   statTiles: [
-    { value: "Pregunta", label: "Antes de apostar" },
-    { value: "Valor", label: "Lectura de cuota" },
-    { value: "Control", label: "Historial propio" },
+    { value: "Chat", label: "Coach IA" },
+    { value: "Valor", label: "Cuota" },
+    { value: "Control", label: "Registro" },
   ],
   authEyebrow: "Crea tu cuenta",
   signInTitle: "Vuelve a Matchmind",
   signInSubtitle: "Abre tus chats, lecturas de mercado e historial de apuestas.",
-  signUpTitle: "Crea tu cuenta gratis",
-  signUpSubtitle: "Ten una segunda opinión antes del saque inicial. Sin casa de apuestas, sin colocar apuestas.",
+  signUpTitle: "Prueba el coach IA gratis",
+  signUpSubtitle: "Tienes 5 chats gratis al día. Paga solo si quieres desbloquear la inteligencia completa del Mundial.",
   forgotTitle: "Recupera tu contraseña",
   forgotSubtitle: "Escribe tu email y te enviaremos un enlace de recuperación.",
   email: "Email",

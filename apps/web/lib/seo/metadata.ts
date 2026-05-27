@@ -10,11 +10,11 @@ export const siteConfig = {
   url: siteUrl,
   locale: "en_US",
   alternateLocale: "es_ES",
-  title: "Matchmind - World Cup 2026 Betting Coach",
+  title: "Matchmind - AI World Cup 2026 Betting Coach",
   description:
-    "Get a direct AI second opinion before you bet on the 2026 FIFA World Cup, combining match context, bookmaker odds, market signals, and your bet history.",
+    "Ask an AI betting coach before you bet on the 2026 FIFA World Cup. Matchmind combines bookmaker odds, match context, market signals, and your bet history.",
   spanishDescription:
-    "Recibe una segunda opinión directa antes de apostar en el Mundial 2026, combinando contexto de partidos, cuotas, señales de mercado y tu historial.",
+    "Pregunta a un coach IA antes de apostar en el Mundial 2026. Matchmind combina cuotas, contexto de partidos, señales de mercado y tu historial.",
   keywords: [
     "Matchmind",
     "World Cup 2026",
