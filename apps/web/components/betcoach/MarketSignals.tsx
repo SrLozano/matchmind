@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { KeyboardEvent, ReactNode } from "react"
 import { Activity, AlertCircle, Crown, RefreshCw } from "lucide-react"
 
@@ -13,6 +13,7 @@ import SectionHeader from "./SectionHeader"
 
 const FREE_SIGNAL_COUNT = 3
 const FULL_SIGNAL_LIMIT = 50
+const SIGNAL_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 const FALLBACK_SIGNAL_EMOJIS = ["⚽", "🏆", "📈", "🎯", "🌎", "🔥"]
 
 export default function MarketSignals({
@@ -36,23 +37,33 @@ export default function MarketSignals({
   const headlineSlugs = new Set(headlineSignals.map((signal) => signal.slug ?? signal.question ?? signal.team))
   const premiumSignals = visibleSignals.filter((signal) => !headlineSlugs.has(signal.slug ?? signal.question ?? signal.team))
 
-  const loadSignals = async () => {
-    setIsLoading(true)
-    setError(null)
+  const loadSignals = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true)
+      setError(null)
+    }
 
     try {
       const result = await getMarketSignals({ limit: FULL_SIGNAL_LIMIT })
       setSignals(result.signals)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.feed.marketSignalsLoadError)
+      if (showLoading) setError(err instanceof Error ? err.message : t.feed.marketSignalsLoadError)
     } finally {
-      setIsLoading(false)
+      if (showLoading) setIsLoading(false)
     }
-  }
+  }, [t.feed.marketSignalsLoadError])
 
   useEffect(() => {
     void loadSignals()
-  }, [])
+  }, [loadSignals])
+
+  useEffect(() => {
+    const refreshTimer = window.setInterval(() => {
+      void loadSignals(false)
+    }, SIGNAL_REFRESH_INTERVAL_MS)
+
+    return () => window.clearInterval(refreshTimer)
+  }, [loadSignals])
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">

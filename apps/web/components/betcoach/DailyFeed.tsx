@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { KeyboardEvent } from "react"
 import { AlertCircle, CalendarDays, ChevronDown, Clock, Crown, Lock, MessageCircle, RefreshCw, Sparkles, TrendingUp } from "lucide-react"
 import { getOddsMatches, getWorldCupFixtures, type OddsMatch, type OddsConsensusRow, type WorldCupFixture } from "@/lib/api"
@@ -16,6 +16,9 @@ type FeedState = {
   lastUpdated: Date | null
 }
 
+const MATCH_ROTATION_TICK_MS = 60 * 1000
+const FEED_REFRESH_INTERVAL_MS = 5 * 60 * 1000
+
 export default function DailyFeed({
   isPremium,
   onShowUpgradePrompt,
@@ -29,6 +32,7 @@ export default function DailyFeed({
   const [feed, setFeed] = useState<FeedState>({ matches: [], oddsMatches: [], lastUpdated: null })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const locale = language === "es" ? "es-ES" : "en-US"
   const dateFormatter = useMemo(
     () =>
@@ -57,9 +61,11 @@ export default function DailyFeed({
     [locale]
   )
 
-  const loadFixtures = async () => {
-    setIsLoading(true)
-    setError(null)
+  const loadFixtures = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true)
+      setError(null)
+    }
 
     try {
       const [fixturesResult, oddsResult] = await Promise.allSettled([
@@ -75,28 +81,43 @@ export default function DailyFeed({
         lastUpdated: new Date(),
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.feed.loadError)
+      if (showLoading) setError(err instanceof Error ? err.message : t.feed.loadError)
     } finally {
-      setIsLoading(false)
+      if (showLoading) setIsLoading(false)
     }
-  }
+  }, [t.feed.loadError])
 
   useEffect(() => {
     void loadFixtures()
+  }, [loadFixtures])
+
+  useEffect(() => {
+    const refreshTimer = window.setInterval(() => {
+      void loadFixtures(false)
+    }, FEED_REFRESH_INTERVAL_MS)
+
+    return () => window.clearInterval(refreshTimer)
+  }, [loadFixtures])
+
+  useEffect(() => {
+    const rotationTimer = window.setInterval(() => {
+      setNowMs(Date.now())
+    }, MATCH_ROTATION_TICK_MS)
+
+    return () => window.clearInterval(rotationTimer)
   }, [])
 
   const sortedMatches = useMemo(() => {
-    const now = Date.now()
     const byKickoff = [...feed.matches].sort((a, b) => {
       return getKickoffTimestamp(a) - getKickoffTimestamp(b)
     })
     const upcoming = byKickoff.filter((match) => {
       const kickoff = getKickoffTimestamp(match)
-      return !Number.isFinite(kickoff) || kickoff >= now
+      return !Number.isFinite(kickoff) || kickoff >= nowMs
     })
 
     return upcoming.length > 0 ? upcoming : byKickoff
-  }, [feed.matches])
+  }, [feed.matches, nowMs])
 
   const freeInsightCount = Math.min(sortedMatches.length, 2)
   const proInsightCount = Math.max(sortedMatches.length - freeInsightCount, 0)
