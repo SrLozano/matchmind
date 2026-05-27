@@ -68,6 +68,7 @@ The API env variables are documented in [apps/api/README.md](apps/api/README.md)
 - [Polymarket Integration](docs/polymarket-integration.md) records the current Polymarket data model, endpoints, classification rules, and operational caveats.
 - [The Odds API Exploration](docs/odds-api-exploration.md) records bookmaker coverage, implemented cache tables, endpoints, and product usage.
 - [Stripe Payments](docs/stripe-payments.md) documents test-mode checkout, webhook setup, troubleshooting, and the production checklist.
+- [Legal and Compliance Pass](docs/legal-compliance.md) records the current analysis-only product posture and launch compliance checklist.
 - [Referral Payout Review](docs/referral-payout-review.md) documents the manual pub commission audit and payout SQL checklist.
 - [Deployment Runbook](docs/deployment.md) records Render deployment settings, frontend hosting decisions, scheduled refreshes, cost guardrails, and security notes.
 - [Backend README](apps/api/README.md) documents endpoints, environment variables, and SQL schema.

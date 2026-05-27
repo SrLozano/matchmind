@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, type FormEvent, type ReactNode } from "react"
+import Link from "next/link"
 import {
   ArrowRight,
   AlertTriangle,
@@ -66,6 +67,10 @@ type LandingCopy = {
   resetSent: string
   confirmEmail: string
   ageConfirmation: string
+  legalPrefix: string
+  termsLink: string
+  privacyLink: string
+  responsibleUseLink: string
   accountExistsSwitch: string
   switchToSignUp: string
   switchToSignIn: string
@@ -314,16 +319,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 )}
 
                 {mode === "signup" && (
-                  <label className="flex items-start gap-2.5 rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3 text-xs leading-relaxed text-[#A8B4D0]">
-                    <input
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-[#00FF87]"
-                      type="checkbox"
-                      checked={ageConfirmed}
-                      onChange={(event) => setAgeConfirmed(event.target.checked)}
-                      required
-                    />
-                    <span>{copy.ageConfirmation}</span>
-                  </label>
+                  <div className="rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3">
+                    <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[#A8B4D0]">
+                      <input
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#00FF87]"
+                        type="checkbox"
+                        checked={ageConfirmed}
+                        onChange={(event) => setAgeConfirmed(event.target.checked)}
+                        required
+                      />
+                      <span>{copy.ageConfirmation}</span>
+                    </label>
+                    <LegalLinks copy={copy} language={language} />
+                  </div>
                 )}
 
                 {(localError || authError) && (
@@ -361,10 +369,41 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 </button>
               )}
             </div>
+            {mode !== "signup" && <LegalLinks copy={copy} language={language} className="mt-4 px-1" />}
           </aside>
         </main>
       </div>
     </div>
+  )
+}
+
+function LegalLinks({
+  copy,
+  language,
+  className = "mt-3 pl-6",
+}: {
+  copy: LandingCopy
+  language: Language
+  className?: string
+}) {
+  const legalBasePath = language === "es" ? "/es/legal" : "/legal"
+
+  return (
+    <p className={`${className} text-[11px] leading-5 text-[#6A7A9B]`}>
+      {copy.legalPrefix}{" "}
+      <Link href={`${legalBasePath}/terms`} className="font-semibold text-[#A8B4D0] underline-offset-4 hover:text-[#00FF87] hover:underline">
+        {copy.termsLink}
+      </Link>
+      {", "}
+      <Link href={`${legalBasePath}/privacy`} className="font-semibold text-[#A8B4D0] underline-offset-4 hover:text-[#00FF87] hover:underline">
+        {copy.privacyLink}
+      </Link>
+      {", "}
+      <Link href={`${legalBasePath}/responsible-use`} className="font-semibold text-[#A8B4D0] underline-offset-4 hover:text-[#00FF87] hover:underline">
+        {copy.responsibleUseLink}
+      </Link>
+      .
+    </p>
   )
 }
 
@@ -579,6 +618,10 @@ const copyEn: LandingCopy = {
   resetSent: "If that email exists, Supabase will send a password reset link.",
   confirmEmail: "Account created. Check your email to confirm it, then sign in.",
   ageConfirmation: "I confirm I am 18 or older.",
+  legalPrefix: "By creating or using an account, you accept Matchmind's",
+  termsLink: "Terms",
+  privacyLink: "Privacy Policy",
+  responsibleUseLink: "Responsible Use guidance",
   accountExistsSwitch: "That email already has an account. I switched you to sign in.",
   switchToSignUp: "New here? Create an account",
   switchToSignIn: "Already have an account? Sign in",
@@ -637,6 +680,10 @@ const copyEs: LandingCopy = {
   resetSent: "Si ese email existe, Supabase enviará un enlace para cambiar la contraseña.",
   confirmEmail: "Cuenta creada. Confirma tu email y luego inicia sesión.",
   ageConfirmation: "Confirmo que tengo 18 años o más.",
+  legalPrefix: "Al crear o usar una cuenta, aceptas los documentos de Matchmind:",
+  termsLink: "Términos",
+  privacyLink: "Política de privacidad",
+  responsibleUseLink: "Uso responsable",
   accountExistsSwitch: "Ese email ya tiene cuenta. Te he pasado a iniciar sesión.",
   switchToSignUp: "¿Nuevo aquí? Crea una cuenta",
   switchToSignIn: "¿Ya tienes cuenta? Inicia sesión",

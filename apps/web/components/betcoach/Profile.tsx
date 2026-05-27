@@ -65,6 +65,7 @@ export default function Profile({
   })
   const accountLabel = currentUser?.email ?? t.profile.account
   const avatarEmoji = currentUser?.avatar_emoji || "👤"
+  const legalBasePath = language === "es" ? "/es/legal" : "/legal"
   const menuItems = [
     {
       id: "responsible",
@@ -74,13 +75,21 @@ export default function Profile({
       icon: ShieldCheck,
       link: { href: "https://www.ordenacionjuego.es/participantes-juego/juego-seguro/rgiaj", label: t.profile.responsibleSpain },
     },
-    { id: "privacy", label: t.profile.privacy, description: t.profile.privacyCopy, details: t.profile.privacyDetails, icon: LockKeyhole },
+    {
+      id: "privacy",
+      label: t.profile.privacy,
+      description: t.profile.privacyCopy,
+      details: t.profile.privacyDetails,
+      icon: LockKeyhole,
+      link: { href: `${legalBasePath}/privacy`, label: t.profile.privacy },
+    },
     {
       id: "terms",
       label: t.profile.termsDisclaimer,
       description: t.profile.termsDisclaimerCopy,
       details: t.profile.termsDisclaimerDetails,
       icon: FileText,
+      link: { href: `${legalBasePath}/terms`, label: t.profile.termsDisclaimer },
     },
   ]
 

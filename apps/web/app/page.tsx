@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type { FocusEvent } from "react"
+import Link from "next/link"
 import { Crown, Loader2, X } from "lucide-react"
 import DailyFeed from "@/components/betcoach/DailyFeed"
 import ChatCoach from "@/components/betcoach/ChatCoach"
@@ -235,6 +236,7 @@ function UpgradePrompt({
       : null
   const checkoutLoadingLabel = passOffer.isFree ? t.profile.activatingPass : t.profile.openingStripe
   const checkoutButtonLabel = passOffer.isFree ? t.profile.unlockFreePass : t.profile.upgrade
+  const legalBasePath = language === "es" ? "/es/legal" : "/legal"
 
   const startCheckout = async () => {
     setIsStartingCheckout(true)
@@ -294,6 +296,17 @@ function UpgradePrompt({
         </button>
         {checkoutError && <p className="mt-2.5 text-center text-[11px] font-semibold text-[#FF4D4D]">{checkoutError}</p>}
         <p className="mt-2.5 text-center text-[10px] leading-snug text-[#6A7A9B]">{t.profile.upgradeDisclaimer}</p>
+        <p className="mt-2 text-center text-[10px] leading-snug text-[#6A7A9B]">
+          {language === "es" ? "Al continuar aceptas los " : "By continuing you accept the "}
+          <Link href={`${legalBasePath}/terms`} className="font-semibold text-[#A8B4D0] underline-offset-4 hover:text-[#00FF87] hover:underline">
+            {language === "es" ? "Términos" : "Terms"}
+          </Link>
+          {language === "es" ? " y la " : " and "}
+          <Link href={`${legalBasePath}/privacy`} className="font-semibold text-[#A8B4D0] underline-offset-4 hover:text-[#00FF87] hover:underline">
+            {language === "es" ? "Política de privacidad" : "Privacy Policy"}
+          </Link>
+          .
+        </p>
         {!passOffer.isFree && <p className="mt-2.5 text-center text-[10px] text-[#6A7A9B]">{t.profile.stripe}</p>}
       </div>
     </div>

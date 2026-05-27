@@ -40,6 +40,42 @@ export const publicRoutes: MetadataRoute.Sitemap = [
     changeFrequency: "daily",
     priority: 1,
   },
+  {
+    url: absoluteUrl("/legal/terms"),
+    lastModified: new Date("2026-05-27"),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
+  {
+    url: absoluteUrl("/legal/privacy"),
+    lastModified: new Date("2026-05-27"),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
+  {
+    url: absoluteUrl("/legal/responsible-use"),
+    lastModified: new Date("2026-05-27"),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
+  {
+    url: absoluteUrl("/es/legal/terms"),
+    lastModified: new Date("2026-05-27"),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
+  {
+    url: absoluteUrl("/es/legal/privacy"),
+    lastModified: new Date("2026-05-27"),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
+  {
+    url: absoluteUrl("/es/legal/responsible-use"),
+    lastModified: new Date("2026-05-27"),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
 ]
 
 export function absoluteUrl(path = "/") {
