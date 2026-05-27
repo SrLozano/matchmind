@@ -1,9 +1,11 @@
 import asyncio
 import unittest
+from datetime import datetime, timezone
 
 from app.services.bet_parser import parse_bet_message
 from app.services.odds_api import (
     build_bookmaker_context_for_chat,
+    bookmaker_snapshot_retention_cutoff,
     build_consensus,
     flatten_odds,
     format_bookmaker_context_block,
@@ -16,6 +18,14 @@ from app.services.odds_api import (
 
 
 class OddsAPIServiceTest(unittest.TestCase):
+    def test_bookmaker_snapshot_retention_cutoff_uses_configured_days(self) -> None:
+        cutoff = bookmaker_snapshot_retention_cutoff(
+            30,
+            now=datetime(2026, 7, 19, 12, 0, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(cutoff, "2026-06-19T12:00:00+00:00")
+
     def test_flatten_and_consensus_compute_no_vig_probability(self) -> None:
         events = [
             {

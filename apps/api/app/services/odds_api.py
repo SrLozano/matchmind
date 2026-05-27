@@ -658,7 +658,23 @@ async def persist_bookmaker_odds(rows: list[dict[str, Any]]) -> int:
         on_conflict="odds_api_event_id,bookmaker_key,market_key,outcome_name,line_key",
     ).execute()
     await client.table(BOOKMAKER_ODDS_SNAPSHOTS_TABLE).insert(odds_rows).execute()
+    await prune_old_bookmaker_odds_snapshots(client)
     return len(odds_rows)
+
+
+async def prune_old_bookmaker_odds_snapshots(client: Any | None = None) -> None:
+    settings = get_settings()
+    if settings.odds_snapshot_retention_days <= 0:
+        return
+
+    client = client or await get_supabase()
+    cutoff = bookmaker_snapshot_retention_cutoff(settings.odds_snapshot_retention_days)
+    await client.table(BOOKMAKER_ODDS_SNAPSHOTS_TABLE).delete().lt("fetched_at", cutoff).execute()
+
+
+def bookmaker_snapshot_retention_cutoff(retention_days: int, now: datetime | None = None) -> str:
+    reference_time = now or datetime.now(timezone.utc)
+    return (reference_time - timedelta(days=retention_days)).isoformat()
 
 
 async def persist_bookmaker_consensus(rows: list[dict[str, Any]]) -> int:

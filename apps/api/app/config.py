@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     odds_api_odds_format: str = Field(default="decimal", alias="ODDS_API_ODDS_FORMAT")
     odds_api_cache_ttl_seconds: int = Field(default=600, alias="ODDS_API_CACHE_TTL_SECONDS")
     odds_api_discovery_path: str = Field(default="tmp/odds_api_world_cup_discovery.json", alias="ODDS_API_DISCOVERY_PATH")
+    odds_snapshot_retention_days: int = Field(default=30, alias="ODDS_SNAPSHOT_RETENTION_DAYS")
     polymarket_discovery_path: str = Field(default="tmp/polymarket_world_cup_discovery.json", alias="POLYMARKET_DISCOVERY_PATH")
     polymarket_gamma_base_url: str = Field(default="https://gamma-api.polymarket.com", alias="POLYMARKET_GAMMA_BASE_URL")
     polymarket_clob_base_url: str = Field(default="https://clob.polymarket.com", alias="POLYMARKET_CLOB_BASE_URL")
