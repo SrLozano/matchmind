@@ -65,7 +65,7 @@ The tournament pass is the key pricing insight: users perceive it as a bounded, 
 | Source | Purpose | Current status |
 |---|---|---|
 | API-Football | Team stats, standings, recent form, head-to-head history | Fixture cache integrated through `world_cup_matches` |
-| The Odds API | Real-time bookmaker odds across multiple markets | Planned next; not integrated yet |
+| The Odds API | Real-time bookmaker odds across featured match markets and tournament outrights | Cache, seed, refresh, match feed, analyzer endpoint, and chat context integrated |
 | Polymarket | Crowd wisdom implied probabilities from prediction markets | Cache, seed, refresh, signals, and chat context integrated |
 
 ### Why Polymarket matters
@@ -81,9 +81,9 @@ Polymarket prices reflect aggregated probability from people betting real money.
 | Backend | Python + FastAPI | Async throughout |
 | Database + Auth | Supabase | RLS enabled |
 | AI Model | OpenAI GPT-5.4 mini | See model decision below |
-| Payments | Stripe | Later phase |
+| Payments | Stripe | Test-mode one-time tournament pass checkout integrated |
 | HTTP client | httpx | Async API calls |
-| Deployment | Railway or Render | Backend hosting |
+| Deployment | Render + Cloudflare Pages | Render hosts FastAPI; Cloudflare Pages hosts static frontend |
 
 ---
 
@@ -100,11 +100,13 @@ Cost projection for 500 active users (400 free + 100 premium) over the 38-day to
 ### Database: Supabase
 Chosen over Firebase and self-hosted PostgreSQL for speed of setup. Provides database, auth, and REST API in one platform. Configured with:
 - Data API: enabled
-- Automatically expose new tables: disabled (manual control for security)
 - Automatic RLS: enabled (critical — ensures users can only access their own data)
+- Product tables revoke direct `anon`/`authenticated` access and explicitly grant only the required privileges to `service_role`
+
+New `public` tables must include explicit grants in their migrations. Do not rely on Supabase's old implicit Data API exposure behavior.
 
 ### Supabase API Keys Usage
-- **Publishable key:** future frontend auth/client usage
+- **Publishable key:** frontend Supabase Auth client usage
 - **Secret key:** backend FastAPI (.env)
 
 ### AI Provider: OpenAI (not Anthropic Claude)
@@ -124,9 +126,7 @@ external provider
 -> chat/feed/UI endpoint
 ```
 
-API-Football fixtures use this pattern through `world_cup_matches`. Polymarket uses `polymarket_markets` and `polymarket_market_snapshots`.
-
-The Odds API should follow this same cache-first pattern next. It is not wired yet in the current backend.
+API-Football fixtures use this pattern through `world_cup_matches`. Polymarket uses `polymarket_markets` and `polymarket_market_snapshots`. The Odds API uses `bookmaker_events`, `bookmaker_odds`, `bookmaker_odds_snapshots`, and `bookmaker_market_consensus`.
 
 ### Fallback Strategy for Live Data
 If team names are not detected in a user message, or if any external API call fails, the chat endpoint falls back gracefully and the coach continues without live data. The chat never crashes due to a data source failure.
@@ -178,9 +178,12 @@ Polymarket market type classification is deterministic rule-based text matching,
 | id | uuid |
 | user_id | uuid |
 | match | text |
+| pick | text |
+| market_type | text |
+| bookmaker | text |
 | amount | numeric |
 | odds | numeric |
-| outcome | text (win/loss/pending) |
+| outcome | text (win/loss/pending/cashed_out) |
 | profit_loss | numeric |
 | created_at | timestamp |
 
@@ -192,6 +195,21 @@ Stores the latest normalized state of each usable or discovered Polymarket World
 
 ### polymarket_market_snapshots
 Stores historical Polymarket price/liquidity observations for movement and rising-signal features.
+
+### bookmaker_events
+Stores The Odds API event metadata and fixture matching keys.
+
+### bookmaker_odds
+Stores latest normalized bookmaker prices for featured markets.
+
+### bookmaker_odds_snapshots
+Stores historical bookmaker price observations for movement and freshness.
+
+### bookmaker_market_consensus
+Stores product-facing consensus rows with best price, no-vig probability, bookmaker count, and freshness.
+
+### referral_partners / referral_codes / referral_attributions
+Stores partner-bar and user referral codes, applied codes, Stripe-backed conversions, and manual payout state.
 
 ---
 
@@ -229,13 +247,30 @@ OPENAI_API_KEY=
 OPENAI_MODEL=
 FREE_DAILY_CHAT_LIMIT=
 PREMIUM_WEEKLY_CHAT_LIMIT=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_TOURNAMENT_PASS_PRICE_ID=
+STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=
+STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID=
+STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID=
+APP_URL=
+ALLOW_DEV_AUTH_FALLBACK=
 API_FOOTBALL_KEY=
 API_FOOTBALL_BASE_URL=
-STRIPE_SECRET_KEY=
 WORLD_CUP_LEAGUE_ID=
 WORLD_CUP_SEASON=
 WORLD_CUP_CACHE_TTL_SECONDS=
 WORLD_CUP_FIXTURE_REFRESH_HOURS=
+ODDS_API_KEY=
+ODDS_API_BASE_URL=
+ODDS_API_REGIONS=
+ODDS_API_BOOKMAKERS=
+ODDS_API_MARKETS=
+ODDS_API_OUTRIGHT_MARKETS=
+ODDS_API_ODDS_FORMAT=
+ODDS_API_CACHE_TTL_SECONDS=
+ODDS_API_DISCOVERY_PATH=
+ODDS_SNAPSHOT_RETENTION_DAYS=
 POLYMARKET_DISCOVERY_PATH=
 POLYMARKET_GAMMA_BASE_URL=
 POLYMARKET_CLOB_BASE_URL=
@@ -249,13 +284,13 @@ INTERNAL_API_TOKEN=
 CORS_ALLOWED_ORIGINS=
 ```
 
-`ODDS_API_KEY` should be added when The Odds API cache is implemented. It is not read by the current backend.
-
 Current frontend public variables live in `apps/web/.env.local`:
 
 ```text
 NEXT_PUBLIC_API_URL=
-NEXT_PUBLIC_DEV_USER_ID=
+NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
 ---
@@ -266,19 +301,29 @@ NEXT_PUBLIC_DEV_USER_ID=
 |---|---|---|
 | GET | / | API metadata |
 | GET | /health | Health check, confirms DB connection |
-| GET | /users/me | Current dev user profile and chat usage |
+| GET / PATCH | /users/me | Authenticated profile and chat usage |
 | POST | /chat | Main coach chat endpoint |
+| GET | /conversations | Authenticated conversation summaries |
+| GET | /conversations/{conversation_id} | Authenticated conversation detail |
 | GET | /world-cup/fixtures | Cached World Cup fixture context |
 | POST | /world-cup/refresh | Internal API-Football fixture refresh |
 | GET | /polymarket/signals | Cached Polymarket market signals |
 | POST | /polymarket/seed-from-discovery | Internal Polymarket seed from local exploration JSON |
 | POST | /polymarket/refresh | Internal Polymarket live refresh |
+| GET | /odds/matches | Cached bookmaker consensus for match cards |
+| POST | /odds/analyze | Compares user-entered odds against cached consensus |
+| POST | /odds/seed-from-discovery | Internal bookmaker odds seed from local exploration JSON |
+| POST | /odds/refresh/events | Internal Odds API event refresh |
+| POST | /odds/refresh | Internal bookmaker odds refresh |
+| POST | /payments/create-checkout-session | Authenticated Stripe Checkout Session creation |
+| POST | /payments/webhook | Stripe webhook receiver |
+| POST / GET | /referrals | Referral partner/user code operations |
 | POST / GET / PATCH / DELETE | /bets | Bet tracker operations |
 
 ### POST /chat
-- **Input:** `{ user_id, message }`
-- **Logic:** checks daily limit for free users, extracts bet facts, reads cached API-Football/Polymarket context when relevant, injects compact context into the prompt, calls OpenAI
-- **Output:** `{ response, confidence_score, daily_chats_remaining, chat_count, chat_count_limit, chat_limit_period, chats_remaining }`
+- **Input:** `{ message, preferred_language?, conversation_id? }`
+- **Logic:** authenticates via Supabase bearer token unless local fallback is enabled, checks chat limits, extracts bet facts, reads cached API-Football/Polymarket/bookmaker context when relevant, injects compact context plus recent conversation memory into the prompt, calls OpenAI
+- **Output:** `{ conversation_id, response, confidence_score, verdict, implied_probability, stake_posture, market_signal, daily_chats_remaining, chat_count, chat_count_limit, chat_limit_period, chats_remaining }`
 
 ### GET /polymarket/signals
 - Returns active usable World Cup 2026 market signals from Supabase/memory.
@@ -300,21 +345,22 @@ NEXT_PUBLIC_DEV_USER_ID=
 - FastAPI project structure initialized
 - Supabase connected and schema created
 - /health endpoint working
-- /chat endpoint working with fake user
+- /chat endpoint working with authenticated Supabase users and optional local dev fallback
 
 ### Phase 2 - Live Data (current)
 - API-Football fixture cache integrated
 - Polymarket cache, seed, refresh, signals, and chat context integrated
-- Next.js v1 frontend imported and wired to chat, fixtures, signals, bets, and profile endpoints
-- Next: The Odds API cache and bookmaker-vs-crowd divergence
-- Next: turn the current feed/signals UI into richer Pronósticos and divergence surfaces once odds data exists
+- The Odds API cache, seed, refresh, match feed, analyzer endpoint, and chat context integrated
+- Next.js v1 frontend imported and wired to chat, conversations, fixtures, odds, signals, bets, profile, referrals, and payments
+- Next: bookmaker-vs-crowd divergence between tournament outrights and Polymarket signals
+- Next: dedicated Odds Analyzer frontend flow
 
 ### Phase 3 - UX and Polish (~May 31)
 - Polish current Next.js frontend and optionally use Lovable/V0 for design iteration
 - Mobile-first design
 - 30-second onboarding flow
 - Loading states, errors, empty states
-- End-to-end payment flow testing
+- Continue end-to-end payment and referral flow testing
 
 ### Phase 4 - Launch (~June 7)
 - Production deployment

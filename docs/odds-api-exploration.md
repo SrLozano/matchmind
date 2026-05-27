@@ -457,7 +457,6 @@ ODDS_API_ODDS_FORMAT=decimal
 ODDS_API_CACHE_TTL_SECONDS=600
 ODDS_API_DISCOVERY_PATH=tmp/odds_api_world_cup_discovery.json
 ODDS_SNAPSHOT_RETENTION_DAYS=30
-ODDS_API_REFRESH_MINUTES=30
 ```
 
 2. Build a one-off explorer script:

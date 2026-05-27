@@ -35,7 +35,6 @@ apps/api/
 │       ├── referrals.py
 │       └── users.py
 ├── tests/
-├── .env.example
 ├── requirements.txt
 └── README.md
 ```
@@ -169,6 +168,7 @@ Create a bet. User ownership comes from the Supabase bearer token:
 The API calculates `profit_loss` server-side:
 
 - `pending`: `0`
+- `cashed_out`: `0`
 - `win`: `amount * (odds - 1)`
 - `loss`: `-amount`
 
@@ -194,6 +194,8 @@ List response:
 ## Supabase Schema
 
 The canonical deployable schema lives in [supabase/migrations](../../supabase/migrations). The SQL below is retained as a readable reference, but new database changes should be made as versioned migration files.
+
+When adding new `public` tables, include explicit Data API grants in the migration. Matchmind should continue to revoke direct `anon` and `authenticated` access for product tables, then grant the narrowest required privileges to `service_role` because browser clients authenticate with Supabase Auth but access product data through FastAPI.
 
 ```sql
 create extension if not exists "pgcrypto";
@@ -225,7 +227,7 @@ create table if not exists public.bet_tracker (
     bookmaker text,
     amount numeric(10, 2) not null,
     odds numeric(10, 2) not null,
-    outcome text not null default 'pending' check (outcome in ('win', 'loss', 'pending')),
+    outcome text not null default 'pending' check (outcome in ('win', 'loss', 'pending', 'cashed_out')),
     profit_loss numeric(10, 2) not null default 0,
     created_at timestamptz not null default timezone('utc', now())
 );

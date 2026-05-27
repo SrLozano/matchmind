@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-Last updated: 2026-05-23
+Last updated: 2026-05-27
 
 This document records the current MVP deployment decisions for Matchmind. The goal is to keep production reliable enough for real users while keeping fixed costs low and predictable.
 
@@ -197,9 +197,6 @@ Required Next.js config:
 ```js
 const nextConfig = {
   output: 'export',
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
   },
