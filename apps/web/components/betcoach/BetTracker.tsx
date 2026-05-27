@@ -36,7 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { ConceptTip } from "./ConceptTip"
+import { ConceptTip, type ConceptKey } from "./ConceptTip"
 import SectionHeader from "./SectionHeader"
 
 const marketTypes = [
@@ -295,24 +295,28 @@ export default function BetTracker() {
       value: formatCurrency(tracker.summary.total_staked),
       icon: CircleDollarSign,
       className: "text-foreground",
+      concept: "stake" as ConceptKey,
     },
     {
       label: t.tracker.profitLoss,
       value: formatCurrency(totalPnl, { signed: true }),
       icon: totalPnl >= 0 ? TrendingUp : TrendingDown,
       className: totalPnl >= 0 ? "text-[#00FF87]" : "text-[#FF4D4D]",
+      concept: "pnl" as ConceptKey,
     },
     {
       label: t.tracker.winRate,
       value: `${winRate}%`,
       icon: BarChart3,
       className: "text-[#00FF87]",
+      concept: "winRate" as ConceptKey,
     },
     {
       label: t.tracker.pendingExposure,
       value: formatCurrency(tracker.summary.pending_exposure),
       icon: Clock3,
       className: "text-[#FFD600]",
+      concept: "pendingExposure" as ConceptKey,
     },
   ]
 
@@ -344,15 +348,7 @@ export default function BetTracker() {
             >
               <div className="flex min-w-0 items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-[#6A7A9B]">
                 <Icon className="h-3 w-3 flex-shrink-0" />
-                {chip.label === t.tracker.winRate ? (
-                  <ConceptTip concept="winRate" label={chip.label} subtle />
-                ) : chip.label === t.tracker.profitLoss ? (
-                  <ConceptTip concept="pnl" label={chip.label} subtle />
-                ) : chip.label === t.tracker.totalStaked ? (
-                  <ConceptTip concept="stake" label={chip.label} subtle />
-                ) : (
-                  chip.label
-                )}
+                <ConceptTip concept={chip.concept} label={chip.label} subtle />
               </div>
               <p className={`mt-0.5 truncate text-base font-bold ${chip.className}`}>{chip.value}</p>
             </div>

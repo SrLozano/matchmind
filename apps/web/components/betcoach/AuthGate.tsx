@@ -576,7 +576,7 @@ const copyEn: LandingCopy = {
   kicker: "World Cup 2026 betting coach",
   heroTitle: "Know when a World Cup bet is actually worth it.",
   heroSubtitle:
-    "Matchmind combines match context, bookmaker odds, and prediction-market signals into one direct coach verdict before you stake a cent.",
+    "Matchmind combines match context, bookmaker odds, and market-movement signals into one direct coach verdict before you stake a cent.",
   primaryCta: "Start free",
   priceHook: "World Cup Pass from €8.99 with referrals",
   proofPoints: ["Pause impulsive bets", "Spot overpriced odds", "Track every decision"],
@@ -585,9 +585,9 @@ const copyEn: LandingCopy = {
   previewQuestion: "Argentina to win the World Cup at 7.50. Good value or trap?",
   previewVerdict: "Lean yes, but keep stake controlled",
   previewAnswer:
-    "The price is interesting if crowd probability stays above the implied 13.3%, but this is a long tournament. Small position, no chasing.",
-  signalsTitle: "Market Signals",
-  signalsSubtitle: "Tournament-level probability shifts",
+    "The price is interesting if the market read stays above the implied 13.3%, but this is a long tournament. Small position, no chasing.",
+  signalsTitle: "Market Reads",
+  signalsSubtitle: "Tournament clues from price and activity",
   signalRows: [
     { label: "Brazil winner market", value: "18%", width: "78%" },
     { label: "Spain group winner", value: "64%", width: "64%" },
@@ -648,8 +648,8 @@ const copyEs: LandingCopy = {
   previewVerdict: "Yo no la cogería a esa cuota",
   previewAnswer:
     "Parece segura, pero el precio ya descuenta demasiado optimismo. Si quieres ir con España, esperaría una cuota mejor o bajaría mucho el importe.",
-  signalsTitle: "Señales del mercado",
-  signalsSubtitle: "Lo que el dinero está viendo antes que el ruido",
+  signalsTitle: "Lecturas de mercado",
+  signalsSubtitle: "Lo que precio y actividad dejan ver antes que el ruido",
   signalRows: [
     { label: "Favorito sobrecomprado", value: "Alerta", width: "78%" },
     { label: "Valor en clasificación", value: "Fuerte", width: "64%" },

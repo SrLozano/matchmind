@@ -8,7 +8,7 @@ import { getMarketSignals, type MarketSignal } from "@/lib/api"
 import { displayTeamName, flagForTeam } from "@/lib/country-flags"
 import { useLanguage, type Language } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
-import { ConceptTip } from "./ConceptTip"
+import { ConceptTip, type ConceptKey } from "./ConceptTip"
 import SectionHeader from "./SectionHeader"
 
 const FREE_SIGNAL_COUNT = 3
@@ -76,6 +76,11 @@ export default function MarketSignals({
       <p className="mx-4 mb-3 flex-shrink-0 text-[10px] leading-snug text-[#6A7A9B] sm:mx-5">
         {t.signals.disclaimer}
       </p>
+
+      <section className="mx-4 mb-4 rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3.5 py-3 sm:mx-5">
+        <p className="text-xs font-bold text-foreground">{t.signals.introTitle}</p>
+        <p className="mt-1 text-xs leading-relaxed text-[#A8B4D0]">{t.signals.introBody}</p>
+      </section>
 
       <div className="flex flex-col gap-3 px-4 pb-5 sm:px-5">
         {isLoading ? (
@@ -233,11 +238,11 @@ function SignalRow({
             </summary>
             <p className="mt-2 break-words text-xs leading-relaxed text-[#A8B4D0]">{signal.question}</p>
             <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#1A2845] pt-3">
-              <DetailMetric label={t.signals.sourceProbability} value={formatPercent(signal.yes_price ?? signal.implied_probability, t.feed.noValue)} />
-              <DetailMetric label={t.feed.liquidity} value={signal.liquidity_label ?? t.feed.noValue} />
-              <DetailMetric label={t.signals.volume} value={formatCompactNumber(signal.volume, t.feed.noValue)} />
-              <DetailMetric label={t.signals.spread} value={formatSpread(signal.spread, t.feed.noValue)} />
-              {isAdvanced && <DetailMetric label={t.feed.signalQuality} value={typeof quality === "number" ? `${quality}/100` : t.feed.noValue} />}
+              <DetailMetric concept="crowdProbability" label={t.signals.sourceProbability} value={formatPercent(signal.yes_price ?? signal.implied_probability, t.feed.noValue)} />
+              <DetailMetric concept="liquidity" label={t.feed.liquidity} value={signal.liquidity_label ?? t.feed.noValue} />
+              <DetailMetric concept="volume" label={t.signals.volume} value={formatCompactNumber(signal.volume, t.feed.noValue)} />
+              <DetailMetric concept="spread" label={t.signals.spread} value={formatSpread(signal.spread, t.feed.noValue)} />
+              {isAdvanced && <DetailMetric concept="signalQuality" label={t.feed.signalQuality} value={typeof quality === "number" ? `${quality}/100` : t.feed.noValue} />}
               <DetailMetric label={t.signals.originalMarket} value={formatMarketType(signal.market_type, language)} />
               <DetailMetric label={t.signals.lastUpdated} value={formatSignalDate(signal.last_fetched_at, language, t.feed.noValue)} />
               <DetailMetric label={t.signals.marketCloses} value={formatSignalDate(signal.end_date, language, t.feed.noValue)} />
@@ -249,10 +254,12 @@ function SignalRow({
   )
 }
 
-function DetailMetric({ label, value }: { label: string; value: string }) {
+function DetailMetric({ label, value, concept }: { label: string; value: string; concept?: ConceptKey }) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-[9px] uppercase tracking-wider text-[#6A7A9B]">{label}</p>
+      <p className="truncate text-[9px] uppercase tracking-wider text-[#6A7A9B]">
+        {concept ? <ConceptTip concept={concept} label={label} subtle /> : label}
+      </p>
       <p className="mt-0.5 truncate text-[11px] font-semibold text-[#A8B4D0]">{value}</p>
     </div>
   )
