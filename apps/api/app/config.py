@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    app_environment: str = Field(default="development", alias="APP_ENVIRONMENT")
+    api_docs_enabled: bool = Field(default=False, alias="API_DOCS_ENABLED")
     supabase_url: str = Field(..., alias="SUPABASE_URL")
     supabase_key: str = Field(..., alias="SUPABASE_KEY")
     openai_api_key: str = Field(..., alias="OPENAI_API_KEY")

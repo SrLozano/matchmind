@@ -18,6 +18,33 @@ from app.routers.world_cup import router as world_cup_router
 from app.services.supabase import close_supabase, get_supabase, supabase_healthcheck
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+def is_production_environment(environment: str) -> bool:
+    return environment.strip().lower() in {"prod", "production"}
+
+
+def validate_production_security() -> None:
+    if not is_production_environment(settings.app_environment):
+        return
+
+    if settings.allow_dev_auth_fallback:
+        raise RuntimeError("ALLOW_DEV_AUTH_FALLBACK must be false in production.")
+
+    normalized_origins = {
+        origin.strip()
+        for origin in settings.cors_allowed_origins.split(",")
+        if origin.strip()
+    }
+    if "*" in normalized_origins:
+        raise RuntimeError("CORS_ALLOWED_ORIGINS must not contain '*' in production.")
+
+    if not settings.internal_api_token or settings.internal_api_token == "change-me-for-internal-refresh":
+        raise RuntimeError("INTERNAL_API_TOKEN must be set to a non-placeholder value in production.")
+
+
+validate_production_security()
 
 
 @asynccontextmanager
@@ -34,9 +61,10 @@ app = FastAPI(
     description="AI-powered betting coach backend for the 2026 FIFA World Cup.",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs" if settings.api_docs_enabled else None,
+    redoc_url="/redoc" if settings.api_docs_enabled else None,
+    openapi_url="/openapi.json" if settings.api_docs_enabled else None,
 )
-
-settings = get_settings()
 
 
 def normalize_origin(origin: str | None) -> str | None:
@@ -77,7 +105,10 @@ app.include_router(users_router)
 
 @app.get("/")
 async def root() -> JSONResponse:
-    return JSONResponse(content={"name": "Matchmind API", "docs": "/docs", "health": "/health"})
+    content = {"name": "Matchmind API", "health": "/health"}
+    if settings.api_docs_enabled:
+        content["docs"] = "/docs"
+    return JSONResponse(content=content)
 
 
 @app.get("/health")

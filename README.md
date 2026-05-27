@@ -89,6 +89,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 
 Keep public browser-safe keys in frontend env files, and keep secret service keys in the backend `.env`. When Supabase public env vars are set, the web app uses real Supabase email/password sessions and sends the access token to FastAPI. Backend-only local development can opt into the fixed dev user with `ALLOW_DEV_AUTH_FALLBACK=true`; leave it false or unset in deployed environments.
 
+FastAPI docs are disabled by default. Set `API_DOCS_ENABLED=true` only for local/private setup, and keep `APP_ENVIRONMENT=production` plus `API_DOCS_ENABLED=false` in the deployed API.
+
 ## Stripe Test-Mode Payments
 
 Matchmind uses Stripe Checkout for the one-time World Cup Tournament Pass: €9.99 normally, €8.99 when a referral code or Scout tier is active, €4.99 for Insider, and €2.49 for Captain. Free referral tiers activate the pass without a Stripe payment. Keep all Stripe values in the root/backend `.env` and use test-mode keys only during development:

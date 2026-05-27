@@ -97,6 +97,8 @@ Backend secrets and provider keys belong only in Render or another backend/serve
 Core backend variables:
 
 ```text
+APP_ENVIRONMENT=production
+API_DOCS_ENABLED=false
 SUPABASE_URL
 SUPABASE_KEY
 OPENAI_API_KEY
@@ -165,6 +167,16 @@ CORS_ALLOWED_ORIGINS=https://your-frontend-domain,http://localhost:3000,http://1
 ```
 
 If local development no longer needs to call the production API, remove localhost origins from production CORS.
+
+For the current production domain, the locked-down values should be:
+
+```text
+APP_ENVIRONMENT=production
+API_DOCS_ENABLED=false
+APP_URL=https://trymatchmind.com
+CORS_ALLOWED_ORIGINS=https://trymatchmind.com,https://matchmind-web.pages.dev
+ALLOW_DEV_AUTH_FALLBACK=false
+```
 
 ## Frontend Hosting
 
@@ -411,9 +423,11 @@ Immediate production posture:
 - Public frontend env vars must use Supabase publishable/anon keys only.
 - If a secret is pasted into chat, issue trackers, screenshots, or logs, rotate it.
 
-`/docs`, `/redoc`, and `/openapi.json` are useful during setup, but they expose endpoint structure. They do not expose secret values, but they make the API easier to inspect. Disable them before real public launch or gate them behind a production flag.
+`/docs`, `/redoc`, and `/openapi.json` are useful during local setup, but they expose endpoint structure. They are disabled by default in code. Keep `API_DOCS_ENABLED=false` in production and only set it to `true` locally or temporarily during private setup.
 
 User-specific routes must require Supabase bearer auth in production. Keep `ALLOW_DEV_AUTH_FALLBACK` false or unset in deployed environments; it exists only to let local backend development use the fixed dev user when explicitly enabled.
+
+The API refuses to start with `APP_ENVIRONMENT=production` if `ALLOW_DEV_AUTH_FALLBACK=true`, if `CORS_ALLOWED_ORIGINS` contains `*`, or if `INTERNAL_API_TOKEN` is missing or still set to the placeholder value.
 
 Public cache/read endpoints such as fixture, odds, and signal reads can stay public if they expose only non-user-specific data.
 
