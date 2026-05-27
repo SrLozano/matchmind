@@ -181,15 +181,41 @@ def _name_from_email(email: str | None) -> str | None:
     return first_token[:1].upper() + first_token[1:].lower()
 
 
+def _normalize_email(email: str | None) -> str | None:
+    if email is None:
+        return None
+    normalized = str(email).strip().lower()
+    return normalized or None
+
+
+async def _find_user_by_email(email: str) -> dict[str, Any] | None:
+    client = await get_supabase()
+    response = await client.table("users").select("id, email").eq("email", email).limit(1).execute()
+    return response.data[0] if response.data else None
+
+
+async def _assert_email_not_owned_by_another_user(user_id: UUID, email: str | None) -> None:
+    if not email:
+        return
+    existing_email_user = await _find_user_by_email(email)
+    if existing_email_user and str(existing_email_user.get("id")) != str(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This email is already linked to another Matchmind account.",
+        )
+
+
 async def ensure_user_profile(user_id: UUID, email: str | None = None, name: str | None = None) -> dict[str, Any]:
     client = await get_supabase()
     existing = await client.table("users").select("*").eq("id", str(user_id)).limit(1).execute()
-    normalized_name = _normalize_user_name(name) or _name_from_email(email)
+    normalized_email = _normalize_email(email)
+    normalized_name = _normalize_user_name(name) or _name_from_email(normalized_email)
     if existing.data:
         user = existing.data[0]
         updates = {}
-        if email and user.get("email") != email:
-            updates["email"] = email
+        if normalized_email and user.get("email") != normalized_email:
+            await _assert_email_not_owned_by_another_user(user_id, normalized_email)
+            updates["email"] = normalized_email
         if normalized_name and not user.get("name"):
             updates["name"] = normalized_name
         if updates:
@@ -197,12 +223,13 @@ async def ensure_user_profile(user_id: UUID, email: str | None = None, name: str
             return updated.data[0] if updated.data else user
         return user
 
+    await _assert_email_not_owned_by_another_user(user_id, normalized_email)
     response = (
         await client.table("users")
         .insert(
             {
                 "id": str(user_id),
-                "email": email,
+                "email": normalized_email,
                 "name": normalized_name,
                 "avatar_emoji": DEFAULT_AVATAR_EMOJI,
                 "plan": "free",
