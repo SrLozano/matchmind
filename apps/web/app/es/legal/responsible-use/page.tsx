@@ -19,6 +19,7 @@ export default function SpanishResponsibleUsePage() {
         privacy: "Privacidad",
         responsibleUse: "Uso responsable",
       }}
+      footerBasePath="/es/legal"
       intro="Matchmind está diseñado para frenar decisiones, no para empujar a apostar más. A veces, la mejor respuesta de Matchmind será: no entrar."
       sections={[
         {

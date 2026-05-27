@@ -18,6 +18,7 @@ export type LegalPageProps = {
     privacy: string
     responsibleUse: string
   }
+  footerBasePath?: string
 }
 
 export default function LegalPage({
@@ -32,6 +33,7 @@ export default function LegalPage({
     privacy: "Privacy",
     responsibleUse: "Responsible use",
   },
+  footerBasePath = "/legal",
 }: LegalPageProps) {
   return (
     <main id="main-content" className="min-h-screen bg-[#040810] px-4 py-6 text-foreground sm:px-6 lg:px-8">
@@ -72,9 +74,9 @@ export default function LegalPage({
 
         <footer className="border-t border-white/10 py-6 text-sm text-[#8E9BBC]">
           <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <Link href="/legal/terms" className="hover:text-[#00FF87]">{footerLinks.terms}</Link>
-            <Link href="/legal/privacy" className="hover:text-[#00FF87]">{footerLinks.privacy}</Link>
-            <Link href="/legal/responsible-use" className="hover:text-[#00FF87]">{footerLinks.responsibleUse}</Link>
+            <Link href={`${footerBasePath}/terms`} className="hover:text-[#00FF87]">{footerLinks.terms}</Link>
+            <Link href={`${footerBasePath}/privacy`} className="hover:text-[#00FF87]">{footerLinks.privacy}</Link>
+            <Link href={`${footerBasePath}/responsible-use`} className="hover:text-[#00FF87]">{footerLinks.responsibleUse}</Link>
           </div>
         </footer>
       </div>

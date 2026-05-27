@@ -19,6 +19,7 @@ export default function SpanishPrivacyPage() {
         privacy: "Privacidad",
         responsibleUse: "Uso responsable",
       }}
+      footerBasePath="/es/legal"
       intro="Matchmind utiliza datos personales y de producto para ofrecer la experiencia de la app: autenticación, chats con el coach, lecturas de mercado, registro manual de apuestas, pagos y referidos."
       sections={[
         {
@@ -26,6 +27,13 @@ export default function SpanishPrivacyPage() {
           body: [
             "Matchmind puede tratar tu email, nombre visible, avatar, identificadores de autenticación, mensajes del chat, apuestas registradas manualmente, preferencias, estado de pago e información de referidos.",
             "Si te registras como bar partner, Matchmind puede tratar el nombre del bar, ubicación, persona responsable, teléfono o Bizum de contacto, código de referido, comisión estimada y estado de revisión del pago.",
+          ],
+        },
+        {
+          title: "Base legal",
+          body: [
+            "Tratamos datos de cuenta, chat, tracker, acceso y estado de pago porque son necesarios para prestar Matchmind. También podemos tratar logs limitados y datos antifraude por seguridad y prevención de abuso.",
+            "Los mensajes comerciales o el seguimiento no esencial solo se usarán cuando exista el consentimiento requerido.",
           ],
         },
         {
@@ -38,15 +46,24 @@ export default function SpanishPrivacyPage() {
         {
           title: "Proveedores",
           body: [
-            "Matchmind usa servicios de terceros para hosting, autenticación, base de datos, pagos, analítica, respuestas de IA, cuotas, datos futbolísticos y mercados de predicción.",
+            "Matchmind usa servicios de terceros para hosting, autenticación, base de datos, pagos, analítica, respuestas de IA, cuotas, datos futbolísticos y mercados de predicción, incluidos Supabase, OpenAI, Stripe y el proveedor de hosting.",
+            "El contenido del chat enviado al proveedor de IA no debería incluir identificadores innecesarios como datos completos de pago. Matchmind no envía intencionadamente datos de tarjeta al proveedor de IA.",
             "Los datos completos de tarjeta se gestionan mediante Stripe Checkout. Matchmind no almacena números completos de tarjeta.",
+          ],
+        },
+        {
+          title: "Cookies y analítica",
+          body: [
+            "Matchmind utiliza actualmente Vercel Web Analytics en producción. Vercel describe este producto de analítica como sin cookies y basado en datos de tráfico anónimos y agregados.",
+            "Si Matchmind añade más adelante cookies o seguimiento que no sean estrictamente necesarios, pediremos consentimiento cuando sea obligatorio.",
           ],
         },
         {
           title: "Conservación y eliminación",
           body: [
-            "Matchmind conserva datos de cuenta, chats, tracker, estado de pago y referidos mientras sean necesarios para prestar el producto, resolver soporte, auditar pagos o referidos y cumplir obligaciones legales u operativas.",
-            "Antes de lanzar pagos reales, Matchmind debe definir un contacto de soporte y un proceso de eliminación de cuenta para que los usuarios puedan solicitar acceso, corrección o eliminación cuando proceda.",
+            "Matchmind conserva datos de cuenta, chats, tracker, estado de pago y referidos mientras sean necesarios para prestar el producto durante el Mundial, resolver soporte, auditar pagos o referidos y cumplir obligaciones legales u operativas.",
+            "Después del torneo, Matchmind tiene previsto eliminar o archivar las bases de datos de producto que ya no sean necesarias, salvo registros limitados que deban conservarse por motivos legales, fiscales, de pagos, seguridad o disputas.",
+            "Puedes solicitar acceso, corrección, eliminación o cierre de cuenta escribiendo a support@trymatchmind.com.",
           ],
         },
         {

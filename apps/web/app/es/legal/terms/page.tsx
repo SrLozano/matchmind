@@ -19,6 +19,7 @@ export default function SpanishTermsPage() {
         privacy: "Privacidad",
         responsibleUse: "Uso responsable",
       }}
+      footerBasePath="/es/legal"
       intro="Matchmind es una herramienta de análisis y acompañamiento para el Mundial. Ayuda a pensar mejor antes de apostar, pero no es una casa de apuestas, operador de juego, intermediario, asesor financiero ni gestor de fondos."
       sections={[
         {
