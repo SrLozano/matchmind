@@ -54,6 +54,9 @@ async def chat(payload: ChatRequest, authorization: str | None = Header(default=
         saved_turn = await user_context.save_assistant_turn(
             ai_result.response,
             ai_result.confidence_score,
+            verdict=ai_result.verdict,
+            implied_probability=ai_result.implied_probability,
+            stake_posture=ai_result.stake_posture,
         )
         return ChatResponse(
             conversation_id=saved_turn["conversation_id"],

@@ -63,6 +63,57 @@ WORLD_CUP_TEAMS: tuple[TeamDefinition, ...] = (
     TeamDefinition("Uzbekistan", ("Uzbekistan",), ("Uzbekistán",)),
 )
 
+SPANISH_TEAM_DISPLAY_NAMES = {
+    "Germany": "Alemania",
+    "Algeria": "Argelia",
+    "Argentina": "Argentina",
+    "Australia": "Australia",
+    "Austria": "Austria",
+    "Belgium": "Bélgica",
+    "Bosnia and Herzegovina": "Bosnia y Herzegovina",
+    "Brazil": "Brasil",
+    "Cape Verde": "Cabo Verde",
+    "Canada": "Canadá",
+    "Colombia": "Colombia",
+    "South Korea": "Corea del Sur",
+    "Ivory Coast": "Costa de Marfil",
+    "Croatia": "Croacia",
+    "Curaçao": "Curazao",
+    "Ecuador": "Ecuador",
+    "Egypt": "Egipto",
+    "Scotland": "Escocia",
+    "Spain": "España",
+    "United States": "Estados Unidos",
+    "France": "Francia",
+    "Ghana": "Ghana",
+    "Haiti": "Haití",
+    "England": "Inglaterra",
+    "Iran": "Irán",
+    "Iraq": "Irak",
+    "Japan": "Japón",
+    "Jordan": "Jordania",
+    "Morocco": "Marruecos",
+    "Mexico": "México",
+    "New Zealand": "Nueva Zelanda",
+    "Norway": "Noruega",
+    "Netherlands": "Países Bajos",
+    "Panama": "Panamá",
+    "Paraguay": "Paraguay",
+    "Portugal": "Portugal",
+    "Qatar": "Catar",
+    "Czechia": "Chequia",
+    "DR Congo": "RD Congo",
+    "Saudi Arabia": "Arabia Saudí",
+    "Senegal": "Senegal",
+    "South Africa": "Sudáfrica",
+    "Sweden": "Suecia",
+    "Switzerland": "Suiza",
+    "Turkey": "Turquía",
+    "Tunisia": "Túnez",
+    "Uruguay": "Uruguay",
+    "Uzbekistan": "Uzbekistán",
+}
+
 
 def normalize_text(value: str) -> str:
     value = unicodedata.normalize("NFKD", value)
@@ -86,6 +137,31 @@ def aliases_for_team_name(team_name: str) -> tuple[str, ...]:
 def canonical_team_name(team_name: str) -> str:
     definition = team_definition_for_name(team_name)
     return definition.canonical if definition else team_name
+
+
+def spanish_team_name(team_name: str) -> str:
+    canonical = canonical_team_name(team_name)
+    return SPANISH_TEAM_DISPLAY_NAMES.get(canonical, team_name)
+
+
+def localize_team_names_es(text: str) -> str:
+    localized = text
+    replacements: dict[str, str] = {}
+    for definition in WORLD_CUP_TEAMS:
+        spanish = SPANISH_TEAM_DISPLAY_NAMES.get(definition.canonical)
+        if not spanish:
+            continue
+        for name in (definition.canonical, *definition.api_names):
+            if name and name != spanish:
+                replacements[name] = spanish
+
+    for english, spanish in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
+        localized = re.sub(
+            rf"(?<![A-Za-zÀ-ÖØ-öø-ÿ]){re.escape(english)}(?![A-Za-zÀ-ÖØ-öø-ÿ])",
+            spanish,
+            localized,
+        )
+    return localized
 
 
 def team_definition_for_name(team_name: str) -> TeamDefinition | None:

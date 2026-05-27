@@ -27,16 +27,28 @@ class ChatSessionContext:
             return messages[:-1]
         return messages
 
-    async def save_assistant_turn(self, response: str, confidence_score: float) -> dict[str, Any]:
+    async def save_assistant_turn(
+        self,
+        response: str,
+        confidence_score: float,
+        verdict: str | None = None,
+        implied_probability: float | None = None,
+        stake_posture: str | None = None,
+    ) -> dict[str, Any]:
         messages = list(self.conversation.get("messages", []))
-        messages.append(
-            {
-                "role": "assistant",
-                "content": response,
-                "confidence_score": confidence_score,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-        )
+        assistant_message = {
+            "role": "assistant",
+            "content": response,
+            "confidence_score": confidence_score,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if verdict is not None:
+            assistant_message["verdict"] = verdict
+        if implied_probability is not None:
+            assistant_message["implied_probability"] = implied_probability
+        if stake_posture is not None:
+            assistant_message["stake_posture"] = stake_posture
+        messages.append(assistant_message)
 
         client = await get_supabase()
         updated_conversation = await (
@@ -342,6 +354,9 @@ def _conversation_messages(conversation: dict[str, Any]) -> list[dict[str, Any]]
                 "role": role,
                 "content": content,
                 "confidence_score": raw_message.get("confidence_score"),
+                "verdict": raw_message.get("verdict"),
+                "implied_probability": raw_message.get("implied_probability"),
+                "stake_posture": raw_message.get("stake_posture"),
                 "created_at": _string_or_none(raw_message.get("created_at")),
             }
         )

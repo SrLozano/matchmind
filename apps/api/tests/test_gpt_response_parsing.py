@@ -12,6 +12,7 @@ from app.services.gpt import (
     _fallback_result,
     _finalize_result,
     _localize_visible_response_es,
+    _strip_visible_metadata_lines,
 )
 
 
@@ -104,14 +105,38 @@ class GPTResponseParsingTest(unittest.TestCase):
 
     def test_spanish_visible_response_cleanup_translates_labels_and_enums(self) -> None:
         response = _localize_visible_response_es(
-            "Verdict: FAIR\n\nMy take:\nThe crowd signal is useful.\n\nStake posture:\nsmall — keep it controlled.\n\nConfidence:\n6/10"
+            "Verdict: FAIR\n\nMy take:\nUSA vs South Korea is useful. The crowd signal is useful.\n\nStake posture:\nsmall — keep it controlled.\n\nConfidence:\n6/10"
         )
 
         self.assertIn("Veredicto: JUSTA / NEUTRAL", response)
         self.assertIn("Mi lectura:", response)
+        self.assertIn("Estados Unidos vs Corea del Sur", response)
         self.assertIn("señal de mercado", response)
         self.assertIn("Postura de stake:\npequeño", response)
         self.assertIn("Confianza:", response)
+
+    def test_visible_metadata_lines_are_stripped_for_structured_ui(self) -> None:
+        response = _strip_visible_metadata_lines(
+            "Me gusta como plan pequeño.\n\n**Veredicto:** NO HAY INFO SUFICIENTE.\n**Confianza:** 4/10.\nPostura de stake: evitar"
+        )
+
+        self.assertEqual(response, "Me gusta como plan pequeño.")
+
+    def test_finalize_spanish_response_localizes_teams_and_removes_duplicate_metadata(self) -> None:
+        parsed = parse_bet_message("Tengo 100€ y quiero recomendaciones")
+        result = _finalize_result(
+            AIChatResult(
+                response="USA vs South Korea is only a candidate.\n\nVerdict: NOT ENOUGH INFO\nConfidence: 4/10",
+                confidence_score=4,
+                verdict="NOT ENOUGH INFO",
+                stake_posture="avoid",
+            ),
+            parsed,
+        )
+
+        self.assertIn("Estados Unidos vs Corea del Sur", result.response)
+        self.assertNotIn("Veredicto:", result.response)
+        self.assertNotIn("Confianza:", result.response)
 
     def test_chat_response_format_uses_strict_json_schema(self) -> None:
         response_format = _chat_response_format()

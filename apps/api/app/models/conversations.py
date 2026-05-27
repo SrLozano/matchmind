@@ -5,6 +5,9 @@ class ConversationMessage(BaseModel):
     role: str
     content: str
     confidence_score: float | None = None
+    verdict: str | None = None
+    implied_probability: float | None = None
+    stake_posture: str | None = None
     created_at: str | None = None
 
 
@@ -25,4 +28,3 @@ class ConversationListResponse(BaseModel):
 
 class ConversationDetailResponse(ConversationSummary):
     messages: list[ConversationMessage] = Field(default_factory=list)
-

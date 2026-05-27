@@ -10,6 +10,7 @@ from app.services.bet_parser import ParsedBet, parse_bet_message
 from app.services.api_football import format_match_context_block
 from app.services.odds_api import format_bookmaker_context_block
 from app.services.polymarket import format_polymarket_context_block
+from app.services.world_cup_teams import localize_team_names_es
 
 SYSTEM_PROMPT = """
 You are Matchmind, an AI-powered football betting coach focused on the 2026 FIFA World Cup.
@@ -40,12 +41,13 @@ Do not claim to have bookmaker odds, lineups, injuries, events, statistics, API-
 If only fixture context is available, say that naturally. Continue to calculate implied probability from user-provided decimal odds when available.
 
 The visible response should feel like a sharp friend answering in chat, not a reusable report template.
+- The app renders verdict, confidence, implied probability, and stake posture from JSON metadata. Do not add standalone visible lines like "Verdict:", "Veredicto:", "Confidence:", "Confianza:", or "Stake posture:" to the response text.
 - Start with the bottom line in plain beginner-friendly language.
 - Use 2-5 short paragraphs or bullets, whichever feels more natural for the user's question.
 - Keep it concise, usually 90-170 words.
 - Mention the user's odds and implied probability when odds are supplied.
 - Mention bookmaker consensus, best cached price, fixture context, or market-signal probability only when those fields are explicitly provided.
-- Include the confidence score naturally at the end, but avoid making every answer look identical.
+- If mentioning confidence in the visible text, do it naturally inside a sentence, not as a standalone label. The JSON field is the source of truth for the UI.
 - Vary wording across answers. Do not always use the same section labels or the same order.
 - For vague inputs, ask one useful follow-up question and give a useful preliminary plan.
 - Never recommend a large or aggressive stake. Use stake language as posture, not instruction.
@@ -272,7 +274,7 @@ def _extract_stake_posture(content: str) -> str | None:
 
 
 def _localize_visible_response_es(content: str) -> str:
-    text = content
+    text = localize_team_names_es(content)
     label_replacements = {
         "Verdict:": "Veredicto:",
         "My take:": "Mi lectura:",
@@ -313,6 +315,31 @@ def _localize_visible_response_es(content: str) -> str:
     return text
 
 
+def _strip_visible_metadata_lines(content: str) -> str:
+    lines = content.splitlines()
+    filtered: list[str] = []
+    metadata_line = re.compile(
+        r"^\s*(?:[-*]\s*)?(?:\*\*)?(?:verdict|veredicto|confidence|confianza|stake posture|postura de stake|postura|tamaño sugerido|tamano sugerido)\s*(?::|\*\*:)",
+        re.IGNORECASE,
+    )
+    score_only_line = re.compile(r"^\s*\d{1,2}(?:\.\d+)?\s*/\s*10\s*\.?\s*$")
+    skip_score_after_label = False
+
+    for line in lines:
+        if skip_score_after_label and score_only_line.match(line):
+            skip_score_after_label = False
+            continue
+        skip_score_after_label = False
+
+        if metadata_line.match(line):
+            if re.match(r"^\s*(?:[-*]\s*)?(?:\*\*)?(?:confidence|confianza)\s*(?::|\*\*:)\s*$", line, re.IGNORECASE):
+                skip_score_after_label = True
+            continue
+        filtered.append(line)
+
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(filtered)).strip()
+
+
 def _build_user_context(
     message: str,
     parsed_bet: ParsedBet,
@@ -336,14 +363,22 @@ def _build_user_context(
             else "Write all user-facing response text and section labels in English."
         ),
         "live_data_available": match_context is not None or polymarket_context is not None or bookmaker_context is not None,
-        "match_context": format_match_context_block(match_context),
-        "polymarket_context": format_polymarket_context_block(polymarket_context),
-        "bookmaker_context": format_bookmaker_context_block(bookmaker_context),
+        "match_context": _localize_context_block(format_match_context_block(match_context), parsed_bet.detected_language),
+        "polymarket_context": _localize_context_block(format_polymarket_context_block(polymarket_context), parsed_bet.detected_language),
+        "bookmaker_context": _localize_context_block(format_bookmaker_context_block(bookmaker_context), parsed_bet.detected_language),
         "live_data_note": "No bookmaker odds, API-Football stats, injuries, lineups, or market-signal probabilities were provided for this request."
         if match_context is None and polymarket_context is None and bookmaker_context is None
         else None,
     }
     return json.dumps(context, ensure_ascii=False)
+
+
+def _localize_context_block(block: str | None, language: str) -> str | None:
+    if block is None:
+        return None
+    if language == "es":
+        return localize_team_names_es(block)
+    return block
 
 
 def _classify_chat_intent(message: str, parsed_bet: ParsedBet) -> str:
@@ -404,6 +439,7 @@ def _finalize_result(result: AIChatResult, parsed_bet: ParsedBet, user_name: str
 
     if parsed_bet.detected_language == "es":
         result.response = _localize_visible_response_es(result.response)
+    result.response = _strip_visible_metadata_lines(result.response)
     result.response = _ensure_user_name_in_response(result.response, user_name)
     if result.implied_probability is None:
         result.implied_probability = parsed_bet.implied_probability
@@ -433,6 +469,8 @@ def _ensure_user_name_in_response(response: str, user_name: str | None) -> str:
         return response
     if re.search(rf"\b{re.escape(safe_name)}\b", response, re.IGNORECASE):
         return response
+    if response.lstrip().startswith(("-", "*")):
+        return f"{safe_name}:\n\n{response}"
     return f"{safe_name}, {response[0].lower()}{response[1:]}" if response else safe_name
 
 

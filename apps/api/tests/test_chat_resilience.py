@@ -27,7 +27,14 @@ class DummyChatSessionContext:
     def previous_messages(self) -> list[dict]:
         return self.conversation["messages"][:-1]
 
-    async def save_assistant_turn(self, response: str, confidence_score: float) -> dict:
+    async def save_assistant_turn(
+        self,
+        response: str,
+        confidence_score: float,
+        verdict: str | None = None,
+        implied_probability: float | None = None,
+        stake_posture: str | None = None,
+    ) -> dict:
         return {
             "conversation_id": self.conversation["id"],
             "response": response,

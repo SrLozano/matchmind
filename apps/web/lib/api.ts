@@ -43,6 +43,9 @@ export type ConversationMessage = {
   role: "user" | "assistant"
   content: string
   confidence_score: number | null
+  verdict: string | null
+  implied_probability: number | null
+  stake_posture: string | null
   created_at: string | null
 }
 

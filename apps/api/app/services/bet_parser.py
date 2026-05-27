@@ -42,6 +42,18 @@ SPANISH_HINTS = {
     "meter",
     "poner",
     "valor",
+    "tengo",
+    "quiero",
+    "recomienda",
+    "recomendaciones",
+    "sugerencias",
+    "sugiéreme",
+    "sugiereme",
+    "perfil",
+    "riesgo",
+    "agresivo",
+    "conservador",
+    "equilibrado",
 }
 
 

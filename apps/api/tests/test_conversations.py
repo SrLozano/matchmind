@@ -38,7 +38,14 @@ class ConversationsTest(unittest.TestCase):
                     {"role": "system", "content": "ignore"},
                     {"role": "user", "content": "  "},
                     {"role": "user", "content": "Spain at 2.20"},
-                    {"role": "assistant", "content": "Interesting price.", "confidence_score": 6.5},
+                    {
+                        "role": "assistant",
+                        "content": "Interesting price.",
+                        "confidence_score": 6.5,
+                        "verdict": "FAIR",
+                        "implied_probability": 0.4545,
+                        "stake_posture": "small",
+                    },
                     "bad row",
                 ]
             }
@@ -46,6 +53,9 @@ class ConversationsTest(unittest.TestCase):
 
         self.assertEqual([message["role"] for message in messages], ["user", "assistant"])
         self.assertEqual(messages[1]["confidence_score"], 6.5)
+        self.assertEqual(messages[1]["verdict"], "FAIR")
+        self.assertEqual(messages[1]["implied_probability"], 0.4545)
+        self.assertEqual(messages[1]["stake_posture"], "small")
 
 
 if __name__ == "__main__":

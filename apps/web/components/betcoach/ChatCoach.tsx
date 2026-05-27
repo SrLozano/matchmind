@@ -212,6 +212,9 @@ export default function ChatCoach({
           role: message.role === "assistant" ? "coach" : "user",
           text: message.content,
           confidenceScore: message.confidence_score,
+          verdict: message.verdict,
+          impliedProbability: message.implied_probability,
+          stakePosture: message.stake_posture,
         }))
       )
       setHistoryOpen(false)
@@ -256,7 +259,7 @@ export default function ChatCoach({
       FAIR: { en: "Fair", es: "Justa" },
       RISKY: { en: "Risky", es: "Arriesgada" },
       AVOID: { en: "Avoid", es: "Evitar" },
-      "NOT ENOUGH INFO": { en: "Need info", es: "Falta info" },
+      "NOT ENOUGH INFO": { en: "Need more info", es: "No hay info suficiente" },
     }
     return labels[value]?.[language] ?? value
   }
@@ -293,31 +296,31 @@ export default function ChatCoach({
     if (!verdict && !confidence && !stakePosture && !impliedProbability) return null
 
     return (
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div className="mb-3 flex flex-wrap gap-2">
         {verdict && (
           <ConceptTip concept="verdict" subtle>
-            <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${verdictTone(message.verdict)}`}>
+            <span className={`inline-flex min-h-7 items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold leading-none ${verdictTone(message.verdict)}`}>
               {t.chat.verdict}: {verdict}
             </span>
           </ConceptTip>
         )}
         {confidence && (
           <ConceptTip concept="confidence" subtle>
-            <span className="rounded-md border border-[#00FF87]/25 bg-[#00FF87]/5 px-2 py-1 text-[10px] font-semibold text-[#00FF87]">
+            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#00FF87]/25 bg-[#00FF87]/5 px-2.5 py-1 text-[11px] font-semibold leading-none text-[#00FF87]">
               {t.chat.confidence}: {confidence}/10
             </span>
           </ConceptTip>
         )}
         {stakePosture && (
           <ConceptTip concept="stake" subtle>
-            <span className="rounded-md border border-[#FFD600]/25 bg-[#FFD600]/5 px-2 py-1 text-[10px] font-semibold text-[#FFD600]">
+            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#FFD600]/25 bg-[#FFD600]/5 px-2.5 py-1 text-[11px] font-semibold leading-none text-[#FFD600]">
               {t.chat.stake}: {stakePosture}
             </span>
           </ConceptTip>
         )}
         {impliedProbability && (
           <ConceptTip concept="impliedProbability" subtle>
-            <span className="rounded-md border border-[#6A7A9B]/30 bg-[#6A7A9B]/10 px-2 py-1 text-[10px] font-semibold text-[#D7DEEF]">
+            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#6A7A9B]/30 bg-[#6A7A9B]/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-[#D7DEEF]">
               {t.chat.impliedProbability}: {impliedProbability}
             </span>
           </ConceptTip>
