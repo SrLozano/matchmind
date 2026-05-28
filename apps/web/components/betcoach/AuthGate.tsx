@@ -85,7 +85,9 @@ type LandingCopy = {
   forgotPassword: string
   resetSent: string
   confirmEmail: string
-  ageConfirmation: string
+  ageRequirementLabel: string
+  ageRequirementCopy: string
+  googleAgeRequired: string
   legalPrefix: string
   termsLink: string
   privacyLink: string
@@ -287,16 +289,31 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 </div>
               )}
 
+              {mode === "signup" && (
+                <AgeConfirmationCard
+                  ageConfirmed={ageConfirmed}
+                  copy={copy}
+                  language={language}
+                  onAgeConfirmedChange={setAgeConfirmed}
+                />
+              )}
+
               {mode !== "forgot" && (
                 <>
                   <button
-                    className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#1A2845] bg-[#F8FAFC] px-3 py-3 text-sm font-bold text-[#111827] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+                    className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#1A2845] bg-[#F8FAFC] px-3 py-3 text-sm font-bold text-[#111827] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:bg-[#D8DEE8] disabled:text-[#536076]"
                     type="button"
                     onClick={() => void handleGoogleSignIn()}
                     disabled={isSubmitting || isLoading || (mode === "signup" && !ageConfirmed)}
                   >
                     <GoogleMark />
-                    {mode === "signup" ? copy.continueWithGoogleSignUp : copy.continueWithGoogle}
+                    <span className="min-w-0 text-center leading-5">
+                      {mode === "signup" && !ageConfirmed
+                        ? copy.googleAgeRequired
+                        : mode === "signup"
+                          ? copy.continueWithGoogleSignUp
+                          : copy.continueWithGoogle}
+                    </span>
                   </button>
 
                   <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-[#6A7A9B]">
@@ -338,22 +355,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       required
                     />
                   </label>
-                )}
-
-                {mode === "signup" && (
-                  <div className="rounded-xl border border-[#1A2845] bg-[#0F1C35] px-3 py-3">
-                    <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[#A8B4D0]">
-                      <input
-                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#00FF87]"
-                        type="checkbox"
-                        checked={ageConfirmed}
-                        onChange={(event) => setAgeConfirmed(event.target.checked)}
-                        required
-                      />
-                      <span>{copy.ageConfirmation}</span>
-                    </label>
-                    <LegalLinks copy={copy} language={language} />
-                  </div>
                 )}
 
                 {(localError || authError) && (
@@ -401,6 +402,40 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+    </div>
+  )
+}
+
+function AgeConfirmationCard({
+  ageConfirmed,
+  copy,
+  language,
+  onAgeConfirmedChange,
+}: {
+  ageConfirmed: boolean
+  copy: LandingCopy
+  language: Language
+  onAgeConfirmedChange: (confirmed: boolean) => void
+}) {
+  return (
+    <div className="mb-4 rounded-xl border border-[#00FF87]/24 bg-[#0F1C35] px-3 py-3 shadow-[0_14px_42px_rgba(0,255,135,0.08)]">
+      <label className="flex cursor-pointer items-start gap-3">
+        <span className="relative mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-[#A8B4D0]/70 bg-[#071222]">
+          <input
+            className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            type="checkbox"
+            checked={ageConfirmed}
+            onChange={(event) => onAgeConfirmedChange(event.target.checked)}
+            required
+          />
+          <CheckCircle2 className="h-5 w-5 scale-0 text-[#00FF87] transition-transform peer-checked:scale-100" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-black leading-5 text-white">{copy.ageRequirementLabel}</span>
+          <span className="mt-1 block text-xs leading-5 text-[#A8B4D0]">{copy.ageRequirementCopy}</span>
+        </span>
+      </label>
+      <LegalLinks copy={copy} language={language} className="mt-3 pl-8" />
     </div>
   )
 }
@@ -702,7 +737,9 @@ const copyEn: LandingCopy = {
   forgotPassword: "Forgot your password?",
   resetSent: "If that email exists, Supabase will send a password reset link.",
   confirmEmail: "Account created. Check your email to confirm it, then sign in.",
-  ageConfirmation: "I confirm I am 18 or older.",
+  ageRequirementLabel: "I am 18 or older",
+  ageRequirementCopy: "Required once before creating an account with Google or email.",
+  googleAgeRequired: "Confirm 18+ to continue with Google",
   legalPrefix: "By creating or using an account, you accept Matchmind's",
   termsLink: "Terms",
   privacyLink: "Privacy Policy",
@@ -779,7 +816,9 @@ const copyEs: LandingCopy = {
   forgotPassword: "¿Has olvidado la contraseña?",
   resetSent: "Si ese email existe, Supabase enviará un enlace para cambiar la contraseña.",
   confirmEmail: "Cuenta creada. Confirma tu email y luego inicia sesión.",
-  ageConfirmation: "Confirmo que tengo 18 años o más.",
+  ageRequirementLabel: "Tengo 18 años o más",
+  ageRequirementCopy: "Necesario una sola vez antes de crear cuenta con Google o email.",
+  googleAgeRequired: "Confirma +18 para seguir con Google",
   legalPrefix: "Al crear o usar una cuenta, aceptas los documentos de Matchmind:",
   termsLink: "Términos",
   privacyLink: "Política de privacidad",
