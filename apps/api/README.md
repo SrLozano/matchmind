@@ -506,7 +506,7 @@ grant select, insert, update on public.polymarket_markets to service_role;
 grant select, insert on public.polymarket_market_snapshots to service_role;
 grant select, insert, update on public.bookmaker_events to service_role;
 grant select, insert, update on public.bookmaker_odds to service_role;
-grant select, insert on public.bookmaker_odds_snapshots to service_role;
+grant select, insert, delete on public.bookmaker_odds_snapshots to service_role;
 grant select, insert, update on public.bookmaker_market_consensus to service_role;
 grant select, insert, update on public.referral_partners to service_role;
 grant select, insert, update on public.referral_codes to service_role;

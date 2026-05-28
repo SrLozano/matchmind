@@ -34,6 +34,8 @@ revoke all on public.example_table from anon, authenticated;
 grant select, insert, update on public.example_table to service_role;
 ```
 
+Include `delete` when backend refresh jobs prune retention tables, such as odds or market snapshots.
+
 ## Production Apply
 
 Review the SQL first, then apply it from the Supabase SQL editor or Supabase CLI against the production project.
