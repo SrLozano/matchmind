@@ -4,6 +4,7 @@ Matchmind uses Stripe Checkout for one payment product with referral-aware one-t
 
 - Product: World Cup Tournament Pass
 - Standard price: EUR 9.99
+- Founder price: EUR 6.99 until June 10, 2026 at 23:59 CEST
 - Referral/Scout price: EUR 8.99
 - Insider price: EUR 4.99
 - Captain price: EUR 2.49
@@ -44,9 +45,11 @@ Set these in the root/backend `.env`, not in `apps/web/.env.local`.
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID=price_...
+FOUNDER_PASS_SALE_ENDS_AT=2026-06-10T21:59:59+00:00
 APP_URL=http://localhost:3000
 ```
 
@@ -55,9 +58,11 @@ APP_URL=http://localhost:3000
 | `STRIPE_SECRET_KEY` | `sk_test_...` | Server-side Stripe API key used to create Checkout Sessions. |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` from `stripe listen` | Secret used to verify that webhook events came from Stripe. |
 | `STRIPE_TOURNAMENT_PASS_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 9.99 tournament pass. |
+| `STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 6.99 founder tournament pass. |
 | `STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 8.99 tournament pass shown for applied referral codes and Scout tier. |
 | `STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 4.99 Insider referral tier. |
 | `STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID` | `price_...` | Stripe Price ID for the one-time EUR 2.49 Captain referral tier. |
+| `FOUNDER_PASS_SALE_ENDS_AT` | `2026-06-10T21:59:59+00:00` | UTC expiry for the public founder price. This is 23:59 CEST on June 10, 2026. |
 | `APP_URL` | `http://localhost:3000` | Success and cancel redirect base URL. |
 
 Use the Price ID that starts with `price_`, not the Product ID that starts with `prod_`.
@@ -79,8 +84,9 @@ STRIPE_SECRET_KEY=sk_test_...
 - Standard price: EUR 9.99
 - Currency: EUR
 
-4. Add referral one-off prices to the same product:
+4. Add founder and referral one-off prices to the same product:
 
+- Founder price: EUR 6.99
 - Referral/Scout price: EUR 8.99
 - Insider price: EUR 4.99
 - Captain price: EUR 2.49
@@ -92,9 +98,11 @@ Do not encode the bar code or discount in the Stripe Price name. Keep the produc
 
 ```text
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID=price_...
+FOUNDER_PASS_SALE_ENDS_AT=2026-06-10T21:59:59+00:00
 ```
 
 6. Set the local app URL:
@@ -136,9 +144,9 @@ make api-dev
 pnpm web:dev
 ```
 
-12. For a standard purchase, sign in with Supabase Auth, open Profile, and click the upgrade button. Checkout should show EUR 9.99.
+12. Before the founder sale expiry, sign in with Supabase Auth, open Profile, and click the upgrade button. Checkout should show EUR 6.99. After `FOUNDER_PASS_SALE_ENDS_AT`, Checkout should show EUR 9.99.
 
-13. For referral purchases, apply a code or seed personal referral metrics before clicking the upgrade button. Checkout should show the best eligible price: EUR 8.99, EUR 4.99, or EUR 2.49. Free tiers should return to the app with Premium active without opening Stripe Checkout.
+13. For referral purchases, apply a code or seed personal referral metrics before clicking the upgrade button. Checkout should show the best eligible price: EUR 6.99 founder price, EUR 8.99 referral price, EUR 4.99, or EUR 2.49. Free tiers should return to the app with Premium active without opening Stripe Checkout.
 
 14. Pay with Stripe's standard successful test card:
 
@@ -192,6 +200,7 @@ Check:
 - The API is running at `NEXT_PUBLIC_API_URL`.
 - `STRIPE_SECRET_KEY` starts with `sk_test_`.
 - `STRIPE_TOURNAMENT_PASS_PRICE_ID` starts with `price_`.
+- If the founder sale is active, `STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID` starts with `price_`.
 - If testing discounted checkout, the matching `STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID`, `STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID`, or `STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID` starts with `price_`.
 - The API was restarted after editing `.env`.
 
@@ -224,7 +233,7 @@ The webhook may still be processing or may not have been delivered. Refresh Prof
 
 Do not switch to live mode until local test-mode checkout and webhook delivery are reliable.
 
-1. Create the live Stripe product and one-time EUR 9.99, EUR 8.99, EUR 4.99, and EUR 2.49 Prices in live mode.
+1. Create the live Stripe product and one-time EUR 9.99, EUR 6.99, EUR 8.99, EUR 4.99, and EUR 2.49 Prices in live mode.
 
 2. Set production backend environment variables:
 
@@ -232,9 +241,11 @@ Do not switch to live mode until local test-mode checkout and webhook delivery a
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_TOURNAMENT_PASS_PRICE_ID=price_...
+STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_INSIDER_PRICE_ID=price_...
 STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID=price_...
+FOUNDER_PASS_SALE_ENDS_AT=2026-06-10T21:59:59+00:00
 APP_URL=https://your-production-domain.com
 ```
 

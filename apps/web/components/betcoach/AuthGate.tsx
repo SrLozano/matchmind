@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { useLanguage, type Language } from "@/lib/i18n"
+import { isFounderPassSaleActive } from "@/lib/referral-pricing"
 
 type SignalRow = {
   label: string
@@ -50,6 +51,7 @@ type LandingCopy = {
   heroSubtitle: string
   primaryCta: string
   priceHook: string
+  regularPriceHook: string
   trustLine: string
   proofPoints: string[]
   aiSectionTitle: string
@@ -112,6 +114,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const copy = language === "es" ? copyEs : copyEn
+  const priceHook = isFounderPassSaleActive() ? copy.priceHook : copy.regularPriceHook
 
   if (!isConfigured) return <AuthUnavailable copy={copy} language={language} onLanguageChange={setLanguage} />
 
@@ -216,7 +219,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <ArrowRight className="h-4 w-4" />
               </a>
               <div className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 bg-white/8 px-5 py-3 text-sm font-bold text-[#DCE6FA] backdrop-blur">
-                {copy.priceHook}
+                {priceHook}
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-xs font-semibold leading-5 text-[#8EA0C0]">{copy.trustLine}</p>
@@ -683,7 +686,8 @@ const copyEn: LandingCopy = {
   heroSubtitle:
     "Describe the bet you are considering. Matchmind reads the odds, World Cup context, bookmaker prices, and prediction-market signals, then gives you a direct verdict with confidence.",
   primaryCta: "Ask the AI free",
-  priceHook: "World Cup Pass · one payment from €8.99",
+  priceHook: "Founder price €6.99 · only until the World Cup starts",
+  regularPriceHook: "World Cup Pass · one payment €9.99",
   trustLine: "Analysis only. Matchmind never places bets or handles betting funds.",
   proofPoints: ["AI verdicts in plain language", "Bookmaker odds and market signals", "Confidence score before you stake"],
   aiSectionTitle: "Built for the seconds before you bet",
@@ -762,7 +766,8 @@ const copyEs: LandingCopy = {
   heroSubtitle:
     "Describe la apuesta que estás pensando. Matchmind lee cuotas, contexto del Mundial, precios de bookmakers y señales de mercado para darte un veredicto directo con confianza.",
   primaryCta: "Preguntar a la IA gratis",
-  priceHook: "Pase Mundial · pago único desde €8.99",
+  priceHook: "Precio fundador €6.99 · solo hasta que empiece el Mundial",
+  regularPriceHook: "Pase Mundial · pago único €9.99",
   trustLine: "Solo análisis. Matchmind nunca coloca apuestas ni gestiona fondos de juego.",
   proofPoints: ["Veredictos IA en lenguaje claro", "Cuotas y señales de mercado", "Confianza antes de poner dinero"],
   aiSectionTitle: "Pensada para los segundos antes de apostar",

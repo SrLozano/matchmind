@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 import stripe
@@ -17,6 +18,7 @@ from app.services.supabase import update_user_plan
 
 
 TOURNAMENT_PASS_PRODUCT = "world_cup_tournament_pass"
+FOUNDER_PASS_PRICE = 6.99
 SCOUT_PASS_PRICE = 8.99
 INSIDER_PASS_PRICE = 4.99
 CAPTAIN_PASS_PRICE = 2.49
@@ -82,6 +84,7 @@ async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
 
 
 async def _checkout_offer(user_id: UUID) -> dict:
+    settings = get_settings()
     applied_referral = await get_applied_referral_for_checkout(user_id)
     applied_referral_price = (
         max(STANDARD_TOURNAMENT_PASS_PRICE - float(applied_referral["discount_amount"]), FREE_PASS_PRICE)
@@ -105,6 +108,15 @@ async def _checkout_offer(user_id: UUID) -> dict:
             "applied_referral": None,
         }
     ]
+    if founder_pass_sale_is_active(settings):
+        candidates.append(
+            {
+                "price": FOUNDER_PASS_PRICE,
+                "price_type": "founder",
+                "tier_key": None,
+                "applied_referral": None,
+            }
+        )
     if applied_referral_price is not None:
         candidates.append(
             {
@@ -129,6 +141,11 @@ async def _checkout_offer(user_id: UUID) -> dict:
 
 
 def _checkout_price_id(settings, price: float) -> str:
+    if _prices_match(price, FOUNDER_PASS_PRICE):
+        return _require_setting(
+            settings.stripe_tournament_pass_founder_price_id,
+            "STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID",
+        )
     if _prices_match(price, SCOUT_PASS_PRICE):
         return _require_setting(
             settings.stripe_tournament_pass_referral_price_id,
@@ -154,6 +171,27 @@ def _checkout_price_id(settings, price: float) -> str:
 
 def _prices_match(left: float, right: float) -> bool:
     return abs(float(left) - float(right)) < 0.005
+
+
+def founder_pass_sale_is_active(settings, now: datetime | None = None) -> bool:
+    raw_end = str(getattr(settings, "founder_pass_sale_ends_at", "") or "").strip()
+    if not raw_end:
+        return False
+
+    try:
+        sale_end = datetime.fromisoformat(raw_end.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="FOUNDER_PASS_SALE_ENDS_AT is not a valid ISO datetime.",
+        ) from exc
+    if sale_end.tzinfo is None:
+        sale_end = sale_end.replace(tzinfo=timezone.utc)
+
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=timezone.utc)
+    return current_time <= sale_end.astimezone(timezone.utc)
 
 
 def construct_webhook_event(payload: bytes, signature: str | None) -> dict:

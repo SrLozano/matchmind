@@ -147,6 +147,12 @@ export default function RootLayout({
       },
       {
         "@type": "Offer",
+        price: "6.99",
+        priceCurrency: "EUR",
+        name: "World Cup 2026 tournament pass founder price until June 10",
+      },
+      {
+        "@type": "Offer",
         price: "8.99",
         priceCurrency: "EUR",
         name: "World Cup 2026 tournament pass referral and Scout price",

@@ -229,9 +229,12 @@ function UpgradePrompt({
   const [isStartingCheckout, setIsStartingCheckout] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const passOffer = getBestPassPriceOffer(referralDashboard)
-  const offerSourceLabel = passOffer.appliedCode
+  const isFounderOffer = passOffer.source === "founder"
+  const offerSourceLabel = passOffer.source === "founder"
+    ? t.profile.founderOffer
+    : passOffer.source === "applied_referral" && passOffer.appliedCode
     ? `${t.profile.referrals.codeLabel} ${passOffer.appliedCode}`
-    : passOffer.tierKey
+    : passOffer.source === "user_referral" && passOffer.tierKey
       ? t.profile.referrals.tierLabels[passOffer.tierKey]
       : null
   const checkoutLoadingLabel = passOffer.isFree ? t.profile.activatingPass : t.profile.openingStripe
@@ -274,15 +277,22 @@ function UpgradePrompt({
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-[#1A2845] bg-[#070D1A] px-3 py-3">
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold text-[#A8B4D0]">{t.profile.pass}</span>
-            {offerSourceLabel && <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-normal text-[#00FF87]">{offerSourceLabel}</span>}
-          </span>
-          <span className="flex items-baseline gap-2">
-            {passOffer.isDiscounted && <span className="text-xs font-bold text-[#6A7A9B] line-through">{formatEuro(passOffer.standardPrice)}</span>}
-            <span className="text-xl font-black text-foreground">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
-          </span>
+        <div className="mt-4 rounded-xl border border-[#1A2845] bg-[#070D1A] px-3 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-[#A8B4D0]">{t.profile.pass}</span>
+              {offerSourceLabel && <span className="mt-0.5 block text-[10px] font-bold uppercase leading-tight tracking-normal text-[#00FF87]">{offerSourceLabel}</span>}
+            </span>
+            <span className="flex shrink-0 items-baseline gap-2">
+              {passOffer.isDiscounted && <span className="text-xs font-bold text-[#6A7A9B] line-through">{formatEuro(passOffer.standardPrice)}</span>}
+              <span className="text-xl font-black text-foreground">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
+            </span>
+          </div>
+          {isFounderOffer && (
+            <span className="mt-2 block rounded-lg border border-[#00FF87]/20 bg-[#00FF87]/10 px-2.5 py-2 text-[11px] font-semibold leading-snug text-[#B8FFD6]">
+              {t.profile.founderOfferDeadline}
+            </span>
+          )}
         </div>
 
         <button

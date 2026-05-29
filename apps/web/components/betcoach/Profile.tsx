@@ -52,11 +52,14 @@ export default function Profile({
   const isLowFreeQuota = !isPremium && visibleChatsRemaining <= 1
   const periodLabel = currentUser?.chat_limit_period === "week" ? t.chat.week : t.chat.day
   const passOffer = getBestPassPriceOffer(referralDashboard)
-  const passDiscountLabel = passOffer.appliedCode
+  const passDiscountLabel = passOffer.source === "founder"
+    ? t.profile.founderOffer
+    : passOffer.source === "applied_referral" && passOffer.appliedCode
     ? `${t.profile.referrals.codeLabel} ${passOffer.appliedCode}`
-    : passOffer.tierKey
+    : passOffer.source === "user_referral" && passOffer.tierKey
       ? t.profile.referrals.tierLabels[passOffer.tierKey]
       : t.profile.referrals.unlockedPrice
+  const isFounderOffer = passOffer.source === "founder"
   const referralLoadError = t.profile.referrals.loadError
   const displayName = displayUserName({
     name: currentUser?.name,
@@ -353,8 +356,8 @@ export default function Profile({
 
           {/* Upgrade card */}
           <div className={`mx-4 mb-3 shrink-0 rounded-2xl bg-card p-4 sm:mx-5 ${passOffer.isDiscounted ? "referral-banner-glow border border-[#00FF87]/50" : "border border-[#00FF87]/30"}`}>
-            <div className="flex flex-col items-start gap-4 min-[430px]:flex-row min-[430px]:justify-between">
-              <div className="min-w-[190px] flex-1">
+            <div className="flex flex-col items-start gap-4">
+              <div className="w-full min-w-0">
                 <div className="mb-2 flex items-center gap-2">
                   <Crown className="h-4 w-4 shrink-0 text-[#00FF87]" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[#00FF87]">
@@ -365,23 +368,39 @@ export default function Profile({
                   {t.profile.unlock}
                 </p>
               </div>
-              <div className={passOffer.isDiscounted ? "w-full min-[430px]:w-auto min-[430px]:shrink-0" : "shrink-0 self-end text-right"} aria-live="polite">
+              <div className="w-full" aria-live="polite">
                 {passOffer.isDiscounted ? (
-                  <div className="referral-price-pop rounded-xl border border-[#00FF87]/20 bg-[#00FF87]/8 px-3 py-2.5 text-left min-[430px]:min-w-[156px] min-[430px]:text-right">
-                    <p className="inline-flex max-w-full rounded-full border border-[#00FF87]/20 bg-[#00FF87]/10 px-2 py-0.5 text-[10px] font-black uppercase leading-none tracking-widest text-[#00FF87]">
-                      {passDiscountLabel}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 min-[430px]:justify-end">
-                      <span className="text-[13px] font-bold leading-none text-[#6A7A9B] line-through decoration-2">{formatEuro(passOffer.standardPrice)}</span>
-                      <span className="text-3xl font-black leading-none text-[#00FF87]">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
+                  <div className="referral-price-pop overflow-hidden rounded-xl border border-[#00FF87]/25 bg-[#00FF87]/8 text-left">
+                    <div className="border-b border-[#00FF87]/15 bg-[#00FF87]/10 px-3 py-2">
+                      <p className="text-[10px] font-black uppercase leading-tight tracking-widest text-[#00FF87]">
+                        {isFounderOffer ? t.profile.founderOfferBadge : passDiscountLabel}
+                      </p>
+                      {isFounderOffer && (
+                        <p className="mt-1 text-[11px] font-semibold leading-snug text-[#B8FFD6]">
+                          {t.profile.founderOfferDeadline}
+                        </p>
+                      )}
                     </div>
-                    {!passOffer.isFree && <p className="mt-1 text-[10px] font-semibold text-[#6A7A9B]">{t.profile.oneTime}</p>}
+                    <div className="flex items-end justify-between gap-3 px-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6A7A9B]">{t.profile.oneTime}</p>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="text-[13px] font-bold leading-none text-[#6A7A9B] line-through decoration-2">{formatEuro(passOffer.standardPrice)}</span>
+                          <span className="text-4xl font-black leading-none text-[#00FF87]">{formatPassPrice(passOffer.price, t.profile.referrals.freePrice)}</span>
+                        </div>
+                      </div>
+                      {!isFounderOffer && (
+                        <p className="max-w-[42%] text-right text-[10px] font-bold uppercase leading-tight tracking-normal text-[#00FF87]">
+                          {passDiscountLabel}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <>
+                  <div className="text-right">
                     <p className="text-xl font-black leading-none text-foreground">{formatEuro(passOffer.standardPrice)}</p>
                     <p className="mt-1 text-[10px] text-[#6A7A9B]">{t.profile.oneTime}</p>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

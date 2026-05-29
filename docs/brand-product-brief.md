@@ -1150,7 +1150,7 @@ Headline:
 
 Body:
 
-> Full tournament access for EUR9.99.
+> Founder price EUR6.99 until June 10. Then EUR9.99.
 
 ### Confidence Score Ads
 
@@ -1481,7 +1481,7 @@ Secondary CTA:
 
 Headline:
 
-> Full World Cup access for EUR9.99.
+> Founder price EUR6.99 until June 10. Then full World Cup access for EUR9.99.
 
 Body:
 

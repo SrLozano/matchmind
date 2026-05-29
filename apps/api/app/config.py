@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
     stripe_tournament_pass_price_id: str | None = Field(default=None, alias="STRIPE_TOURNAMENT_PASS_PRICE_ID")
+    stripe_tournament_pass_founder_price_id: str | None = Field(
+        default=None,
+        alias="STRIPE_TOURNAMENT_PASS_FOUNDER_PRICE_ID",
+    )
     stripe_tournament_pass_referral_price_id: str | None = Field(
         default=None,
         alias="STRIPE_TOURNAMENT_PASS_REFERRAL_PRICE_ID",
@@ -25,6 +29,7 @@ class Settings(BaseSettings):
         default=None,
         alias="STRIPE_TOURNAMENT_PASS_CAPTAIN_PRICE_ID",
     )
+    founder_pass_sale_ends_at: str = Field(default="2026-06-10T21:59:59+00:00", alias="FOUNDER_PASS_SALE_ENDS_AT")
     app_url: str = Field(default="http://localhost:3000", alias="APP_URL")
     allow_dev_auth_fallback: bool = Field(default=False, alias="ALLOW_DEV_AUTH_FALLBACK")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
