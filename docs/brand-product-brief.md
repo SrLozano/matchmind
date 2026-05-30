@@ -4,7 +4,7 @@
 
 MatchMind is an AI-powered betting analysis companion built for the 2026 FIFA World Cup. It does not place bets, manage gambling funds, or act like a sportsbook. Instead, it gives users a sharper second opinion before they bet.
 
-At its core, MatchMind is the expert friend who tells users whether their World Cup bet actually makes sense.
+At its core, MatchMind is the AI expert friend who tells users whether their World Cup bet actually makes sense.
 
 Users describe a bet they are considering, enter bookmaker odds, or browse tournament signals. MatchMind responds with direct, opinionated, data-backed analysis using a combination of football statistics, bookmaker odds, and prediction market probabilities from sources like Polymarket.
 
@@ -12,7 +12,7 @@ The product is designed for a very specific emotional moment: the seconds before
 
 MatchMind's role is to interrupt impulsive betting with clarity.
 
-It should feel smart, fast, stylish, trustworthy, and slightly provocative. Not academic. Not corporate. Not casino-like. Not an AI chatbot novelty. It should feel like having a sharp football analyst in your pocket who is confident enough to say:
+It should feel smart, fast, stylish, trustworthy, and slightly provocative. Not academic. Not corporate. Not casino-like. Not a generic AI chatbot novelty. It should feel like having a sharp AI football analyst in your pocket: one that can process more signals than a person would check alone and is confident enough to say:
 
 > I would not take this bet at those odds.
 
@@ -20,7 +20,7 @@ Or:
 
 > This is actually better value than it looks.
 
-The brand universe should blend football culture, prediction intelligence, data confidence, and tournament drama.
+The brand universe should blend football culture, trusted AI intelligence, data confidence, and tournament drama.
 
 ## What MatchMind Is
 
@@ -108,7 +108,7 @@ The core emotional promise is: feel sharper before you bet.
 
 ### Brand Position
 
-MatchMind is the intelligent betting coach for World Cup fans who want sharper judgment, not louder hype.
+MatchMind is the trusted AI betting coach for World Cup fans who want sharper judgment, not louder hype.
 
 ### Category
 
@@ -116,11 +116,12 @@ AI sports betting analysis, football prediction intelligence, and betting decisi
 
 ### One-Line Description
 
-MatchMind is an AI betting coach that analyzes World Cup bets using odds, football data, and prediction market signals so users can make smarter decisions before they bet.
+MatchMind is an AI betting coach that turns odds, football data, and prediction market signals into a clear verdict so users can make smarter decisions before they bet.
 
 ### Tagline Options
 
 - Think before you bet.
+- Ask AI before you bet.
 - Your second opinion before kickoff.
 - Smarter bets start here.
 - The truth before the ticket.
@@ -132,7 +133,28 @@ MatchMind is an AI betting coach that analyzes World Cup bets using odds, footba
 
 ### Longer Brand Promise
 
-MatchMind helps football fans cut through hype, bias, and bad odds with clear AI-powered betting analysis built specifically for the 2026 World Cup.
+MatchMind gives football fans a trusted AI intelligence layer for the 2026 World Cup, helping them cut through hype, bias, and bad odds before they place a bet.
+
+### AI Brand Thesis
+
+AI is not a supporting feature or a technical footnote. It is the core of the MatchMind promise.
+
+Users should feel clever for checking MatchMind because they are using AI to do what would otherwise take time, expertise, and several disconnected tools: interpret odds, synthesize football context, compare market signals, challenge emotional bias, and explain the decision in plain language.
+
+The desired user feeling is:
+
+> I brought AI into the decision before I put money on an impulse.
+
+MatchMind should make AI feel:
+
+- Practical, not futuristic
+- Trusted, not magical
+- Decisive, not vague
+- Personal, not generic
+- Football-literate, not detached from the game
+- More useful than asking a general-purpose chatbot
+
+The brand should confidently sell AI-assisted judgment. It should not sell AI certainty. The user remains the decision-maker, and MatchMind earns trust by showing its reasoning, confidence, and limits.
 
 ## Target Audience
 
@@ -261,6 +283,10 @@ The product should give users a pleasurable sense of being smarter than the crow
 
 Not invincible. Not guaranteed. Smarter.
 
+The product should also create a simple status signal:
+
+> I do not bet from instinct alone. I check the AI first.
+
 ## Brand Personality
 
 MatchMind should be:
@@ -320,6 +346,7 @@ Use:
 - Plain English
 - Clear recommendations
 - Betting math translated into human terms
+- Confident references to AI as the user's intelligence layer
 - Confident but not absolute phrasing
 - Occasional football-specific color
 
@@ -334,6 +361,8 @@ Avoid:
 - AI predicts with certainty
 
 The brand should respect uncertainty.
+
+Do not hide the AI behind vague language like "technology" or "insights." Name it clearly and often. Trust comes from useful explanations and honest limits, not from pretending the system is infallible.
 
 ## Product Philosophy
 
@@ -1057,7 +1086,7 @@ Creative hook:
 
 ### Core Message
 
-MatchMind helps users think clearly before they bet on the World Cup.
+MatchMind is the AI betting coach that helps users think clearly before they bet on the World Cup.
 
 ### Functional Messages
 
@@ -1067,6 +1096,7 @@ MatchMind helps users think clearly before they bet on the World Cup.
 - Track your bets and learn from your decisions.
 - Get daily World Cup market signals.
 - Ask an AI coach before placing a bet.
+- Put AI between your instinct and your bet.
 
 ### Emotional Messages
 
@@ -1075,11 +1105,13 @@ MatchMind helps users think clearly before they bet on the World Cup.
 - Avoid public-team traps.
 - Know when to pass.
 - Turn football opinions into smarter decisions.
+- Feel smarter because you checked the AI first.
 - Keep the fun, lose the guesswork.
 
 ### Provocative Messages
 
 - Your favorite team is not a betting strategy.
+- Your instinct deserves an AI second opinion.
 - The odds are trying to tell you something.
 - That obvious bet might be overpriced.
 - Don't let the group chat set your stake.
@@ -1089,6 +1121,7 @@ MatchMind helps users think clearly before they bet on the World Cup.
 ### Premium Conversion Messages
 
 - Unlock full tournament intelligence.
+- Keep your AI coach with you for the full tournament.
 - Get 200 coach chats per week.
 - Track every bet from opening match to final.
 - See full divergence alerts.
@@ -1524,11 +1557,12 @@ Suggested quote:
 
 ### MatchMind's Advantage
 
-It is not just showing data. It interprets the specific bet.
+It is not just showing data. Its AI interprets the specific bet, explains the logic, and gives the user a direct opinion.
 
 Its advantage is the combination of:
 
 - Conversational AI
+- AI synthesis across odds, football data, and prediction market signals
 - Betting-specific UX
 - World Cup focus
 - Market intelligence
@@ -1549,6 +1583,7 @@ The product should own the space between:
 MatchMind should be perceived as:
 
 - The smart way to bet on the World Cup
+- The AI tool clever World Cup bettors check before placing a bet
 - A trusted second opinion
 - More honest than tipsters
 - More useful than generic AI
@@ -1561,6 +1596,10 @@ MatchMind should be perceived as:
 The ideal user thought:
 
 > I still make the decision, but I don't want to bet without checking MatchMind first.
+
+The social shorthand should be:
+
+> Ask MatchMind before you bet.
 
 ## Cultural And Aesthetic Inspirations
 
@@ -1649,6 +1688,8 @@ The ideal user thought:
 
 - Be direct.
 - Explain odds simply.
+- Make AI central to the promise.
+- Show why the AI reached its verdict.
 - Respect uncertainty.
 - Encourage smarter decisions.
 - Make pass feel powerful.
@@ -1666,13 +1707,14 @@ The ideal user thought:
 - Shame users.
 - Sound preachy.
 - Pretend AI knows the future.
+- Hide AI behind generic "smart insights" language.
 - Turn everything into hype.
 - Overcomplicate the product.
 - Make responsible-use messaging feel like legal wallpaper.
 
 ## One-Sentence Emotional And Visual Definition
 
-MatchMind should feel like a calm, data-lit football control room in your pocket, giving you the truth before the emotion of the World Cup pushes you into a bad bet.
+MatchMind should feel like a calm, AI-powered football control room in your pocket, giving you a trusted second opinion before the emotion of the World Cup pushes you into a bad bet.
 
 ## Final Creative North Star
 
@@ -1684,7 +1726,7 @@ Not the final whistle. Not the celebration. Not the payout. Not the betting slip
 
 The moment before.
 
-The hesitation. The question. The instinct. The doubt. The need for one sharper opinion.
+The hesitation. The question. The instinct. The doubt. The need for one sharper AI opinion.
 
 Everything in the brand should serve that moment.
 
@@ -1696,4 +1738,4 @@ They are really asking:
 
 > Am I thinking clearly?
 
-MatchMind's answer should be fast, honest, stylish, and useful enough that checking it becomes part of the World Cup ritual.
+MatchMind's AI answer should be fast, honest, stylish, and useful enough that checking it becomes part of the World Cup ritual.
