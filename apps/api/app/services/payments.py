@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import stripe
@@ -34,7 +35,7 @@ def _require_setting(value: str | None, name: str) -> str:
     )
 
 
-async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
+async def create_tournament_pass_checkout_session(user_id: UUID, *, return_origin: str | None = None) -> str:
     settings = get_settings()
     offer = await _checkout_offer(user_id)
     referral = offer["applied_referral"]
@@ -58,7 +59,7 @@ async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
             metadata["referral_partner_id"] = str(referral["partner_id"])
         if referral.get("referrer_user_id"):
             metadata["referral_referrer_user_id"] = str(referral["referrer_user_id"])
-    app_url = settings.app_url.rstrip("/")
+    app_url = _checkout_return_origin(settings, return_origin)
     if offer["price"] <= FREE_PASS_PRICE:
         await update_user_plan(user_id, "premium")
         return f"{app_url}/?payment=success"
@@ -83,6 +84,33 @@ async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
             detail="Stripe did not return a checkout URL.",
         )
     return url
+
+
+def _checkout_return_origin(settings, return_origin: str | None) -> str:
+    configured_app_url = settings.app_url.rstrip("/")
+    requested_origin = _normalized_origin(return_origin)
+    if not requested_origin:
+        return configured_app_url
+
+    allowed_origins = {
+        origin
+        for origin in (
+            _normalized_origin(configured_app_url),
+            *(_normalized_origin(value) for value in settings.cors_allowed_origins.split(",")),
+        )
+        if origin
+    }
+    return requested_origin if requested_origin in allowed_origins else configured_app_url
+
+
+def _normalized_origin(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    parsed = urlsplit(value.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
+        return None
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
 async def _checkout_offer(user_id: UUID) -> dict:

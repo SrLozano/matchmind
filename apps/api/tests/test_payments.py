@@ -29,6 +29,7 @@ def payment_settings() -> SimpleNamespace:
         stripe_tournament_pass_captain_price_id="price_tournament_pass_captain",
         founder_pass_sale_ends_at="2026-01-01T00:00:00+00:00",
         app_url="http://localhost:3000",
+        cors_allowed_origins="http://localhost:3000,http://127.0.0.1:3000",
     )
 
 
@@ -94,6 +95,46 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(created_kwargs["metadata"]["checkout_price_type"], "standard")
         self.assertEqual(created_kwargs["metadata"]["checkout_price_amount"], "9.99")
         self.assertEqual(created_kwargs["payment_intent_data"]["metadata"]["user_id"], str(USER_ID))
+        self.assertEqual(created_kwargs["success_url"], "http://localhost:3000/?payment=success")
+        self.assertEqual(created_kwargs["cancel_url"], "http://localhost:3000/?payment=cancelled")
+
+    async def test_checkout_session_returns_to_allowed_request_origin(self) -> None:
+        created_kwargs = {}
+        settings = payment_settings()
+        settings.cors_allowed_origins += ",https://www.trymatchmind.com"
+
+        def fake_create(**kwargs):
+            created_kwargs.update(kwargs)
+            return SimpleNamespace(url="https://checkout.stripe.com/c/test")
+
+        with patch("app.services.payments.get_settings", return_value=settings):
+            with patch("app.services.payments.get_applied_referral_for_checkout", new_callable=AsyncMock, return_value=None):
+                with patch("app.services.payments.get_user_referral_summary", new_callable=AsyncMock, return_value=user_referral_summary()):
+                    with patch("app.services.payments.stripe.checkout.Session.create", side_effect=fake_create):
+                        await create_tournament_pass_checkout_session(
+                            USER_ID,
+                            return_origin="https://www.trymatchmind.com",
+                        )
+
+        self.assertEqual(created_kwargs["success_url"], "https://www.trymatchmind.com/?payment=success")
+        self.assertEqual(created_kwargs["cancel_url"], "https://www.trymatchmind.com/?payment=cancelled")
+
+    async def test_checkout_session_rejects_untrusted_request_origin_for_redirect(self) -> None:
+        created_kwargs = {}
+
+        def fake_create(**kwargs):
+            created_kwargs.update(kwargs)
+            return SimpleNamespace(url="https://checkout.stripe.com/c/test")
+
+        with patch("app.services.payments.get_settings", return_value=payment_settings()):
+            with patch("app.services.payments.get_applied_referral_for_checkout", new_callable=AsyncMock, return_value=None):
+                with patch("app.services.payments.get_user_referral_summary", new_callable=AsyncMock, return_value=user_referral_summary()):
+                    with patch("app.services.payments.stripe.checkout.Session.create", side_effect=fake_create):
+                        await create_tournament_pass_checkout_session(
+                            USER_ID,
+                            return_origin="https://evil.example",
+                        )
+
         self.assertEqual(created_kwargs["success_url"], "http://localhost:3000/?payment=success")
         self.assertEqual(created_kwargs["cancel_url"], "http://localhost:3000/?payment=cancelled")
 
@@ -275,10 +316,10 @@ class PaymentsAsyncTest(unittest.IsolatedAsyncioTestCase):
                 new_callable=AsyncMock,
                 return_value="https://checkout.stripe.com/c/test",
             ) as create_session:
-                result = await create_checkout_session("Bearer token")
+                result = await create_checkout_session("Bearer token", origin=None)
 
         self.assertEqual(result, {"url": "https://checkout.stripe.com/c/test"})
-        create_session.assert_awaited_once_with(USER_ID)
+        create_session.assert_awaited_once_with(USER_ID, return_origin=None)
 
     async def test_webhook_updates_user_plan_on_checkout_session_completed(self) -> None:
         event = {

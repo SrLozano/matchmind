@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useState, type FormEvent, type ReactNode } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -101,6 +101,10 @@ type LandingCopy = {
   languageLabel: string
   authUnavailableTitle: string
   authUnavailableCopy: string
+  paymentSuccessTitle: string
+  paymentSuccessSignedOut: string
+  paymentCancelledTitle: string
+  paymentCancelledCopy: string
 }
 
 export default function AuthGate({ children }: { children: ReactNode }) {
@@ -113,10 +117,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(null)
   const copy = language === "es" ? copyEs : copyEn
   const priceHook = isFounderPassSaleActive() ? copy.priceHook : copy.regularPriceHook
 
+  useEffect(() => {
+    const payment = new URLSearchParams(window.location.search).get("payment")
+    if (payment === "success" || payment === "cancelled") {
+      setPaymentReturn(payment)
+    }
+  }, [])
+
   if (!isConfigured) return <AuthUnavailable copy={copy} language={language} onLanguageChange={setLanguage} />
+
+  if (isLoading) return <SessionLoading copy={copy} />
 
   if (session) return <>{children}</>
 
@@ -247,13 +261,24 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00FF87]">{copy.authEyebrow}</p>
                 <h2 className="mt-2 text-2xl font-black text-white">{authTitle}</h2>
                 <p className="mt-1 text-sm leading-6 text-[#A8B4D0]">{authSubtitle}</p>
-                {isLoading && (
-                  <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#00FF87]/20 bg-[#00FF87]/10 px-3 py-1.5 text-xs font-semibold text-[#8DFFC2]">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {copy.loading}
-                  </p>
-                )}
               </div>
+
+              {paymentReturn && (
+                <div className={`mb-4 rounded-xl border px-3 py-3 ${
+                  paymentReturn === "success"
+                    ? "border-[#00FF87]/30 bg-[#00FF87]/10"
+                    : "border-[#FFD600]/30 bg-[#FFD600]/10"
+                }`}>
+                  <p className={`text-sm font-black ${
+                    paymentReturn === "success" ? "text-[#8DFFC2]" : "text-[#FFE66D]"
+                  }`}>
+                    {paymentReturn === "success" ? copy.paymentSuccessTitle : copy.paymentCancelledTitle}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[#D7E1F5]">
+                    {paymentReturn === "success" ? copy.paymentSuccessSignedOut : copy.paymentCancelledCopy}
+                  </p>
+                </div>
+              )}
 
               {mode !== "forgot" && (
                 <div className="mb-4 grid grid-cols-2 rounded-xl border border-[#1A2845] bg-[#0A1426] p-1">
@@ -470,6 +495,23 @@ function LegalLinks({
       </Link>
       .
     </p>
+  )
+}
+
+function SessionLoading({ copy }: { copy: LandingCopy }) {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#040810] px-6 text-foreground">
+      <main id="main-content" className="flex max-w-sm flex-col items-center text-center" aria-live="polite">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#00FF87]/30 bg-[#00FF87]/15 shadow-[0_0_34px_rgba(0,255,135,0.2)]">
+          <BrainCircuit className="h-7 w-7 text-[#00FF87]" />
+        </div>
+        <p className="mt-4 text-lg font-black text-white">Matchmind</p>
+        <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#A8B4D0]">
+          <Loader2 className="h-4 w-4 animate-spin text-[#00FF87]" />
+          {copy.loading}
+        </p>
+      </main>
+    </div>
   )
 }
 
@@ -756,6 +798,10 @@ const copyEn: LandingCopy = {
   authUnavailableTitle: "Sign-in is temporarily unavailable",
   authUnavailableCopy:
     "Matchmind could not load its authentication settings, so the protected app is locked instead of opening a broken session. Please try again in a moment.",
+  paymentSuccessTitle: "Payment received",
+  paymentSuccessSignedOut: "Your Tournament Pass is being activated. Sign in again to open your account and see the updated plan.",
+  paymentCancelledTitle: "Checkout cancelled",
+  paymentCancelledCopy: "No charge was completed. You can sign in and try again whenever you are ready.",
 }
 
 const copyEs: LandingCopy = {
@@ -836,4 +882,8 @@ const copyEs: LandingCopy = {
   authUnavailableTitle: "El acceso no está disponible ahora",
   authUnavailableCopy:
     "Matchmind no pudo cargar la configuración de autenticación, así que la app protegida queda bloqueada en vez de abrir una sesión rota. Inténtalo de nuevo en un momento.",
+  paymentSuccessTitle: "Pago recibido",
+  paymentSuccessSignedOut: "Tu Pase Mundial se está activando. Vuelve a iniciar sesión para abrir tu cuenta y ver el plan actualizado.",
+  paymentCancelledTitle: "Pago cancelado",
+  paymentCancelledCopy: "No se ha completado ningún cobro. Puedes iniciar sesión e intentarlo de nuevo cuando quieras.",
 }

@@ -177,6 +177,7 @@ Expected success signs:
 
 - Browser redirects from Matchmind to Stripe Checkout.
 - Stripe Checkout returns to `http://localhost:3000/?payment=success`.
+- Matchmind shows a short activation state, opens Profile, and refreshes the plan automatically while the webhook is processed.
 - The `stripe listen` terminal logs a delivered `checkout.session.completed` event.
 - The API logs do not show an invalid signature error.
 - The current user's row in Supabase changes to `plan = 'premium'`.
@@ -228,7 +229,13 @@ The backend intentionally reads the raw request body before calling `stripe.Webh
 
 ### User Returns But Still Looks Free
 
-The webhook may still be processing or may not have been delivered. Refresh Profile or switch away and back to the app window. If the plan still says free, inspect the Stripe CLI terminal and the Supabase `public.users` row.
+Matchmind retries the profile request for a few seconds while the webhook is processed. If the plan still says free after the activation message, refresh Profile or switch away and back to the app window. If it still does not update, inspect the Stripe CLI terminal and the Supabase `public.users` row.
+
+### User Returns To The Landing Page After Checkout
+
+Supabase browser sessions are stored per origin. Checkout returns to the browser origin that started the payment when that origin is listed in `CORS_ALLOWED_ORIGINS`; otherwise it falls back to `APP_URL`. Keep every live frontend origin that users can visit in the backend CORS allowlist and redirect secondary domains to one canonical origin where possible.
+
+While Supabase restores an existing browser session, Matchmind shows a neutral session-loading state instead of briefly rendering the public landing page. If the session genuinely cannot be restored, the landing page explains that the pass is activating and asks the user to sign in again.
 
 ## Production Checklist
 

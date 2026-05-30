@@ -11,7 +11,10 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 @router.post("/create-checkout-session")
-async def create_checkout_session(authorization: str | None = Header(default=None)) -> dict[str, str]:
+async def create_checkout_session(
+    authorization: str | None = Header(default=None),
+    origin: str | None = Header(default=None),
+) -> dict[str, str]:
     authenticated_user = await get_authenticated_user(authorization)
     if authenticated_user is None:
         raise HTTPException(
@@ -19,7 +22,12 @@ async def create_checkout_session(authorization: str | None = Header(default=Non
             detail="Authentication is required to start checkout.",
         )
 
-    return {"url": await create_tournament_pass_checkout_session(authenticated_user.id)}
+    return {
+        "url": await create_tournament_pass_checkout_session(
+            authenticated_user.id,
+            return_origin=origin,
+        )
+    }
 
 
 @router.post("/webhook")

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import type { FocusEvent } from "react"
 import Link from "next/link"
-import { Crown, Loader2, X } from "lucide-react"
+import { CheckCircle2, Crown, Loader2, X } from "lucide-react"
 import DailyFeed from "@/components/betcoach/DailyFeed"
 import ChatCoach from "@/components/betcoach/ChatCoach"
 import BetTracker from "@/components/betcoach/BetTracker"
@@ -19,6 +19,7 @@ import { PreferencesProvider } from "@/lib/preferences"
 import AuthGate from "@/components/betcoach/AuthGate"
 
 export type Tab = "feed" | "signals" | "chat" | "tracker" | "profile"
+type PaymentReturnStatus = "processing" | "active" | "delayed" | "cancelled"
 
 export default function MatchmindApp() {
   return (
@@ -44,6 +45,7 @@ function MatchmindShell() {
   const [isEditing, setIsEditing] = useState(false)
   const [upgradePromptOpen, setUpgradePromptOpen] = useState(false)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [paymentReturnStatus, setPaymentReturnStatus] = useState<PaymentReturnStatus | null>(null)
   const { session } = useAuth()
   const isPremium = currentUser?.plan === "premium"
 
@@ -84,6 +86,57 @@ function MatchmindShell() {
   useEffect(() => {
     if (window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true") {
       setOnboardingOpen(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const payment = url.searchParams.get("payment")
+    if (payment !== "success" && payment !== "cancelled") return
+
+    setActiveTab("profile")
+    url.searchParams.delete("payment")
+    const query = url.searchParams.toString()
+    window.history.replaceState({}, "", `${url.pathname}${query ? `?${query}` : ""}${url.hash}`)
+
+    if (payment === "cancelled") {
+      setPaymentReturnStatus("cancelled")
+      return
+    }
+
+    let isMounted = true
+    setIsLoadingUser(true)
+    setPaymentReturnStatus("processing")
+
+    const refreshPremiumPlan = async () => {
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const user = await getCurrentUser()
+          if (!isMounted) return
+          setCurrentUser(user)
+          setUserError(null)
+          setIsLoadingUser(false)
+          if (user.plan === "premium") {
+            setPaymentReturnStatus("active")
+            return
+          }
+        } catch (error) {
+          if (!isMounted) return
+          if (attempt === 5) {
+            setUserError(error instanceof Error ? error.message : "Unable to load your profile.")
+            setIsLoadingUser(false)
+          }
+        }
+
+        await new Promise((resolve) => window.setTimeout(resolve, 1000))
+      }
+
+      if (isMounted) setPaymentReturnStatus("delayed")
+    }
+
+    void refreshPremiumPlan()
+    return () => {
+      isMounted = false
     }
   }, [])
 
@@ -213,8 +266,92 @@ function MatchmindShell() {
               onComplete={() => setOnboardingOpen(false)}
             />
           )}
+          {paymentReturnStatus && (
+            <PaymentReturnNotice
+              status={paymentReturnStatus}
+              onClose={() => setPaymentReturnStatus(null)}
+            />
+          )}
         </div>
       </div>
+  )
+}
+
+function PaymentReturnNotice({
+  status,
+  onClose,
+}: {
+  status: PaymentReturnStatus
+  onClose: () => void
+}) {
+  const { language } = useLanguage()
+  const isProcessing = status === "processing"
+  const isCancelled = status === "cancelled"
+  const copy = language === "es"
+    ? {
+        processingTitle: "Pago recibido",
+        processingBody: "Estamos activando tu Pase Mundial. Normalmente tarda solo unos segundos.",
+        activeTitle: "Pase Mundial activo",
+        activeBody: "Ya tienes desbloqueadas las funciones Premium para todo el torneo.",
+        delayedTitle: "Pago recibido",
+        delayedBody: "La activación está tardando un poco más de lo normal. Puedes cerrar este aviso y actualizar el plan desde Perfil en unos segundos.",
+        cancelledTitle: "Pago cancelado",
+        cancelledBody: "No se ha completado ningún cobro. Puedes volver a intentarlo cuando quieras.",
+        close: "Cerrar",
+      }
+    : {
+        processingTitle: "Payment received",
+        processingBody: "We are activating your Tournament Pass. This normally takes only a few seconds.",
+        activeTitle: "Tournament Pass active",
+        activeBody: "Your Premium features are unlocked for the whole tournament.",
+        delayedTitle: "Payment received",
+        delayedBody: "Activation is taking a little longer than normal. You can close this message and refresh the plan from Profile in a few seconds.",
+        cancelledTitle: "Checkout cancelled",
+        cancelledBody: "No charge was completed. You can try again whenever you are ready.",
+        close: "Close",
+      }
+  const title = status === "active"
+    ? copy.activeTitle
+    : status === "delayed"
+      ? copy.delayedTitle
+      : status === "cancelled"
+        ? copy.cancelledTitle
+        : copy.processingTitle
+  const body = status === "active"
+    ? copy.activeBody
+    : status === "delayed"
+      ? copy.delayedBody
+      : status === "cancelled"
+        ? copy.cancelledBody
+        : copy.processingBody
+
+  return (
+    <div className="absolute inset-0 z-[70] flex items-center justify-center bg-[#040810]/80 px-4 backdrop-blur-sm">
+      <div className="w-full rounded-2xl border border-[#00FF87]/30 bg-[#0B162B] p-5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+        <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full border ${
+          isCancelled
+            ? "border-[#FFD600]/30 bg-[#FFD600]/10"
+            : "border-[#00FF87]/30 bg-[#00FF87]/15"
+        }`}>
+          {isProcessing
+            ? <Loader2 className="h-6 w-6 animate-spin text-[#00FF87]" />
+            : isCancelled
+              ? <X className="h-6 w-6 text-[#FFE66D]" />
+              : <CheckCircle2 className="h-6 w-6 text-[#00FF87]" />}
+        </div>
+        <p className="mt-4 text-lg font-black text-foreground">{title}</p>
+        <p className="mt-2 text-sm leading-6 text-[#A8B4D0]">{body}</p>
+        {!isProcessing && (
+          <button
+            className="mt-4 w-full rounded-xl bg-[#00FF87] py-3 text-sm font-black text-[#070D1A]"
+            type="button"
+            onClick={onClose}
+          >
+            {copy.close}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
