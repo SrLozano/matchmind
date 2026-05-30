@@ -12,7 +12,7 @@ Matchmind uses Stripe Checkout for one payment product with referral-aware one-t
 - Mode: one-time payment
 - Result after successful payment: `public.users.plan = 'premium'`
 
-Subscriptions, billing portal, refunds, invoices, coupons, tax logic, and live-mode payments are intentionally out of scope for the current implementation.
+Subscriptions, billing portal, refunds, invoices, and coupons are intentionally out of scope for the current implementation.
 
 ## Current Flow
 
@@ -20,6 +20,7 @@ Subscriptions, billing portal, refunds, invoices, coupons, tax logic, and live-m
 Profile upgrade button
 -> POST /payments/create-checkout-session with Supabase bearer token
 -> FastAPI creates a Stripe Checkout Session in payment mode
+-> Stripe Checkout collects the location details needed for Stripe Tax calculations
 -> user pays on Stripe-hosted Checkout
 -> Stripe sends checkout.session.completed to /payments/webhook
 -> FastAPI verifies Stripe-Signature against STRIPE_WEBHOOK_SECRET
@@ -259,6 +260,8 @@ https://your-api-domain.com/payments/webhook
 
 ```text
 checkout.session.completed
+charge.dispute.created
+payment_intent.canceled
 ```
 
 5. Copy that endpoint's signing secret into production `STRIPE_WEBHOOK_SECRET`.
@@ -267,7 +270,9 @@ checkout.session.completed
 
 7. Confirm CORS allows the production frontend origin through `CORS_ALLOWED_ORIGINS`.
 
-8. Confirm the production frontend has only public browser-safe env vars:
+8. In Stripe Tax settings, confirm the product tax code and use tax-inclusive pricing so the advertised consumer price remains the final amount charged. Add only tax registrations that have already been completed with the relevant tax authority.
+
+9. Confirm the production frontend has only public browser-safe env vars:
 
 ```text
 NEXT_PUBLIC_API_URL=https://your-api-domain.com
@@ -275,9 +280,9 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-9. Run a live low-risk purchase only after confirming product, price, redirect URL, webhook endpoint, and Supabase production project are all correct.
+10. Run a live low-risk purchase only after confirming product, price, redirect URL, webhook endpoint, Stripe Tax settings, and Supabase production project are all correct.
 
-10. After launch, monitor Stripe webhook deliveries and API logs. Webhook retries should be safe because setting `plan = 'premium'` repeatedly is idempotent for this v1 flow.
+11. After launch, monitor Stripe webhook deliveries and API logs. Webhook retries should be safe because setting `plan = 'premium'` repeatedly is idempotent for this v1 flow.
 
 ## Official Stripe References
 

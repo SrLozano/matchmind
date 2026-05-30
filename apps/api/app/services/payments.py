@@ -68,6 +68,8 @@ async def create_tournament_pass_checkout_session(user_id: UUID) -> str:
     session = stripe.checkout.Session.create(
         mode="payment",
         line_items=[{"price": price_id, "quantity": 1}],
+        automatic_tax={"enabled": True},
+        customer_creation="always",
         success_url=f"{app_url}/?payment=success",
         cancel_url=f"{app_url}/?payment=cancelled",
         client_reference_id=str(user_id),
