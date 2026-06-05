@@ -20,7 +20,6 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { useLanguage, type Language } from "@/lib/i18n"
-import { isFounderPassSaleActive } from "@/lib/referral-pricing"
 
 type SignalRow = {
   label: string
@@ -50,8 +49,7 @@ type LandingCopy = {
   heroTitle: string
   heroSubtitle: string
   primaryCta: string
-  priceHook: string
-  regularPriceHook: string
+  freeHook: string
   trustLine: string
   proofPoints: string[]
   aiSectionTitle: string
@@ -119,7 +117,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(null)
   const copy = language === "es" ? copyEs : copyEn
-  const priceHook = isFounderPassSaleActive() ? copy.priceHook : copy.regularPriceHook
 
   useEffect(() => {
     const payment = new URLSearchParams(window.location.search).get("payment")
@@ -233,7 +230,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <ArrowRight className="h-4 w-4" />
               </a>
               <div className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 bg-white/8 px-5 py-3 text-sm font-bold text-[#DCE6FA] backdrop-blur">
-                {priceHook}
+                {copy.freeHook}
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-xs font-semibold leading-5 text-[#8EA0C0]">{copy.trustLine}</p>
@@ -726,15 +723,14 @@ const copyEn: LandingCopy = {
   kicker: "AI betting coach for World Cup 2026",
   heroTitle: "The AI that tells you if a bet actually makes sense.",
   heroSubtitle:
-    "Describe the bet you are considering. Matchmind reads the odds, World Cup context, bookmaker prices, and prediction-market signals, then gives you a direct verdict with confidence.",
+    "Describe the bet you are considering. Matchmind reads the odds, World Cup context, bookmaker lines, and prediction-market signals, then gives you a direct verdict with confidence.",
   primaryCta: "Ask the AI free",
-  priceHook: "Founder price €6.99 · only until the World Cup starts",
-  regularPriceHook: "World Cup Pass · one payment €9.99",
+  freeHook: "Free to use · create an account and enter",
   trustLine: "Analysis only. Matchmind never places bets or handles betting funds.",
   proofPoints: ["AI verdicts in plain language", "Bookmaker odds and market signals", "Confidence score before you stake"],
   aiSectionTitle: "Built for the seconds before you bet",
   aiSectionSubtitle:
-    "The coach is not a generic chatbot. It is tuned to challenge hype, price emotion, and explain value in the language of a football fan.",
+    "The coach is not a generic chatbot. It is tuned to challenge hype, judge the odds, and explain value in the language of a football fan.",
   aiPillars: [
     { title: "Reads the ticket", body: "Team, market, odds, stake, timing, and the risk you are really taking." },
     { title: "Cross-checks sources", body: "Bookmaker consensus, World Cup fixtures, Polymarket signals, and your own history." },
@@ -751,7 +747,7 @@ const copyEn: LandingCopy = {
   previewQuestion: "Argentina to win the World Cup at 7.50. Good value or trap?",
   previewVerdict: "Lean yes, but keep stake controlled",
   previewAnswer:
-    "The price is interesting if the market read stays above the implied 13.3%, but this is a long tournament. Small position, no chasing. Confidence: 7/10.",
+    "The odds are interesting if the market read stays above the implied 13.3%, but this is a long tournament. Small position, no chasing. Confidence: 7/10.",
   signalsTitle: "What the AI compares",
   signalsSubtitle: "Odds, market movement, and tournament context",
   signalRows: [
@@ -767,7 +763,7 @@ const copyEn: LandingCopy = {
   signInTitle: "Welcome back",
   signInSubtitle: "Open your coach chats, market reads, and betting record.",
   signUpTitle: "Try the AI coach free",
-  signUpSubtitle: "Get 3 free coach chats per day. Upgrade when you want every pick, signal, value check, and coach read for the whole World Cup.",
+  signUpSubtitle: "Create your account and start using Matchmind free. No payment is needed to enter the app.",
   forgotTitle: "Reset your password",
   forgotSubtitle: "Enter your email and we will send you a reset link.",
   email: "Email",
@@ -798,10 +794,10 @@ const copyEn: LandingCopy = {
   authUnavailableTitle: "Sign-in is temporarily unavailable",
   authUnavailableCopy:
     "Matchmind could not load its authentication settings, so the protected app is locked instead of opening a broken session. Please try again in a moment.",
-  paymentSuccessTitle: "Payment received",
-  paymentSuccessSignedOut: "Your Tournament Pass is being activated. Sign in again to open your account and see the updated plan.",
-  paymentCancelledTitle: "Checkout cancelled",
-  paymentCancelledCopy: "No charge was completed. You can sign in and try again whenever you are ready.",
+  paymentSuccessTitle: "Update received",
+  paymentSuccessSignedOut: "Sign in again to open your account and see the updated plan.",
+  paymentCancelledTitle: "Process cancelled",
+  paymentCancelledCopy: "No change was completed. You can sign in whenever you are ready.",
 }
 
 const copyEs: LandingCopy = {
@@ -810,15 +806,14 @@ const copyEs: LandingCopy = {
   kicker: "Coach IA para apostar mejor en el Mundial 2026",
   heroTitle: "La IA que te dice si tu apuesta tiene sentido.",
   heroSubtitle:
-    "Describe la apuesta que estás pensando. Matchmind lee cuotas, contexto del Mundial, precios de bookmakers y señales de mercado para darte un veredicto directo con confianza.",
+    "Describe la apuesta que estás pensando. Matchmind lee cuotas, contexto del Mundial, líneas de casas y señales de mercado para darte un veredicto directo con confianza.",
   primaryCta: "Preguntar a la IA gratis",
-  priceHook: "Precio fundador €6.99 · solo hasta que empiece el Mundial",
-  regularPriceHook: "Pase Mundial · pago único €9.99",
+  freeHook: "Gratis para usar · crea tu cuenta y entra",
   trustLine: "Solo análisis. Matchmind nunca coloca apuestas ni gestiona fondos de juego.",
   proofPoints: ["Veredictos IA en lenguaje claro", "Cuotas y señales de mercado", "Confianza antes de poner dinero"],
   aiSectionTitle: "Pensada para los segundos antes de apostar",
   aiSectionSubtitle:
-    "No es un chatbot genérico. Es un coach entrenado para cuestionar hype, medir precio y explicar valor como te lo diría un amigo que sabe.",
+    "No es un chatbot genérico. Es un coach entrenado para cuestionar hype, medir cuotas y explicar valor como te lo diría un amigo que sabe.",
   aiPillars: [
     { title: "Lee tu jugada", body: "Equipo, mercado, cuota, importe, momento y el riesgo real que estás asumiendo." },
     { title: "Cruza fuentes", body: "Consenso bookmaker, calendario del Mundial, señales Polymarket y tu propio historial." },
@@ -835,7 +830,7 @@ const copyEs: LandingCopy = {
   previewQuestion: "España gana el grupo a 1.65. Todo el mundo lo ve claro. ¿Entramos?",
   previewVerdict: "Yo no la cogería a esa cuota",
   previewAnswer:
-    "Parece segura, pero el precio ya descuenta demasiado optimismo. Si quieres ir con España, esperaría una cuota mejor o bajaría mucho el importe. Confianza: 7/10.",
+    "Parece segura, pero la cuota ya descuenta demasiado optimismo. Si quieres ir con España, esperaría una cuota mejor o bajaría mucho el importe. Confianza: 7/10.",
   signalsTitle: "Lo que compara la IA",
   signalsSubtitle: "Cuotas, movimiento de mercado y contexto del torneo",
   signalRows: [
@@ -851,7 +846,7 @@ const copyEs: LandingCopy = {
   signInTitle: "Vuelve a Matchmind",
   signInSubtitle: "Abre tus chats, lecturas de mercado e historial de apuestas.",
   signUpTitle: "Prueba el coach IA gratis",
-  signUpSubtitle: "Tienes 3 chats gratis al día. Paga cuando quieras todos los pronósticos, señales, análisis de valor y lecturas del coach para todo el Mundial.",
+  signUpSubtitle: "Crea tu cuenta y empieza a usar Matchmind gratis. No necesitas pagar para entrar en la app.",
   forgotTitle: "Recupera tu contraseña",
   forgotSubtitle: "Escribe tu email y te enviaremos un enlace de recuperación.",
   email: "Email",
@@ -882,8 +877,8 @@ const copyEs: LandingCopy = {
   authUnavailableTitle: "El acceso no está disponible ahora",
   authUnavailableCopy:
     "Matchmind no pudo cargar la configuración de autenticación, así que la app protegida queda bloqueada en vez de abrir una sesión rota. Inténtalo de nuevo en un momento.",
-  paymentSuccessTitle: "Pago recibido",
-  paymentSuccessSignedOut: "Tu Pase Mundial se está activando. Vuelve a iniciar sesión para abrir tu cuenta y ver el plan actualizado.",
-  paymentCancelledTitle: "Pago cancelado",
-  paymentCancelledCopy: "No se ha completado ningún cobro. Puedes iniciar sesión e intentarlo de nuevo cuando quieras.",
+  paymentSuccessTitle: "Actualización recibida",
+  paymentSuccessSignedOut: "Vuelve a iniciar sesión para abrir tu cuenta y ver el plan actualizado.",
+  paymentCancelledTitle: "Proceso cancelado",
+  paymentCancelledCopy: "No se ha completado ningún cambio. Puedes iniciar sesión cuando quieras.",
 }
