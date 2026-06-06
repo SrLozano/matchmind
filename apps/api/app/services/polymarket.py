@@ -21,6 +21,50 @@ logger = logging.getLogger(__name__)
 POLYMARKET_MARKETS_TABLE = "polymarket_markets"
 POLYMARKET_SNAPSHOTS_TABLE = "polymarket_market_snapshots"
 POLYMARKET_WRITE_BATCH_SIZE = 25
+POLYMARKET_RAW_PAYLOAD_KEYS = (
+    "id",
+    "marketId",
+    "_id",
+    "conditionId",
+    "question",
+    "title",
+    "slug",
+    "eventId",
+    "active",
+    "closed",
+    "archived",
+    "endDate",
+    "liquidity",
+    "liquidityNum",
+    "volume",
+    "volumeNum",
+    "outcomes",
+    "shortOutcomes",
+    "outcomePrices",
+    "prices",
+    "clobTokenIds",
+    "bestBid",
+    "bestAsk",
+    "spread",
+)
+POLYMARKET_EVENT_PAYLOAD_KEYS = (
+    "id",
+    "eventId",
+    "_id",
+    "title",
+    "name",
+    "question",
+    "slug",
+    "active",
+    "closed",
+    "endDate",
+    "end_date",
+    "endDateIso",
+    "liquidity",
+    "liquidityNum",
+    "volume",
+    "volumeNum",
+)
 
 SEARCH_TERMS = (
     "World Cup",
@@ -420,6 +464,7 @@ def find_best_polymarket_market(
 
 
 def normalize_polymarket_market(market: dict[str, Any], last_fetched_at: str | None) -> dict[str, Any]:
+    raw_payload = market.get("raw") or market
     market_type = infer_market_type_from_text(
         normalize_market_type(market.get("market_type_guess")),
         market.get("market_question"),
@@ -458,7 +503,7 @@ def normalize_polymarket_market(market: dict[str, Any], last_fetched_at: str | N
     return {
         "polymarket_event_id": market.get("event_id"),
         "polymarket_market_id": market.get("market_id"),
-        "condition_id": (market.get("raw") or {}).get("conditionId"),
+        "condition_id": raw_payload.get("conditionId"),
         "market_type": market_type,
         "matched_teams": market.get("matched_teams") or [],
         "matched_team": (market.get("matched_teams") or [None])[0],
@@ -486,7 +531,7 @@ def normalize_polymarket_market(market: dict[str, Any], last_fetched_at: str | N
         "signal_quality_score": signal_quality_score,
         "is_usable": is_usable and signal_quality_score >= get_settings().polymarket_min_signal_quality,
         "last_fetched_at": last_fetched_at,
-        "raw_payload": market.get("raw") or market,
+        "raw_payload": compact_polymarket_raw_payload(raw_payload),
     }
 
 
@@ -659,6 +704,22 @@ def extract_clob_number(market: dict[str, Any], payload_key: str, value_key: str
     return None
 
 
+def compact_polymarket_raw_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    compact = {key: payload[key] for key in POLYMARKET_RAW_PAYLOAD_KEYS if key in payload}
+    for key in ("_parent_event_id", "_parent_event_title", "_parent_event_slug"):
+        if key in payload:
+            compact[key] = payload[key]
+    return compact
+
+
+def compact_polymarket_event_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    return {key: payload[key] for key in POLYMARKET_EVENT_PAYLOAD_KEYS if key in payload}
+
+
 def as_float(value: Any) -> float | None:
     if value in (None, ""):
         return None
@@ -790,7 +851,7 @@ def polymarket_market_to_row(market: dict[str, Any]) -> dict[str, Any]:
         "best_ask": market.get("best_ask"),
         "midpoint": market.get("midpoint"),
         "spread": market.get("spread"),
-        "raw_payload": market.get("raw_payload") or {},
+        "raw_payload": compact_polymarket_raw_payload(market.get("raw_payload") or {}),
         "match_confidence": market.get("match_confidence") or 0,
         "signal_quality_score": market.get("signal_quality_score") or 0,
         "is_usable": bool(market.get("is_usable")),
@@ -863,17 +924,21 @@ async def search_gamma(client: httpx.AsyncClient, attempts: list[dict[str, Any]]
                     continue
                 key = event_identity(event)
                 if key:
-                    events_by_key[key] = event
+                    events_by_key[key] = compact_polymarket_event_payload(event)
                 for market in event.get("markets") or []:
                     if isinstance(market, dict):
+                        market.setdefault("_parent_event_title", pick_first(event, ("title", "name", "question")))
+                        market.setdefault("_parent_event_slug", pick_first(event, ("slug",)))
+                        if not should_keep_polymarket_search_market(market):
+                            continue
                         market_key = market_identity(market)
                         if market_key:
                             market.setdefault("_parent_event_id", key)
-                            market.setdefault("_parent_event_title", pick_first(event, ("title", "name", "question")))
-                            market.setdefault("_parent_event_slug", pick_first(event, ("slug",)))
                             markets_by_key[market_key] = market
             for market in payload.get("markets") or []:
                 if isinstance(market, dict):
+                    if not should_keep_polymarket_search_market(market):
+                        continue
                     key = market_identity(market)
                     if key:
                         markets_by_key[key] = market
@@ -885,10 +950,10 @@ async def search_gamma(client: httpx.AsyncClient, attempts: list[dict[str, Any]]
                     if endpoint == "/events":
                         key = event_identity(item)
                         if key:
-                            events_by_key[key] = item
+                            events_by_key[key] = compact_polymarket_event_payload(item)
                     else:
                         key = market_identity(item)
-                        if key:
+                        if key and should_keep_polymarket_search_market(item):
                             markets_by_key[key] = item
 
     return list(events_by_key.values()), list(markets_by_key.values())
@@ -1005,6 +1070,19 @@ def event_identity(event: dict[str, Any]) -> str:
 
 def market_identity(market: dict[str, Any]) -> str:
     return str(pick_first(market, ("id", "marketId", "_id", "conditionId", "slug")) or "")
+
+
+def should_keep_polymarket_search_market(market: dict[str, Any]) -> bool:
+    text = " ".join(
+        str(part or "")
+        for part in (
+            pick_first(market, ("_parent_event_title",)),
+            pick_first(market, ("_parent_event_slug",)),
+            pick_first(market, ("question", "title", "name", "description")),
+            pick_first(market, ("slug",)),
+        )
+    )
+    return is_likely_world_cup(text)
 
 
 def pick_first(payload: dict[str, Any], keys: tuple[str, ...]) -> Any:

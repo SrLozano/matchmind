@@ -36,16 +36,32 @@ jobs:
           api_url="${MATCHMIND_API_URL%/}"
           url="${api_url}${REFRESH_ENDPOINT}"
           body_file="$(mktemp)"
+          status="000"
 
-          echo "Calling endpoint: ${REFRESH_ENDPOINT}"
-          status="$(
-            curl --silent --show-error \
-              --request POST \
-              --header "X-Internal-Token: ${MATCHMIND_INTERNAL_API_TOKEN}" \
-              --output "${body_file}" \
-              --write-out "%{http_code}" \
-              "${url}"
-          )"
+          for attempt in 1 2 3; do
+            echo "Calling endpoint: ${REFRESH_ENDPOINT} (attempt ${attempt}/3)"
+            status="$(
+              curl --silent --show-error \
+                --request POST \
+                --header "X-Internal-Token: ${MATCHMIND_INTERNAL_API_TOKEN}" \
+                --output "${body_file}" \
+                --write-out "%{http_code}" \
+                "${url}"
+            )"
+
+            if [[ "${status}" -ge 200 && "${status}" -lt 300 ]]; then
+              break
+            fi
+
+            if [[ "${status}" != "502" && "${status}" != "503" && "${status}" != "504" ]]; then
+              break
+            fi
+
+            if [[ "${attempt}" -lt 3 ]]; then
+              echo "Transient server status ${status}; waiting before retry."
+              sleep 30
+            fi
+          done
 
           echo "HTTP status: ${status}"
           echo "Response body preview:"

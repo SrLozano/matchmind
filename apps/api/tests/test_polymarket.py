@@ -4,6 +4,7 @@ import unittest
 from app.services.bet_parser import parse_bet_message
 from app.services.polymarket import (
     build_polymarket_context_for_chat,
+    compact_polymarket_raw_payload,
     detect_polymarket_intent,
     find_best_polymarket_market,
     format_polymarket_context_block,
@@ -175,6 +176,24 @@ class PolymarketContextTest(unittest.TestCase):
         self.assertTrue(row["is_usable"])
         self.assertEqual(snapshot["polymarket_market_id"], "market-1")
         self.assertEqual(snapshot["yes_price"], 0.8)
+
+    def test_market_row_keeps_raw_payload_compact(self) -> None:
+        raw_payload = {
+            "conditionId": "condition-1",
+            "question": "Will Spain win Group H in the 2026 FIFA World Cup?",
+            "slug": "will-spain-win-group-h-in-the-2026-fifa-world-cup",
+            "markets": [{"heavy": "nested market payload"}],
+            "comments": [{"heavy": "provider payload"}],
+            "description": "long text that is not needed by the cache row",
+        }
+
+        compact = compact_polymarket_raw_payload(raw_payload)
+
+        self.assertEqual(compact["conditionId"], "condition-1")
+        self.assertEqual(compact["question"], raw_payload["question"])
+        self.assertNotIn("markets", compact)
+        self.assertNotIn("comments", compact)
+        self.assertNotIn("description", compact)
 
 
 if __name__ == "__main__":
