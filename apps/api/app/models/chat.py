@@ -36,6 +36,7 @@ class ChatResponse(BaseModel):
     verdict: str | None = None
     implied_probability: float | None = Field(default=None, ge=0, le=1)
     stake_posture: str | None = None
+    recommended_stake: int | None = Field(default=None, ge=1, le=10)
     market_signal: ChatMarketSignal | None = None
     daily_chats_remaining: int | None
     chat_count: int
@@ -50,3 +51,4 @@ class AIChatResult(BaseModel):
     verdict: str | None = None
     implied_probability: float | None = Field(default=None, ge=0, le=1)
     stake_posture: str | None = None
+    recommended_stake: int | None = Field(default=None, ge=1, le=10)

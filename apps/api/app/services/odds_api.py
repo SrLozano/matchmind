@@ -280,6 +280,7 @@ async def build_bookmaker_context_for_chat(
         "bookmaker_count": int(row.get("bookmaker_count") or 0),
         "last_fetched_at": row.get("fetched_at"),
         "value_edge": value_edge(parsed.odds, row),
+        "price_delta_vs_best": price_delta_vs_best(parsed.odds, row),
         "price_quality": price_quality(parsed.odds, row),
     }
 
@@ -342,6 +343,8 @@ def format_bookmaker_context_block(context: dict[str, Any] | None) -> str | None
         )
     if context.get("price_quality"):
         lines.append(f"- Price quality vs best cached price: {context['price_quality']}")
+    if context.get("price_delta_vs_best") is not None:
+        lines.append(f"- User price delta vs best cached price: {context['price_delta_vs_best'] * 100:.1f}%")
     if context.get("value_edge") is not None:
         lines.append(f"- User price edge vs consensus: {context['value_edge'] * 100:.1f} percentage points")
     lines.append(f"- Bookmakers in consensus: {context.get('bookmaker_count') or 0}")
@@ -363,7 +366,32 @@ def is_odds_discovery_request(message: str) -> bool:
         r"\brecomienda\b|\brecomendaciones\b",
         r"\bsugerencias\b|\bsugi[eé]reme\b",
         r"\bqu[eé]\s+apuesto\b",
+        r"\bqu[eé]\s+apostar\b",
+        r"\bideas?\s+(?:para\s+)?apostar\b",
+        r"\bideas?\s+(?:buenas?|de\s+apuestas?)\b",
+        r"\bapuestas?\s+buenas?\b",
         r"\bdame\s+(?:algunas\s+)?(?:apuestas|picks|jugadas)\b",
+        r"\bdame\s+(?:algunas\s+)?ideas\b",
+        r"\bpartidos?\s+de\s+hoy\b",
+        r"\bqu[eé]\s+hay\s+(?:bueno|interesante)\s+hoy\b",
+        r"\bmejores?\s+partidos?\s+para\s+apostar\b",
+        r"\bcombinad[ao]s?\b",
+        r"\bparlay\b",
+        r"\baccumulator\b",
+        r"\b(?:slip|ticket)\b",
+        r"\bapuesta\s+segura\b|\bsegura\b",
+        r"\bfijo\b|\bfija\b|\bcasi\s+fijo\b",
+        r"\bcuota\s+(?:f[aá]cil|segura|alta)\b",
+        r"\bsafe\s+bet\b|\bsure\s+thing\b|\block\b",
+        r"\bapuesta\s+loca\b",
+        r"\blong\s*shot\b|\blongshot\b",
+        r"\barriesgad[ao]\b|\bagresiv[ao]\b",
+        r"\bt[uú]\s+qu[eé]\s+apostar[ií]as\b",
+        r"\bqu[eé]\s+apostar[ií]as\b",
+        r"\belige\s+(?:por\s+mi|por\s+m[ií])\b",
+        r"\bdime\s+una\s+y\s+ya\b",
+        r"\bcu[aá]l\s+te\s+gusta\s+m[aá]s\b",
+        r"\bpick\s+one\b|\bchoose\s+for\s+me\b",
     ]
     return any(re.search(pattern, lowered, re.IGNORECASE) for pattern in patterns)
 
@@ -837,6 +865,10 @@ def price_quality(user_odds: float | None, row: dict[str, Any]) -> str | None:
         return None
 
     ratio = user_odds / best_price
+    if ratio >= 1.03:
+        return "exceptional; user price is meaningfully above the best cached price"
+    if ratio > 1.005:
+        return "excellent; user price is above the best cached price"
     if ratio >= 0.995:
         return "best available or effectively equal to the best cached price"
     if ratio >= 0.97:
@@ -844,6 +876,13 @@ def price_quality(user_odds: float | None, row: dict[str, Any]) -> str | None:
     if ratio >= 0.94:
         return "acceptable; below the best cached price but still in range"
     return "weak; meaningfully below the best cached price"
+
+
+def price_delta_vs_best(user_odds: float | None, row: dict[str, Any]) -> float | None:
+    best_price = as_float(row.get("best_price"))
+    if user_odds is None or not best_price:
+        return None
+    return round((user_odds / best_price) - 1, 4)
 
 
 def compact_consensus_row(row: dict[str, Any]) -> dict[str, Any]:

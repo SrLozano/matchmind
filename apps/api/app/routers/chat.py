@@ -57,6 +57,7 @@ async def chat(payload: ChatRequest, authorization: str | None = Header(default=
             verdict=ai_result.verdict,
             implied_probability=ai_result.implied_probability,
             stake_posture=ai_result.stake_posture,
+            recommended_stake=ai_result.recommended_stake,
         )
         return ChatResponse(
             conversation_id=saved_turn["conversation_id"],
@@ -65,6 +66,7 @@ async def chat(payload: ChatRequest, authorization: str | None = Header(default=
             verdict=ai_result.verdict,
             implied_probability=ai_result.implied_probability,
             stake_posture=ai_result.stake_posture,
+            recommended_stake=ai_result.recommended_stake,
             market_signal=_build_chat_market_signal(polymarket_context),
             daily_chats_remaining=saved_turn["daily_chats_remaining"],
             chat_count=saved_turn["chat_count"],

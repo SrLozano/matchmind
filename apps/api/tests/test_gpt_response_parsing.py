@@ -25,7 +25,8 @@ class GPTResponseParsingTest(unittest.TestCase):
               "confidence_score": 5.5,
               "verdict": "risky",
               "implied_probability": 47.62,
-              "stake_posture": "Very Small"
+              "stake_posture": "Very Small",
+              "recommended_stake": 2
             }
             """
         )
@@ -34,6 +35,7 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertEqual(result.verdict, "RISKY")
         self.assertEqual(result.implied_probability, 0.4762)
         self.assertEqual(result.stake_posture, "very small")
+        self.assertEqual(result.recommended_stake, 2)
 
     def test_nested_json_response_text_is_unwrapped(self) -> None:
         result = _extract_json(
@@ -42,7 +44,8 @@ class GPTResponseParsingTest(unittest.TestCase):
               "response": "{\\"response\\":\\"Verdict: FAIR\\\\n\\\\nMy take:\\\\nNested text is unwrapped.\\",\\"confidence_score\\":6}",
               "confidence_score": 6,
               "verdict": "fair",
-              "stake_posture": "small"
+              "stake_posture": "small",
+              "recommended_stake": 3
             }
             """
         )
@@ -51,11 +54,12 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertEqual(result.confidence_score, 6)
 
     def test_plain_text_fallback_extracts_score_and_verdict(self) -> None:
-        result = _extract_json("Verdict: AVOID\n\nStake posture:\navoid\n\nConfidence:\n4/10")
+        result = _extract_json("Verdict: AVOID\n\nStake posture:\navoid\n\nStake: 1/10\n\nConfidence:\n4/10")
 
         self.assertEqual(result.confidence_score, 4)
         self.assertEqual(result.verdict, "AVOID")
         self.assertEqual(result.stake_posture, "avoid")
+        self.assertEqual(result.recommended_stake, 1)
 
     def test_deterministic_fallback_contains_required_structure(self) -> None:
         parsed = parse_bet_message("Brazil to beat Japan at 1.30")
@@ -65,6 +69,8 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertIn("Confidence:", result.response)
         self.assertEqual(result.implied_probability, 0.7692)
         self.assertIn(result.stake_posture, {"avoid", "very small", "small", "medium"})
+        self.assertEqual(result.stake_posture, "small")
+        self.assertEqual(result.recommended_stake, 3)
 
     def test_broad_bankroll_question_gets_coaching_fallback(self) -> None:
         parsed = parse_bet_message("I have 100€ and I want to bet, give me some recommendations")
@@ -75,6 +81,7 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertIn("risk style", result.response)
         self.assertEqual(result.verdict, "NOT ENOUGH INFO")
         self.assertEqual(result.stake_posture, "avoid")
+        self.assertEqual(result.recommended_stake, 1)
 
     def test_spanish_bankroll_question_gets_coaching_fallback(self) -> None:
         parsed = parse_bet_message("Tengo 100€ y quiero recomendaciones para apostar")
@@ -85,6 +92,44 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertIn("perfil de riesgo", result.response)
         self.assertEqual(result.verdict, "NOT ENOUGH INFO")
         self.assertEqual(result.stake_posture, "avoid")
+        self.assertEqual(result.recommended_stake, 1)
+
+    def test_spanish_ideas_request_is_discovery_intent(self) -> None:
+        parsed = parse_bet_message("dame ideas para apostar que sean buena")
+
+        self.assertEqual(_classify_chat_intent(parsed.original_message, parsed), "discovery_or_bankroll_request")
+
+    def test_normie_requests_are_classified(self) -> None:
+        cases = {
+            "dame una apuesta segura": "conservative_pick_request",
+            "hazme una combinada para hoy": "parlay_request",
+            "dame una cuota alta": "longshot_request",
+            "tú qué apostarías": "choose_for_me_request",
+            "me ofrecen cash out, cierro o aguanto?": "cash_out_request",
+            "voy palmando, necesito recuperar": "chasing_loss_request",
+            "qué significa stake 3/10?": "education_request",
+            "qué hay bueno hoy?": "discovery_or_bankroll_request",
+        }
+
+        for message, expected_intent in cases.items():
+            with self.subTest(message=message):
+                parsed = parse_bet_message(message)
+                self.assertEqual(_classify_chat_intent(parsed.original_message, parsed), expected_intent)
+
+    def test_chasing_loss_fallback_refuses_recovery_pick(self) -> None:
+        parsed = parse_bet_message("voy palmando, necesito recuperar")
+        result = _fallback_result(parsed)
+
+        self.assertEqual(result.verdict, "AVOID")
+        self.assertEqual(result.recommended_stake, 1)
+        self.assertIn("recuperarlo", result.response)
+
+    def test_education_fallback_explains_stake(self) -> None:
+        parsed = parse_bet_message("qué significa stake 3/10?")
+        result = _fallback_result(parsed)
+
+        self.assertEqual(result.verdict, "NOT ENOUGH INFO")
+        self.assertIn("Stake 3/10", result.response)
 
     def test_spanish_fallback_uses_spanish_response_but_english_metadata(self) -> None:
         parsed = parse_bet_message("Brasil gana a Japón a 1,30")
@@ -93,15 +138,17 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertIn("Resumen rápido:", result.response)
         self.assertIn("Confianza:", result.response)
         self.assertEqual(result.verdict, "FAIR")
-        self.assertEqual(result.stake_posture, "very small")
+        self.assertEqual(result.stake_posture, "small")
         self.assertEqual(result.implied_probability, 0.7692)
+        self.assertEqual(result.recommended_stake, 3)
 
     def test_spanish_plain_text_fallback_normalizes_metadata(self) -> None:
-        result = _extract_json("Veredicto: ARRIESGADA\n\nPostura de stake:\nmuy pequeño\n\nConfianza:\n5.5/10")
+        result = _extract_json("Veredicto: ARRIESGADA\n\nPostura de stake:\nmuy pequeño\n\nStake recomendado: 2/10\n\nConfianza:\n5.5/10")
 
         self.assertEqual(result.confidence_score, 5.5)
         self.assertEqual(result.verdict, "RISKY")
         self.assertEqual(result.stake_posture, "very small")
+        self.assertEqual(result.recommended_stake, 2)
 
     def test_spanish_visible_response_cleanup_translates_labels_and_enums(self) -> None:
         response = _localize_visible_response_es(
@@ -117,7 +164,7 @@ class GPTResponseParsingTest(unittest.TestCase):
 
     def test_visible_metadata_lines_are_stripped_for_structured_ui(self) -> None:
         response = _strip_visible_metadata_lines(
-            "Me gusta como plan pequeño.\n\n**Veredicto:** NO HAY INFO SUFICIENTE.\n**Confianza:** 4/10.\nPostura de stake: evitar"
+            "Me gusta como plan pequeño.\n\n**Veredicto:** NO HAY INFO SUFICIENTE.\n**Confianza:** 4/10.\nStake: 1/10\nPostura de stake: evitar"
         )
 
         self.assertEqual(response, "Me gusta como plan pequeño.")
@@ -130,6 +177,7 @@ class GPTResponseParsingTest(unittest.TestCase):
                 confidence_score=4,
                 verdict="NOT ENOUGH INFO",
                 stake_posture="avoid",
+                recommended_stake=1,
             ),
             parsed,
         )
@@ -147,7 +195,7 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(
             schema["required"],
-            ["response", "confidence_score", "verdict", "implied_probability", "stake_posture"],
+            ["response", "confidence_score", "verdict", "implied_probability", "stake_posture", "recommended_stake"],
         )
 
     def test_finalize_result_fills_missing_metadata(self) -> None:
@@ -160,6 +208,7 @@ class GPTResponseParsingTest(unittest.TestCase):
         self.assertEqual(result.implied_probability, 0.5556)
         self.assertEqual(result.verdict, "FAIR")
         self.assertEqual(result.stake_posture, "small")
+        self.assertEqual(result.recommended_stake, 3)
 
     def test_conversation_memory_is_compacted_for_prompt_context(self) -> None:
         memory = _compact_conversation_memory(

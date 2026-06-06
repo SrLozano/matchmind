@@ -37,6 +37,7 @@ class DummyChatSessionContext:
         verdict: str | None = None,
         implied_probability: float | None = None,
         stake_posture: str | None = None,
+        recommended_stake: int | None = None,
     ) -> dict:
         return {
             "conversation_id": "conversation-1",
@@ -134,7 +135,7 @@ class UserSpecificRouteSecurityTest(unittest.IsolatedAsyncioTestCase):
                 await self.assert_unauthorized(route_call, patch_target)
 
     async def test_chat_uses_authenticated_user_and_ignores_payload_user_id(self) -> None:
-        ai_result = AIChatResult(response="No edge there.", confidence_score=6.0)
+        ai_result = AIChatResult(response="No edge there.", confidence_score=6.0, recommended_stake=1)
 
         with (
             patch.object(

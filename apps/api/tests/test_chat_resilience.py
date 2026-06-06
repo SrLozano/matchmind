@@ -34,6 +34,7 @@ class DummyChatSessionContext:
         verdict: str | None = None,
         implied_probability: float | None = None,
         stake_posture: str | None = None,
+        recommended_stake: int | None = None,
     ) -> dict:
         return {
             "conversation_id": self.conversation["id"],
@@ -85,6 +86,7 @@ class ChatResilienceTest(unittest.IsolatedAsyncioTestCase):
             verdict="NOT ENOUGH INFO",
             implied_probability=None,
             stake_posture="avoid",
+            recommended_stake=1,
         )
 
         with (
@@ -122,6 +124,7 @@ class ChatResilienceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.confidence_score, 4.5)
         self.assertEqual(response.verdict, "NOT ENOUGH INFO")
         self.assertEqual(response.stake_posture, "avoid")
+        self.assertEqual(response.recommended_stake, 1)
         self.assertIsNone(response.market_signal)
         self.assertEqual(response.conversation_id, "conversation-1")
         self.assertEqual(response.daily_chats_remaining, 4)

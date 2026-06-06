@@ -13,6 +13,7 @@ export type ChatResponse = {
   verdict: string | null
   implied_probability: number | null
   stake_posture: string | null
+  recommended_stake: number | null
   market_signal: ChatMarketSignal | null
   daily_chats_remaining: number | null
   chat_count: number
@@ -46,6 +47,7 @@ export type ConversationMessage = {
   verdict: string | null
   implied_probability: number | null
   stake_posture: string | null
+  recommended_stake: number | null
   created_at: string | null
 }
 
@@ -388,6 +390,7 @@ function normalizeChatResponse(payload: ChatResponse): ChatResponse {
   return {
     ...payload,
     response: unwrapNestedResponse(payload.response),
+    recommended_stake: payload.recommended_stake ?? null,
   }
 }
 

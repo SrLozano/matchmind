@@ -116,6 +116,7 @@ Returns:
   "verdict": "FAIR",
   "implied_probability": 0.4762,
   "stake_posture": "small",
+  "recommended_stake": 3,
   "market_signal": null,
   "daily_chats_remaining": 4,
   "chat_count": 1,
@@ -127,7 +128,7 @@ Returns:
 
 `POST /chat` requires a Supabase bearer token unless `ALLOW_DEV_AUTH_FALLBACK=true`. The backend derives the user id from the authenticated Supabase user and ignores any deprecated client-supplied `user_id`. `preferred_language` can be `"en"` or `"es"`. If omitted, the backend detects language from the message and asks the coach to answer in that language. `conversation_id` is optional; omit it to start a new conversation, or send a previous ID to append a follow-up and give the coach recent conversation memory.
 
-The OpenAI call uses a strict JSON schema for `response`, `confidence_score`, `verdict`, `implied_probability`, and `stake_posture`. The visible `response` is allowed to be conversational and varied, while these metadata fields stay stable for UI rendering.
+The OpenAI call uses a strict JSON schema for `response`, `confidence_score`, `verdict`, `implied_probability`, `stake_posture`, and `recommended_stake`. The visible `response` is allowed to be conversational and varied, while these metadata fields stay stable for UI rendering. `confidence_score` describes how supported the analysis is; `recommended_stake` is the prudent stake size from 1 to 10, blending value, likelihood, risk, and price quality rather than pure expected value alone.
 
 Chat provider context is resilient by design. API-Football, Polymarket, and bookmaker context builders are best-effort in the `/chat` route; a provider/cache failure is logged and omitted instead of crashing the chat request.
 
@@ -718,7 +719,7 @@ Manual verification checklist:
 - Matchmind never places bets; it only provides analysis and coaching.
 - The coach parses decimal odds, stake, teams, and obvious markets before calling the AI model so implied probability is stable even when live data is unavailable.
 - English and Spanish are supported in the coach flow. Parser output is canonicalized to English for API consistency, while the coach replies in the detected user language.
-- Chat returns stable structured metadata for UI chips: `verdict`, `confidence_score`, `stake_posture`, and `implied_probability`.
+- Chat returns stable structured metadata for UI chips: `verdict`, `confidence_score`, `recommended_stake`, `stake_posture`, and `implied_probability`.
 - Conversations preserve follow-up memory through `conversation_id` and compact recent `conversation_memory` in the prompt.
 - API-Football fixture context is cached persistently in Supabase and only refreshed outside the normal per-message chat path.
 - The Odds API bookmaker context is cached persistently in Supabase and only refreshed or seeded outside the normal per-message chat path.

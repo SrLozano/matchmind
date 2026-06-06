@@ -45,6 +45,7 @@ class ConversationsTest(unittest.TestCase):
                         "verdict": "FAIR",
                         "implied_probability": 0.4545,
                         "stake_posture": "small",
+                        "recommended_stake": 3,
                     },
                     "bad row",
                 ]
@@ -56,6 +57,7 @@ class ConversationsTest(unittest.TestCase):
         self.assertEqual(messages[1]["verdict"], "FAIR")
         self.assertEqual(messages[1]["implied_probability"], 0.4545)
         self.assertEqual(messages[1]["stake_posture"], "small")
+        self.assertEqual(messages[1]["recommended_stake"], 3)
 
 
 if __name__ == "__main__":

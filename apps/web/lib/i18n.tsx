@@ -90,12 +90,12 @@ export const translations = {
       day: "day",
       week: "week",
       initialCoach:
-        "Tell me a bet, an odds price, or just your budget and risk style. I'll help you avoid bad spots, build a shortlist, and give direct verdicts with confidence.",
+        "Tell me a bet, an odds price, or just your budget and risk style. I'll help you avoid bad spots, build a shortlist, and give direct verdicts with confidence and stake.",
       exampleTitle: "Try one of these",
       examplePrompts: [
-        "I have €100 and want World Cup recommendations",
-        "Brazil to beat Haiti at 1.15",
-        "Is Argentina to win the World Cup at 7.50 good value?",
+        "Give me 3 good betting ideas for today",
+        "Mexico to beat South Africa at 1.70 — is it well bought?",
+        "Build me a conservative 2-pick parlay",
       ],
       pending: "Checking the bet and building a straight answer...",
       requestFailed: "I couldn't complete that request.",
@@ -451,7 +451,7 @@ export const translations = {
         },
         {
           title: "Get a simple decision first",
-          body: "Matchmind gives a verdict, confidence, and suggested size before the deeper numbers.",
+          body: "Matchmind gives a verdict, confidence, and stake before the deeper numbers.",
         },
         {
           title: "Use the Feed as a starting point",
@@ -483,9 +483,9 @@ export const translations = {
         example: "Example: 7/10 means the read is fairly supported, not guaranteed.",
       },
       stake: {
-        title: "Suggested size",
-        body: "A posture for how small or cautious the bet should be. Matchmind never recommends aggressive stakes.",
-        example: "Example: Very small means keep it recreational.",
+        title: "Stake",
+        body: "The suggested bet size from 1 to 10. It blends value, chance of winning, risk, and price quality. It is not the chance of winning.",
+        example: "Example: Stake 3/10 means small but reasonable. Stake 4/10 means a solid controlled entry.",
       },
       impliedProbability: {
         title: "Implied probability",
@@ -666,12 +666,12 @@ export const translations = {
       day: "día",
       week: "semana",
       initialCoach:
-        "Dime una apuesta, una cuota, o solo tu presupuesto y perfil de riesgo. Te ayudo a evitar malas decisiones, preparar una selección y darte veredictos directos con confianza.",
+        "Dime una apuesta, una cuota, o solo tu presupuesto y perfil de riesgo. Te ayudo a evitar malas decisiones, preparar una selección y darte veredictos directos con confianza y stake.",
       exampleTitle: "Prueba con una de estas",
       examplePrompts: [
-        "Tengo 100€ y quiero recomendaciones para el Mundial",
-        "Brasil gana a Haití a cuota 1.15",
-        "¿Argentina campeona del Mundial a 7.50 tiene valor?",
+        "Dame 3 ideas buenas para apostar hoy",
+        "México gana a Sudáfrica a 1.70, ¿está bien comprada?",
+        "Hazme una combinada conservadora de 2 picks",
       ],
       pending: "Revisando la apuesta y preparando una respuesta directa...",
       requestFailed: "No pude completar esa petición.",
@@ -692,7 +692,7 @@ export const translations = {
       crowdProbability: "Prob. estimada",
       verdict: "Veredicto",
       confidence: "Confianza",
-      stake: "Importe",
+      stake: "Stake",
       impliedProbability: "La cuota implica",
       liquidity: "Liquidez",
       market: "Mercado",
@@ -1027,7 +1027,7 @@ export const translations = {
         },
         {
           title: "Primero recibes una decisión simple",
-          body: "Matchmind te da veredicto, confianza y tamaño sugerido antes de enseñar números más técnicos.",
+          body: "Matchmind te da veredicto, confianza y stake antes de enseñar números más técnicos.",
         },
         {
           title: "Usa el radar como punto de partida",
@@ -1059,9 +1059,9 @@ export const translations = {
         example: "Ejemplo: 7/10 significa una lectura bastante respaldada, no una garantía.",
       },
       stake: {
-        title: "Tamaño sugerido",
-        body: "Una postura sobre lo pequeña o prudente que debería ser la apuesta. Matchmind nunca recomienda apostar fuerte.",
-        example: "Ejemplo: Muy pequeño significa mantenerlo recreativo.",
+        title: "Stake",
+        body: "El tamaño sugerido de la apuesta del 1 al 10. Combina valor, probabilidad de acierto, riesgo y calidad del precio. No es la probabilidad de ganar.",
+        example: "Ejemplo: Stake 3/10 significa pequeño pero razonable. Stake 4/10 significa una entrada sólida y controlada.",
       },
       impliedProbability: {
         title: "Probabilidad implícita",

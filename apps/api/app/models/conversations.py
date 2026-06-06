@@ -8,6 +8,7 @@ class ConversationMessage(BaseModel):
     verdict: str | None = None
     implied_probability: float | None = None
     stake_posture: str | None = None
+    recommended_stake: int | None = Field(default=None, ge=1, le=10)
     created_at: str | None = None
 
 

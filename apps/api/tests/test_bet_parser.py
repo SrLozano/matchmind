@@ -94,6 +94,15 @@ class BetParserTest(unittest.TestCase):
         self.assertEqual(parsed.teams, ["South Africa", "South Korea"])
         self.assertEqual(parsed.raw_match_text, "sur africa vs sur korea")
 
+    def test_spanish_typo_and_single_decimal_odds_are_parsed(self) -> None:
+        parsed = parse_bet_message("Estoy pensando en meterle a Máxico con cuota 1.7 en el partido contra sudrafrica")
+
+        self.assertEqual(parsed.detected_language, "es")
+        self.assertEqual(parsed.teams, ["Mexico", "South Africa"])
+        self.assertEqual(parsed.market_type, "Match winner")
+        self.assertEqual(parsed.odds, 1.7)
+        self.assertEqual(parsed.implied_probability, 0.5882)
+
 
 if __name__ == "__main__":
     unittest.main()

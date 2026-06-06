@@ -13,7 +13,7 @@ Next.js frontend for Matchmind. This app was imported from the v1 frontend and l
 
 ## Current Screens
 
-- Chat coach: sends `POST /chat`, keeps the active `conversation_id`, can start a fresh chat, reopens previous conversations through `GET /conversations`, and shows structured chips for verdict, confidence, stake posture, and implied probability when available.
+- Chat coach: sends `POST /chat`, keeps the active `conversation_id`, can start a fresh chat, reopens previous conversations through `GET /conversations`, and shows structured chips for verdict, confidence, recommended stake, stake posture, and implied probability when available.
 - Match Radar / daily feed: reads `GET /world-cup/fixtures` and `GET /odds/matches`, then shows cached World Cup fixtures plus bookmaker 1X2 prices, market favorite, no-vig/fair probability, bookmaker count, freshness, and expandable "More markets" rows for goals over/under and goal handicap.
 - Market signals: reads `GET /polymarket/signals` and shows usable long-term crowd probability signals with premium locking.
 - Bet tracker: uses `POST /bets`, `GET /bets`, `PATCH /bets/{bet_id}`, and `DELETE /bets/{bet_id}`.

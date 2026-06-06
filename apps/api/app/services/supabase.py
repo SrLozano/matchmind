@@ -34,6 +34,7 @@ class ChatSessionContext:
         verdict: str | None = None,
         implied_probability: float | None = None,
         stake_posture: str | None = None,
+        recommended_stake: int | None = None,
     ) -> dict[str, Any]:
         messages = list(self.conversation.get("messages", []))
         assistant_message = {
@@ -48,6 +49,8 @@ class ChatSessionContext:
             assistant_message["implied_probability"] = implied_probability
         if stake_posture is not None:
             assistant_message["stake_posture"] = stake_posture
+        if recommended_stake is not None:
+            assistant_message["recommended_stake"] = recommended_stake
         messages.append(assistant_message)
 
         client = await get_supabase()
@@ -384,6 +387,7 @@ def _conversation_messages(conversation: dict[str, Any]) -> list[dict[str, Any]]
                 "verdict": raw_message.get("verdict"),
                 "implied_probability": raw_message.get("implied_probability"),
                 "stake_posture": raw_message.get("stake_posture"),
+                "recommended_stake": raw_message.get("recommended_stake"),
                 "created_at": _string_or_none(raw_message.get("created_at")),
             }
         )

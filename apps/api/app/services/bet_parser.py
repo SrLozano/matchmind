@@ -16,7 +16,7 @@ MARKET_PATTERNS: list[tuple[str, str]] = [
         r"\b(?:to\s+win\s+the\s+world\s+cup|win\s+the\s+world\s+cup|ganar\s+(?:el\s+)?mundial|campe[oó]n[ao]?\s+del\s+mundial|gana\s+(?:el\s+)?mundial|ganar\s+(?:la\s+)?copa|gana\s+(?:la\s+)?copa)\b",
         "Tournament outright",
     ),
-    (r"\b(?:to\s+beat|beats?|to\s+win|gana|ganar|vence|vencer|derrota|ganador)\b", "Match winner"),
+    (r"\b(?:to\s+beat|beats?|to\s+win|gana|ganar|vence|vencer|derrota|ganador|meterle\s+a|meter\s+a|meto\s+a|apostar(?:le)?\s+a|apuesto\s+a)\b", "Match winner"),
 ]
 
 SPANISH_HINTS = {
@@ -54,6 +54,14 @@ SPANISH_HINTS = {
     "agresivo",
     "conservador",
     "equilibrado",
+    "perdiendo",
+    "palmando",
+    "recuperar",
+    "remontar",
+    "cierro",
+    "aguanto",
+    "segura",
+    "combinada",
 }
 
 
@@ -99,15 +107,15 @@ def parse_bet_message(message: str) -> ParsedBet:
 
 def _extract_decimal_odds(message: str) -> float | None:
     priority_patterns = [
-        r"(?:odds|cuotas?|at|@|priced\s+at|price\s+of|a)\s*(\d{1,2}[.,]\d{2})\b",
-        r"\b(\d{1,2}[.,]\d{2})\s*(?:odds|price|cuotas?)\b",
+        r"(?:odds|cuotas?|at|@|priced\s+at|price\s+of|a)\s*(\d{1,2}[.,]\d{1,2})\b",
+        r"\b(\d{1,2}[.,]\d{1,2})\s*(?:odds|price|cuotas?)\b",
     ]
     for pattern in priority_patterns:
         match = re.search(pattern, message, re.IGNORECASE)
         if match:
             return _valid_decimal_odd(match.group(1))
 
-    for match in re.finditer(r"(?<![€$£])(?<!\d)(\d{1,2}[.,]\d{2})(?!\d|%)", message):
+    for match in re.finditer(r"(?<![€$£])(?<!\d)(\d{1,2}[.,]\d{1,2})(?!\d|%)", message):
         odd = _valid_decimal_odd(match.group(1))
         if odd:
             return odd

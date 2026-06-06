@@ -23,6 +23,7 @@ type Message = {
   verdict?: string | null
   impliedProbability?: number | null
   stakePosture?: string | null
+  recommendedStake?: number | null
   marketSignal?: ChatMarketSignal | null
 }
 
@@ -110,6 +111,7 @@ export default function ChatCoach({
                 verdict: result.verdict,
                 impliedProbability: result.implied_probability,
                 stakePosture: result.stake_posture,
+                recommendedStake: result.recommended_stake,
                 marketSignal: result.market_signal,
               }
             : message
@@ -215,6 +217,7 @@ export default function ChatCoach({
           verdict: message.verdict,
           impliedProbability: message.implied_probability,
           stakePosture: message.stake_posture,
+          recommendedStake: message.recommended_stake,
         }))
       )
       setHistoryOpen(false)
@@ -288,12 +291,13 @@ export default function ChatCoach({
     const verdict = formatVerdict(message.verdict)
     const confidence = formatScore(message.confidenceScore)
     const stakePosture = formatStakePosture(message.stakePosture)
+    const recommendedStake = formatScore(message.recommendedStake)
     const impliedProbability =
       message.impliedProbability !== null && message.impliedProbability !== undefined
         ? formatPercent(message.impliedProbability)
         : null
 
-    if (!verdict && !confidence && !stakePosture && !impliedProbability) return null
+    if (!verdict && !confidence && !recommendedStake && !stakePosture && !impliedProbability) return null
 
     return (
       <div className="mb-3 flex flex-wrap gap-2">
@@ -311,7 +315,14 @@ export default function ChatCoach({
             </span>
           </ConceptTip>
         )}
-        {stakePosture && (
+        {recommendedStake && (
+          <ConceptTip concept="stake" subtle>
+            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#FFD600]/25 bg-[#FFD600]/5 px-2.5 py-1 text-[11px] font-semibold leading-none text-[#FFD600]">
+              {t.chat.stake}: {recommendedStake}/10{stakePosture ? ` · ${stakePosture}` : ""}
+            </span>
+          </ConceptTip>
+        )}
+        {!recommendedStake && stakePosture && (
           <ConceptTip concept="stake" subtle>
             <span className="inline-flex min-h-7 items-center rounded-lg border border-[#FFD600]/25 bg-[#FFD600]/5 px-2.5 py-1 text-[11px] font-semibold leading-none text-[#FFD600]">
               {t.chat.stake}: {stakePosture}

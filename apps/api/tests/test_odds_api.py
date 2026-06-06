@@ -151,6 +151,10 @@ class OddsAPIServiceTest(unittest.TestCase):
 
     def test_price_quality_compares_user_price_to_best_cached_price(self) -> None:
         self.assertEqual(
+            price_quality(1.70, {"best_price": 1.47}),
+            "exceptional; user price is meaningfully above the best cached price",
+        )
+        self.assertEqual(
             price_quality(1.88, {"best_price": 1.88}),
             "best available or effectively equal to the best cached price",
         )
@@ -199,6 +203,7 @@ class OddsAPIServiceTest(unittest.TestCase):
                 "bookmaker_count": 12,
                 "last_fetched_at": "2026-05-10T10:00:00+00:00",
                 "value_edge": 0.0228,
+                "price_delta_vs_best": -0.0244,
                 "price_quality": "strong; close to the best cached price",
             }
         )
@@ -207,6 +212,7 @@ class OddsAPIServiceTest(unittest.TestCase):
         self.assertIn("Bookmaker no-vig consensus probability", block)
         self.assertIn("Best cached price", block)
         self.assertIn("Price quality vs best cached price", block)
+        self.assertIn("User price delta vs best cached price", block)
 
     def test_broad_recommendation_uses_discovery_context(self) -> None:
         parsed = parse_bet_message("I have 100€ and want World Cup recommendations")
@@ -220,6 +226,31 @@ class OddsAPIServiceTest(unittest.TestCase):
         block = format_bookmaker_context_block(context)
         self.assertIn("BOOKMAKER DISCOVERY CONTEXT:", block)
         self.assertIn("Option 1:", block)
+
+    def test_spanish_ideas_request_uses_discovery_context(self) -> None:
+        parsed = parse_bet_message("dame ideas para apostar que sean buena")
+        context = asyncio.run(build_bookmaker_context_for_chat(parsed.original_message, parsed_bet=parsed))
+
+        self.assertIsNotNone(context)
+        self.assertTrue(context["matched"])
+        self.assertEqual(context["mode"], "discovery_shortlist")
+
+    def test_normie_shortlist_requests_use_discovery_context(self) -> None:
+        messages = [
+            "dame una apuesta segura",
+            "hazme una combinada para hoy",
+            "dame una cuota alta",
+            "tú qué apostarías",
+            "qué hay bueno hoy?",
+        ]
+
+        for message in messages:
+            with self.subTest(message=message):
+                parsed = parse_bet_message(message)
+                context = asyncio.run(build_bookmaker_context_for_chat(parsed.original_message, parsed_bet=parsed))
+                self.assertIsNotNone(context)
+                self.assertTrue(context["matched"])
+                self.assertEqual(context["mode"], "discovery_shortlist")
 
     def test_compact_odds_matches_from_discovery_file(self) -> None:
         matches = asyncio.run(get_compact_odds_matches(limit=3))
