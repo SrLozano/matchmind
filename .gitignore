@@ -239,3 +239,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated provider discovery data (do not redistribute)
+tmp/*
+!tmp/README.md
