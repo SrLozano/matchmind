@@ -1,6 +1,7 @@
 {
   "name": "matchmind",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@10.33.1",
   "workspaces": [
     "apps/web",

@@ -118,3 +118,7 @@ stripe listen --forward-to localhost:8000/payments/webhook
 Use Stripe's test card `4242 4242 4242 4242` with any future expiry, CVC, and postal code. The frontend must not contain Stripe secret keys.
 
 The full local setup, troubleshooting notes, and production migration checklist live in [docs/stripe-payments.md](docs/stripe-payments.md).
+
+## License
+
+Matchmind is available under the [MIT License](LICENSE).
